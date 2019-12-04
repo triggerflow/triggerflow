@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# IDE
+.idea
+
 # Distribution / packaging
 .Python
 build/
@@ -37,9 +40,12 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
+<<<<<<< HEAD
 # IDE
 .idea
 
+=======
+>>>>>>> server
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -129,4 +135,8 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
+<<<<<<< HEAD
 .pyre/
+=======
+.pyre/
+>>>>>>> server
