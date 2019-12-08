@@ -1,101 +1,111 @@
-import json
+import dateutil.parser
+from datetime import datetime
+from uuid import uuid4
+
+import utils
 from cloudant_client import CloudantClient
-from ibm_cloudfunctions_client import CloudFunctionsClient
 
-cd_client = None
+db = None
 
 
-def put_trigger(namespace, events, trigger):
+def add_trigger(params):
+    global db
+    namespace = params['namespace']
 
+    # Authenticate request
+    if 'token' not in params['user_credentials']:
+        return {'statusCode': 401, 'body': {'error': "Missing 'token' parameter"}}
+    token = params['user_credentials']['token']
+    sessions = db.get(database_name=namespace, document_id='sessions')
+    if token in sessions:
+        emitted_token_time = dateutil.parser.parse(sessions[token])
+        seconds = (datetime.utcnow() - emitted_token_time).seconds
+        if seconds > 3600:
+            return {'statusCode': 403, 'body': {'error': 'Token expired'}}
+    else:
+        return {'statusCode': 401, 'body': {'error': 'Unauthorized'}}
+
+    # Check if trigger and events keys are in params
+    if not {'trigger', 'events'}.issubset(params):
+        return {'statusCode': 400, 'body': {'error': "Missing 'trigger' and/or 'events' parameters"}}
+
+    # Get triggers and source events from remote db
+    try:
+        source_events = db.get(database_name=namespace, document_id='source_events')
+    except KeyError:
+        source_events = {}
+    try:
+        triggers = db.get(database_name=namespace, document_id='triggers')
+    except KeyError:
+        triggers = {}
+
+    # Add trigger to database
+    trigger_id = str(uuid4())
+    triggers[trigger_id] = params['trigger']
+
+    # Link source events to the trigger added
+    events = params['events']
     for event in events:
-        try:
-            triggers = cd_client.get(database_name=namespace,
-                                     document_id=event['subject'])
-        except KeyError:
-            triggers = {'triggers': []}
-        triggers['triggers'].append(trigger)
-        cd_client.put(database_name=namespace,
-                      document_id=event['subject'], data=triggers)
+        if event['subject'] in source_events:
+            source_events[event['subject']].append(trigger_id)
+        else:
+            source_events[event['subject']] = [trigger_id]
+
+    db.put(database_name=namespace, document_id='source_events', data=source_events)
+    db.put(database_name=namespace, document_id='triggers', data=triggers)
 
     return {"statusCode": 201, "body": {"message": "created/updated triggers"}}
 
 
-def check_cloudfunctions_credentials(endpoint, namespace, api_key):
-    try:
-        cf_client = CloudFunctionsClient(endpoint=endpoint,
-                                         namespace=namespace,
-                                         api_key=api_key)
-        cf_client.list_packages()
-        return True
-    except Exception:
-        return False
-
-
-def validate_params(params):
-    print(params.keys())
-    MANDATORY_PARAMS = set(('user_credentials', 'private_credentials'))
-    if not MANDATORY_PARAMS.issubset(set(params)):
-        raise Exception("Missing mandatory user/private credentials")
-
-    # Check request parameters
-    if not any(key in params for key in ['namespace', 'events', 'trigger']):
-        raise Exception("Missing mandatory 'trigger' parameter")
-
-    trigger = params['trigger']
-    events = params['events']
+def init(params):
     namespace = params['namespace']
-
-    # Check Cloud Functions credentials
-    user_credentials = params['user_credentials']
-    MANDATORY_CF_CREDS = set(('endpoint', 'namespace', 'api_key'))
-    if not MANDATORY_CF_CREDS.issubset(set(user_credentials)):
-        raise Exception('Invalid user credentials')
-
-    if not check_cloudfunctions_credentials(endpoint=user_credentials['endpoint'],
-                                            namespace=user_credentials['namespace'],
-                                            api_key=user_credentials['api_key']):
-        raise Exception('Invalid IBM Cloud Functions apikey')
-
-    # Check Cloudant credentials
-    private_credentials = params['private_credentials']
-    if 'cloudant' not in private_credentials:
-        raise Exception('Invalid private credentials')
-
-    MANDATORY_CD_CREDS = set(('apikey', 'username'))
-    if not MANDATORY_CD_CREDS.issubset(set(private_credentials['cloudant'])):
-        raise Exception('Invalid private credentials')
-
-    global cd_client
+    global db
+    # Check if ibm credentials are valid
     try:
-        cd_client = CloudantClient(
-            username=private_credentials['cloudant']['username'],
-            apikey=private_credentials['cloudant']['apikey'])
-    except Exception:
-        raise Exception('Invalid Cloudant username or apikey')
+        ibm_cf_credentials = params['user_credentials']['ibm_cf_credentials']
+        ok = utils.check_cloudfunctions_credentials(**ibm_cf_credentials)
+        if not ok:
+            raise Exception('Invalid IBM Cloud Functions credentials')
+    except KeyError:
+        return {'statusCode': 400, 'body': {'error': 'Missing parameters'}}
+    except Exception as e:
+        return {'statusCode': 400, 'body': {'error': str(e)}}
 
-    return {
-        'trigger': trigger,
-        'events': events,
-        'namespace': namespace
-    }
+    # Generate session token
+    token = utils.generate_token()
+    timestamp = str(datetime.utcnow().isoformat())
+
+    try:
+        sessions = db.get(database_name=namespace, document_id='sessions')
+    except KeyError:
+        sessions = {}
+    sessions[token] = timestamp
+    db.put(database_name=namespace, document_id='sessions', data=sessions)
+
+    if 'default_context' in params:
+        db.put(database_name=namespace, document_id='default_context',
+               data={'default_context': params['default_context']})
+
+    # TODO send request to init worker
+
+    return {'statusCode': 200, 'body': {'token': token}}
 
 
 def main(args):
+    print(args)
+    params = utils.validate_params(args)
+    global db
+    db = CloudantClient(username=params['private_credentials']['cloudant']['username'],
+                        apikey=params['private_credentials']['cloudant']['apikey'])
+    res = {"statusCode": 404, "body": {"error": "Not found"}}
     try:
-
-        try:
-            valid_params = validate_params(args)
-        except Exception as e:
-            raise e
-            return {"statusCode": 400, "body": {"error": str(e)}}
-
-        if args['__ow_method'] == 'put':
-            res = put_trigger(**valid_params)
-        else:
-            res = {"statusCode": 405, "body": {
-                "error": "Method {} not allowed".format(args['__ow_method'])}}
+        if args['__ow_path'] == '/init':
+            if args['__ow_method'] == 'put':
+                res = init(params)
+        elif args['__ow_path'] == '/add_trigger':
+            if args['__ow_method'] == 'put':
+                res = add_trigger(params)
+        return res
     except Exception as e:
         raise e
-        res = {"statusCode": 500, "body": json.dumps(str(e))}
-
-    return res
+        return {"statusCode": 500, "body": "Internal error: {}".format(str(e))}

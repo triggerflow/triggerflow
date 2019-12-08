@@ -86,7 +86,7 @@ def main():
 
     # Make sure we log to the console
     streamHandler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ] [%(levelname)s][event-router] %(message)s',
+    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][event-router] %(message)s',
                                   datefmt="%Y-%m-%dT%H:%M:%S")
     streamHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)

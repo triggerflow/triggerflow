@@ -6,7 +6,11 @@ from typing import Optional, Union, List
 
 
 class CloudEventProcessorClient:
-    def __init__(self, api_endpoint: str, namespace: str, default_context: dict = None):
+    def __init__(self,
+                 namespace: str,
+                 ibm_cf_credentials: str,
+                 api_endpoint: str,
+                 default_context: dict = None):
         """
         Initializes CloudEventProcessor client
         :param api_endpoint:
@@ -15,8 +19,19 @@ class CloudEventProcessorClient:
         self.api_endpoint = api_endpoint
         self.namespace = namespace
         self.default_context = {'counter': 0}
-        if default_context is not None:
+        if default_context is not None and type(default_context) is dict:
             self.default_context.update(default_context)
+
+        res = requests.put('/'.join([self.api_endpoint, 'init']),
+                           json={'namespace': self.namespace,
+                                 'default_context': self.default_context,
+                                 'user_credentials': {'ibm_cf_credentials': ibm_cf_credentials}})
+
+        print("{}: {}".format(res.status_code, res.json()))
+        if res.ok:
+            self.token = res.json()['token']
+        else:
+            raise Exception('Could not initialize EventProcessor client')
 
     def add_trigger(self,
                     event: Union[dict, List[dict]],
@@ -50,18 +65,25 @@ class CloudEventProcessorClient:
         trigger_context.update(context)
         events = [event] if type(event) is not list else event
         trigger = {
-            'condition': base64.b64encode(dill.dumps(condition)),
-            'action': base64.b64encode(dill.dumps(action)),
+            'condition': str(base64.b64encode(dill.dumps(condition)), 'utf-8'),
+            'action': str(base64.b64encode(dill.dumps(action)), 'utf-8'),
             'context': trigger_context,
             'trigger_subjects': list(map(lambda evt: evt['subject'], events))}
 
-        res = requests.put(self.api_endpoint,
+        res = requests.put('/'.join([self.api_endpoint, 'add_trigger']),
                            json={'namespace': self.namespace,
                                  'events': events,
                                  'trigger': trigger,
-                                 'user_credentials': self.cf_credentials})
+                                 'user_credentials': {'token': self.token}})
 
-        print('{} ==> {}'.format(res.status_code, res.content))
+        print('{}: {}'.format(res.status_code, res.json()))
+
+    def new_event_source(self, subject, type='termination.event.success'):
+        return {
+            'specversion': '1.0',
+            'type': type,
+            'subject': subject
+        }
 
 
 def cloudevent_trigger_source(type, source, subject):

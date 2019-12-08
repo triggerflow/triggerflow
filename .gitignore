@@ -40,12 +40,6 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-<<<<<<< HEAD
-# IDE
-.idea
-
-=======
->>>>>>> server
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -119,6 +113,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# Compressed archives
+*.zip
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -135,8 +132,4 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
-<<<<<<< HEAD
 .pyre/
-=======
-.pyre/
->>>>>>> server
