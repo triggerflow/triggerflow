@@ -77,19 +77,3 @@ class CloudEventProcessorClient:
                                  'user_credentials': {'token': self.token}})
 
         print('{}: {}'.format(res.status_code, res.json()))
-
-    def new_event_source(self, subject, type='termination.event.success'):
-        return {
-            'specversion': '1.0',
-            'type': type,
-            'subject': subject
-        }
-
-
-def cloudevent_trigger_source(type, source, subject):
-    return {
-        'specversion': '1.0',
-        'type': type,
-        'source': source,
-        'subject': subject
-    }

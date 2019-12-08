@@ -1,4 +1,4 @@
-from api.client import CloudEventProcessorClient, cloudevent_trigger_source
+from api.client import CloudEventProcessorClient
 from api.utils import load_config_yaml
 import logging
 
