@@ -12,13 +12,14 @@ class DefaultConditions(Enum):
 
 class DefaultActions(Enum):
     PASS = 0
-    IBM_CF_INVOKE = 1
+    TERMINATE = 1
+    IBM_CF_INVOKE = 2
 
 
 class CloudEventProcessorClient:
     def __init__(self,
                  namespace: str,
-                 ibm_cf_credentials: str,
+                 authentication: dict,
                  api_endpoint: str,
                  event_source: Optional[CloudEventSource] = None,
                  default_context: Optional[dict] = None):
@@ -38,7 +39,7 @@ class CloudEventProcessorClient:
                            json={'namespace': self.namespace,
                                  'event_source': self.event_source,
                                  'default_context': self.default_context,
-                                 'authentication': {'ibm_cf_credentials': ibm_cf_credentials}})
+                                 'authentication': authentication})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:
@@ -66,13 +67,11 @@ class CloudEventProcessorClient:
         if type(context) is not dict:
             raise Exception('Context must be an json-serializable dict')
 
-        trigger_context = self.default_context.copy()
-        trigger_context.update(context)
         events = [event] if type(event) is not list else event
         trigger = {
             'condition': condition.name,
             'action': action.name,
-            'context': trigger_context,
+            'context': context,
             'trigger_subjects': list(map(lambda evt: evt['subject'], events))}
 
         res = requests.put('/'.join([self.api_endpoint, 'add_trigger']),
@@ -82,3 +81,5 @@ class CloudEventProcessorClient:
                                  'authentication': {'token': self.token}})
 
         print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())

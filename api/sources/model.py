@@ -7,5 +7,5 @@ class CloudEventSource:
         raise NotImplementedError
 
     @staticmethod
-    def event(subject: str, type: str):
+    def event(subject: str, type: str = 'termination.event.success'):
         return {'subject': subject, 'type': type}

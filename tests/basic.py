@@ -1,4 +1,4 @@
-from api.client import CloudEventProcessorClient
+from api.client import CloudEventProcessorClient, DefaultActions, DefaultConditions
 from api.utils import load_config_yaml
 from api.sources.kafka import KafkaCloudEventSource, KafkaSASLAuthMode
 
@@ -12,10 +12,36 @@ if __name__ == "__main__":
                                   username=kafka_credentials['eventstreams']['user'],
                                   password=kafka_credentials['eventstreams']['password'])
 
-    er = CloudEventProcessorClient(namespace='test',
+    er = CloudEventProcessorClient(namespace='ibm_cf_test',
                                    event_source=kafka,
-                                   default_context={'my_things': 'hi'},
+                                   default_context=client_config['authentication']['ibm_cf_credentials'],
                                    api_endpoint=client_config['event_processor']['api_endpoint'],
-                                   ibm_cf_credentials=client_config['ibm_cf_credentials'])
+                                   authentication=client_config['authentication'])
 
-    er.add_trigger(kafka.event('t1', 'termination.event.success'), context={'some_important_things': 'hi'})
+    fqfn = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/sleep_rand'
+    er.add_trigger(kafka.event('init__'),
+                   action=DefaultActions.IBM_CF_INVOKE,
+                   context={'subject': 'ca1', 'fqfn': fqfn, 'args': {'iter': 1}})
+
+    er.add_trigger(kafka.event('t1'),
+                   condition=DefaultConditions.JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE,
+                   context={'subject': 'map1', 'fqfn': fqfn, 'args': [{'iter': 1}, {'iter': 2}, {'iter': 3}]})
+    er.add_trigger(kafka.event('t1'),
+                   condition=DefaultConditions.JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE,
+                   context={'subject': 'ca2', 'fqfn': fqfn, 'args': {'iter': 1}})
+
+    er.add_trigger([kafka.event('map1'), kafka.event('ca2')],
+                   condition=DefaultConditions.JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE,
+                   context={'subject': 'map2', 'fqfn': fqfn, 'args': [{'iter': 1}, {'iter': 2}]})
+
+    er.add_trigger(kafka.event('map2'),
+                   condition=DefaultConditions.JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE,
+                   context={'subject': 'ca3', 'fqfn': fqfn, 'args': {'iter': 1}})
+
+    er.add_trigger(kafka.event('ca3'),
+                   condition=DefaultConditions.JOIN,
+                   action=DefaultActions.TERMINATE)
