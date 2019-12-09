@@ -3,6 +3,7 @@ import dill
 import base64
 import inspect
 from typing import Optional, Union, List
+from .sources.model import  CloudEventSource
 
 
 class CloudEventProcessorClient:
@@ -10,22 +11,25 @@ class CloudEventProcessorClient:
                  namespace: str,
                  ibm_cf_credentials: str,
                  api_endpoint: str,
-                 default_context: dict = None):
+                 event_source: Optional[CloudEventSource] = None,
+                 default_context: Optional[dict] = None):
         """
         Initializes CloudEventProcessor client
         :param api_endpoint:
         :param namespace: Specifies on which namespace will the triggers be added to.
         """
-        self.api_endpoint = api_endpoint
         self.namespace = namespace
+        self.event_source = event_source.dict if event_source is not None else None
+        self.api_endpoint = api_endpoint
         self.default_context = {'counter': 0}
         if default_context is not None and type(default_context) is dict:
             self.default_context.update(default_context)
 
         res = requests.put('/'.join([self.api_endpoint, 'init']),
                            json={'namespace': self.namespace,
+                                 'event_source': self.event_source,
                                  'default_context': self.default_context,
-                                 'user_credentials': {'ibm_cf_credentials': ibm_cf_credentials}})
+                                 'authentication': {'ibm_cf_credentials': ibm_cf_credentials}})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:

@@ -13,9 +13,9 @@ def add_trigger(params):
     namespace = params['namespace']
 
     # Authenticate request
-    if 'token' not in params['user_credentials']:
+    if 'token' not in params['authentication']:
         return {'statusCode': 401, 'body': {'error': "Missing 'token' parameter"}}
-    token = params['user_credentials']['token']
+    token = params['authentication']['token']
     sessions = db.get(database_name=namespace, document_id='sessions')
     if token in sessions:
         emitted_token_time = dateutil.parser.parse(sessions[token])
@@ -59,10 +59,11 @@ def add_trigger(params):
 
 def init(params):
     namespace = params['namespace']
+    event_source = params['event_source']
     global db
     # Check if ibm credentials are valid
     try:
-        ibm_cf_credentials = params['user_credentials']['ibm_cf_credentials']
+        ibm_cf_credentials = params['authentication']['ibm_cf_credentials']
         ok = utils.check_cloudfunctions_credentials(**ibm_cf_credentials)
         if not ok:
             raise Exception('Invalid IBM Cloud Functions credentials')
@@ -86,19 +87,30 @@ def init(params):
         db.put(database_name=namespace, document_id='default_context',
                data={'default_context': params['default_context']})
 
+    if event_source is not None:
+        db.put(database_name=namespace, document_id='event_source', data=event_source)
+    else:
+        try:
+            event_source = db.get(database_name=namespace, document_id='event_source')
+        except KeyError:
+            return {'statusCode': 400, 'body': {'error': 'Event source not found for namespace {}'.format(namespace)}}
+
     # TODO send request to init worker
 
-    return {'statusCode': 200, 'body': {'token': token}}
+    return {'statusCode': 200, 'body': {'token': token,
+                                        'namespace': namespace,
+                                        'event_source': list(event_source.keys()).pop()}}
 
 
 def main(args):
-    print(args)
-    params = utils.validate_params(args)
     global db
-    db = CloudantClient(username=params['private_credentials']['cloudant']['username'],
-                        apikey=params['private_credentials']['cloudant']['apikey'])
+    print(args)  # DEBUG
+    params = utils.validate_params(args)
     res = {"statusCode": 404, "body": {"error": "Not found"}}
     try:
+        db = CloudantClient(username=params['private_credentials']['cloudant']['username'],
+                            apikey=params['private_credentials']['cloudant']['apikey'])
+
         if args['__ow_path'] == '/init':
             if args['__ow_method'] == 'put':
                 res = init(params)
@@ -107,5 +119,5 @@ def main(args):
                 res = add_trigger(params)
         return res
     except Exception as e:
-        raise e
+        raise e  # debug
         return {"statusCode": 500, "body": "Internal error: {}".format(str(e))}

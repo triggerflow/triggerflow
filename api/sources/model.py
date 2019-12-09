@@ -1,6 +1,11 @@
 class CloudEventSource:
     def __init__(self):
-        self.__events = []
+        pass
 
-    def event(self, subject: str, type: str):
-        self.__events.append({'subject': subject, 'type': type})
+    @property
+    def dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def event(subject: str, type: str):
+        return {'subject': subject, 'type': type}

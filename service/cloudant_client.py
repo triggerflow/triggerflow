@@ -18,6 +18,7 @@ class CloudantClient:
 
     def put(self, database_name: str, document_id: str, data: dict):
         db = CloudantDatabase(self.client, database_name)
+        data = data.copy()
         data['_id'] = document_id
         retry = self.max_retries
         while retry > 0:

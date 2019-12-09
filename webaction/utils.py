@@ -1,9 +1,8 @@
 import secrets
 
-from cloudant_client import CloudantClient
 from ibm_cloudfunctions_client import CloudFunctionsClient
 
-MANDATORY_PARAMS = {'namespace', 'user_credentials', 'private_credentials'}
+MANDATORY_PARAMS = {'namespace', 'event_source', 'authentication', 'private_credentials'}
 
 
 def validate_params(params):
