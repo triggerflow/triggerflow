@@ -2,7 +2,7 @@ import secrets
 
 from ibm_cloudfunctions_client import CloudFunctionsClient
 
-MANDATORY_PARAMS = {'namespace', 'event_source', 'authentication', 'private_credentials'}
+MANDATORY_PARAMS = {'namespace', 'authentication', 'private_credentials'}
 
 
 def validate_params(params):

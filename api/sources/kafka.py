@@ -24,5 +24,4 @@ class KafkaCloudEventSource(CloudEventSource):
         d = vars(self)
         if self.auth_mode is not None:
             d['auth_mode'] = self.auth_mode.name
-        print(d)
         return {self.__class__.__name__: d}

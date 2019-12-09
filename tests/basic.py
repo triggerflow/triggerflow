@@ -18,5 +18,4 @@ if __name__ == "__main__":
                                    api_endpoint=client_config['event_processor']['api_endpoint'],
                                    ibm_cf_credentials=client_config['ibm_cf_credentials'])
 
-
-    # er.add_trigger(kafka.event('t1', 'termination.event.success'), context={'some_important_things': 'hi'})
+    er.add_trigger(kafka.event('t1', 'termination.event.success'), context={'some_important_things': 'hi'})

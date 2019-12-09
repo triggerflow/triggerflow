@@ -54,12 +54,11 @@ def add_trigger(params):
     db.put(database_name=namespace, document_id='source_events', data=source_events)
     db.put(database_name=namespace, document_id='triggers', data=triggers)
 
-    return {"statusCode": 201, "body": {"message": "created/updated triggers"}}
+    return {"statusCode": 201, "body": {"message": "created/updated trigger/s", "trigger_id": trigger_id}}
 
 
 def init(params):
     namespace = params['namespace']
-    event_source = params['event_source']
     global db
     # Check if ibm credentials are valid
     try:
@@ -87,7 +86,8 @@ def init(params):
         db.put(database_name=namespace, document_id='default_context',
                data={'default_context': params['default_context']})
 
-    if event_source is not None:
+    if 'event_source' in params:
+        event_source = params['event_source']
         db.put(database_name=namespace, document_id='event_source', data=event_source)
     else:
         try:
