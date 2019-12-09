@@ -8,7 +8,7 @@ class KafkaSASLAuthMode(Enum):
 
 
 class KafkaCloudEventSource(CloudEventSource):
-    name = 'Kafka'
+    name = 'KAFKA'
 
     def __init__(self, broker_list: List[str], topic: str, auth_mode: Optional[KafkaSASLAuthMode] = None,
                  username: Optional[str] = None, password: Optional[str] = None):
@@ -24,4 +24,4 @@ class KafkaCloudEventSource(CloudEventSource):
         d = vars(self)
         if self.auth_mode is not None:
             d['auth_mode'] = self.auth_mode.name
-        return {self.__class__.__name__: d}
+        return {'type': self.name, self.name: d}

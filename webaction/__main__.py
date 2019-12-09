@@ -54,7 +54,7 @@ def add_trigger(params):
     db.put(database_name=namespace, document_id='source_events', data=source_events)
     db.put(database_name=namespace, document_id='triggers', data=triggers)
 
-    return {"statusCode": 201, "body": {"message": "created/updated trigger/s", "trigger_id": trigger_id}}
+    return {"statusCode": 201, "body": {"trigger_id": trigger_id}}
 
 
 def init(params):
@@ -120,4 +120,4 @@ def main(args):
         return res
     except Exception as e:
         raise e  # debug
-        return {"statusCode": 500, "body": "Internal error: {}".format(str(e))}
+        return {"statusCode": 500, "body": {'error': "Internal error: {}".format(str(e))}}

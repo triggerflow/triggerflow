@@ -31,9 +31,9 @@ from datetime import datetime
 from multiprocessing import Process
 from confluent_kafka import TopicPartition
 
+import service.brokers as brokers
 from service.datetimeutils import seconds_since
 from service.cloudant_client import CloudantClient
-from service.kafka_client import KafkaClient
 
 
 class AuthHandlerException(Exception):
@@ -64,9 +64,13 @@ class Worker(Process):
         self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
                                                 self.__private_credentials['cloudant']['apikey'])
 
-        self.__kafka_client = KafkaClient(brokers=self.__private_credentials['eventstreams']['kafka_brokers_sasl'],
-                                          username=self.__private_credentials['eventstreams']['user'],
-                                          password=self.__private_credentials['eventstreams']['password'])
+        event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
+        # FIXME Replace type-test by proper python import logic
+        if event_source['type'] == 'KAFKA':
+            kafka_config = event_source['KAFKA']
+            self.broker = brokers.KafkaBroker(**kafka_config)
+        else:
+            raise NotImplementedError()
 
         self.kafka_topic = self.namespace
 

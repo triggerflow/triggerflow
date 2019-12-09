@@ -1,8 +1,3 @@
 cloudant:
   username: <USERNAME>
   apikey: <API_KEY>
-
-eventstreams:
-  kafka_brokers_sasl: [<IBM_ES_BORKERS>]
-  user: <IBM_ES_USER>
-  password: <IBM_ES_PASSOWRD>

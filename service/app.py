@@ -21,6 +21,7 @@
 import logging
 import os
 import yaml
+import json
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
@@ -101,8 +102,8 @@ def main():
 
     logging.info('Loading private credentials')
     global private_credentials
-    with open('config.yaml', 'r') as config_file:
-        private_credentials = yaml.safe_load(config_file)
+    with open(os.path.expanduser('~/private_credentials.json'), 'r') as config_file:
+        private_credentials = json.loads(config_file.read())['private_credentials']
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
