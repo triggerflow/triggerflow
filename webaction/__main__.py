@@ -14,7 +14,7 @@ def add_trigger(params):
 
     # Authenticate request
     if 'token' not in params['authentication']:
-        return {'statusCode': 401, 'body': {'error': "Missing 'token' parameter"}}
+        return {'statusCode': 401, 'body': {'error': "Unauthorized"}}
     token = params['authentication']['token']
     sessions = db.get(database_name=namespace, document_id='sessions')
     if token in sessions:
@@ -82,9 +82,11 @@ def init(params):
     sessions[token] = timestamp
     db.put(database_name=namespace, document_id='sessions', data=sessions)
 
-    if 'default_context' in params:
-        db.put(database_name=namespace, document_id='default_context',
-               data={'default_context': params['default_context']})
+    if 'global_context' in params:
+        global_context = params['global_context']
+        db.put(database_name=namespace, document_id='global_context', data=global_context)
+    else:
+        global_context = {}
 
     if 'event_source' in params:
         event_source = params['event_source']
@@ -99,7 +101,8 @@ def init(params):
 
     return {'statusCode': 200, 'body': {'token': token,
                                         'namespace': namespace,
-                                        'event_source': list(event_source.keys()).pop()}}
+                                        'global_context': global_context,
+                                        'event_source': event_source}}
 
 
 def main(args):

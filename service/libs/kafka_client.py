@@ -1,10 +1,8 @@
 import logging
-import os
-import time
 import uuid
 
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka import Consumer, KafkaError, TopicPartition
+from confluent_kafka import Consumer
 
 
 class KafkaClient:
@@ -15,7 +13,8 @@ class KafkaClient:
         self.password = password
         self.group_id = str(uuid.uuid1())
 
-    def get_config(self):
+    @property
+    def config(self):
         config = {'bootstrap.servers': ','.join(self.brokers),
                   'group.id': self.group_id,
                   'default.topic.config': {'auto.offset.reset': 'earliest'},
@@ -31,12 +30,15 @@ class KafkaClient:
                        })
         return config
 
+    def topic_exists(self, topic):
+        cluster_metadata = Consumer(self.config).list_topics()
+        return topic in cluster_metadata.topics
+
     def create_consumer(self, topic):
         """
         Creates a new kafka consumer
         """
-        config = self.get_config()
-        consumer = Consumer(config)
+        consumer = Consumer(self.config)
         consumer.subscribe([topic])
         logging.info("Now listening on topic: {}".format(topic))
         return consumer
@@ -45,13 +47,12 @@ class KafkaClient:
         """
         Create topics
         """
-        config = self.get_config()
-        admin_clinet = AdminClient(config)
+        admin_client = AdminClient(self.config)
 
         new_topic = [NewTopic(topic, num_partitions=3, replication_factor=3)]
         # Call create_topics to asynchronously create topics, a dict
         # of <topic,future> is returned.
-        fs = admin_clinet.create_topics(new_topic)
+        fs = admin_client.create_topics(new_topic)
 
         # Wait for operation to finish.
         # Timeouts are preferably controlled by passing request_timeout=15.0
@@ -76,9 +77,8 @@ class KafkaClient:
         # to propagate in the cluster before returning.
         #
         # Returns a dict of <topic,future>.
-        config = self.get_config()
-        admin_clinet = AdminClient(config)
-        fs = admin_clinet.delete_topics([topic], operation_timeout=30)
+        admin_client = AdminClient(self.config)
+        fs = admin_client.delete_topics([topic], operation_timeout=30)
 
         # Wait for operation to finish.
         for topic, f in fs.items():

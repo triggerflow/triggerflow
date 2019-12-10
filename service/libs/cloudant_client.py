@@ -1,5 +1,6 @@
 import time
 import random
+from requests.exceptions import HTTPError
 from cloudant import Cloudant
 from cloudant.database import CloudantDatabase
 from cloudant.document import Document
@@ -32,7 +33,7 @@ class CloudantClient:
                 doc = db.create_document(data)
                 doc.save()
                 break
-            except CloudantException as e:
+            except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
                 retry -= 1
                 if retry == 0:
@@ -40,8 +41,18 @@ class CloudantClient:
 
     def get(self, database_name: str, document_id: str = None):
         db = CloudantDatabase(self.client, database_name)
-        if not db.exists():
-            raise KeyError("Database does not exist")
+
+        retry = self.max_retries
+        while retry > 0:
+            try:
+                if not db.exists():
+                    raise KeyError("Database does not exist")
+                break
+            except (CloudantException, HTTPError) as e:
+                time.sleep(random.random())
+                retry -= 1
+                if retry == 0:
+                    raise e
 
         retry = self.max_retries
         while retry > 0:
@@ -59,7 +70,7 @@ class CloudantClient:
                         raise KeyError("Database or document does not exist")
                     doc.fetch()
                 break
-            except CloudantException as e:
+            except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
                 retry -= 1
                 if retry == 0:
@@ -79,7 +90,7 @@ class CloudantClient:
                     if doc.exists():
                         doc.delete()
                 break
-            except CloudantException as e:
+            except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
                 retry -= 1
                 if retry == 0:

@@ -19,21 +19,17 @@
 """
 
 import logging
-import json
 import time
 import requests
-import dill
-import base64
 from uuid import uuid4
 from enum import Enum
-from requests.auth import HTTPBasicAuth
 from datetime import datetime
 from multiprocessing import Process
 from confluent_kafka import TopicPartition
 
 import service.brokers as brokers
 from service.datetimeutils import seconds_since
-from service.cloudant_client import CloudantClient
+from service.libs.cloudant_client import CloudantClient
 
 
 class AuthHandlerException(Exception):
@@ -47,8 +43,6 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    max_retries = 5
-
     def __init__(self, namespace, private_credentials, user_credentials):
         super().__init__()
 
@@ -60,22 +54,27 @@ class Worker(Process):
 
         self.triggers = {}
         self.source_events = {}
+        self.global_context = {}
+        self.events = {}
 
+        # Instantiate DB client
         self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
                                                 self.__private_credentials['cloudant']['apikey'])
 
+
+
+        # Get global context
+        dc = self.__cloudant_client.get(database_name=namespace, document_id='global_context')
+        self.global_context.update(dc)
+
+        # Instantiate broker client
         event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
-        # FIXME Replace type-test by proper python import logic
+        # FIXME Replace by proper python import logic
         if event_source['type'] == 'KAFKA':
             kafka_config = event_source['KAFKA']
             self.broker = brokers.KafkaBroker(**kafka_config)
         else:
             raise NotImplementedError()
-
-        self.kafka_topic = self.namespace
-
-        cf_auth = user_credentials['ibm_cloud_functions']['api_key'].split(':')
-        self.cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
         self.current_state = Worker.State.INITIALIZED
 
@@ -85,8 +84,6 @@ class Worker(Process):
             new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='triggers')
             for k, v in new_triggers.items():
                 if k not in self.triggers:
-                    v['condition'] = dill.loads(base64.b64decode(v['condition']))
-                    v['action'] = dill.loads(base64.b64decode(v['action']))
                     self.triggers[k] = v
             return True
         except KeyError:
@@ -97,31 +94,31 @@ class Worker(Process):
         logging.info('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
         worker_start_time = datetime.now()
         self.current_state = Worker.State.RUNNING
-        topic_created = self.__kafka_client.create_topic(self.kafka_topic)
-        triggers_updated = self.__update_triggers()
+        self.__update_triggers()
 
-        if not all([triggers_updated, topic_created]):
-            self.kafka_consumer = self.__kafka_client.create_consumer(self.kafka_topic)
+        while self.__should_run():
+            record = self.broker.poll()
+            if record:
+                event = self.broker.body(record)
+                print('New Event-->', event)
+                subject = event['subject']
+                self.events[subject] = event
 
-            while self.__shouldRun():
-                kafka_record = self.kafka_consumer.poll()
-                if kafka_record:
-                    cloudevent = json.loads(kafka_record.value())
-                    print('New Event-->', cloudevent)
-                    subject = cloudevent['subject']
-                    if subject in self.source_events:
-                        trigger_id = self.source_events[subject]
-                        trigger = self.triggers[trigger_id]
+                if subject in self.source_events:
+                    triggers = self.source_events[subject]
 
-                        condition = trigger['condition']
-                        action = trigger['action']
-                        context = trigger['context']
-                        if condition(context, cloudevent):
-                            action(context, cloudevent)
-                    else:
-                        logging.warn('[{}] Received unexpected subject {} from event'.format(self.namespace, subject))
-        else:
-            logging.info('[{}] Worker {} cannot run'.format(self.namespace, self.worker_id))
+                    for trigger in triggers:
+                        condition = self.triggers[trigger]['condition']
+                        action = self.triggers[trigger]['action']
+                        context = self.triggers[trigger]['context']
+
+                        context.update(self.global_context)
+                        context.update(self.events)
+
+                        if condition(context, event):
+                            action(context, event)
+                else:
+                    logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())
@@ -200,15 +197,6 @@ class Worker(Process):
 
     def __should_run(self):
         return self.current_state == Worker.State.Running
-
-    @staticmethod
-    def __should_disable(status_code):
-        """
-        decide whether or not to disable a trigger based on the status code returned
-        from firing the trigger. Specifically, disable on all 4xx status codes
-        except 408 (gateway timeout), 409 (document update conflict), and 429 (throttle)
-        """
-        return status_code in range(400, 500) and status_code not in [408, 409, 429]
 
     @staticmethod
     def __dump_request_response(trigger_name, response):

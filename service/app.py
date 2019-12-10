@@ -20,11 +20,14 @@
 
 import logging
 import os
-import yaml
 import json
+from datetime import datetime
+
+import dateutil.parser
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
+from service.libs.cloudant_client import CloudantClient
 from .health import generateHealthReport
 from .worker import Worker
 
@@ -33,6 +36,7 @@ app.debug = False
 
 workers = []
 private_credentials = None
+db = None
 
 
 @app.route('/start_worker', methods=['POST'])
@@ -48,7 +52,20 @@ def run_workflow():
         user_credentials = data['user_credentials']
     except Exception as e:
         logging.error(e)
-        return jsonify("Invalid input parameters"), 400
+        return jsonify('Invalid input parameters'), 400
+
+    # Authenticate request
+    if 'token' not in data:
+        return jsonify('Unauthorized'), 401
+    token = data['token']
+    sessions = db.get(database_name=namespace, document_id='sessions')
+    if token in sessions:
+        emitted_token_time = dateutil.parser.parse(sessions[token])
+        seconds = (datetime.utcnow() - emitted_token_time).seconds
+        if seconds > 3600:
+            return jsonify('Token expired'), 401
+    else:
+        return jsonify('Unauthorized'), 401
 
     global workers
     if namespace in list(map(lambda wk: wk.namespace, workers)):
@@ -104,6 +121,8 @@ def main():
     global private_credentials
     with open(os.path.expanduser('~/private_credentials.json'), 'r') as config_file:
         private_credentials = json.loads(config_file.read())['private_credentials']
+
+    db = CloudantClient(private_credentials['cloudant']['username'], private_credentials['cloudant']['apikey'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())

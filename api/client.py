@@ -7,7 +7,7 @@ from .sources.model import CloudEventSource
 
 class DefaultConditions(Enum):
     TRUE = 0
-    JOIN = 1
+    IBM_CF_JOIN = 1
 
 
 class DefaultActions(Enum):
@@ -22,7 +22,7 @@ class CloudEventProcessorClient:
                  authentication: dict,
                  api_endpoint: str,
                  event_source: Optional[CloudEventSource] = None,
-                 default_context: Optional[dict] = None):
+                 global_context: Optional[dict] = None):
         """
         Initializes CloudEventProcessor client
         :param api_endpoint:
@@ -31,14 +31,14 @@ class CloudEventProcessorClient:
         self.namespace = namespace
         self.event_source = event_source.dict if event_source is not None else None
         self.api_endpoint = api_endpoint
-        self.default_context = {'counter': 0}
-        if default_context is not None and type(default_context) is dict:
-            self.default_context.update(default_context)
+        self.default_context = {'counter': 0, 'namespace': namespace}
+        if global_context is not None and type(global_context) is dict:
+            self.default_context.update(global_context)
 
         res = requests.put('/'.join([self.api_endpoint, 'init']),
                            json={'namespace': self.namespace,
                                  'event_source': self.event_source,
-                                 'default_context': self.default_context,
+                                 'global_context': self.default_context,
                                  'authentication': authentication})
 
         print("{}: {}".format(res.status_code, res.json()))
@@ -72,7 +72,7 @@ class CloudEventProcessorClient:
             'condition': condition.name,
             'action': action.name,
             'context': context,
-            'trigger_subjects': list(map(lambda evt: evt['subject'], events))}
+            'depends_on_events': list(map(lambda evt: evt['subject'], events))}
 
         res = requests.put('/'.join([self.api_endpoint, 'add_trigger']),
                            json={'namespace': self.namespace,

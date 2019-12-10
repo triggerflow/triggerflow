@@ -1,1 +1,1 @@
-from .kafka import KafkaBroker as KafkaBroker
+from .kafka_broker import KafkaBroker as KafkaBroker
