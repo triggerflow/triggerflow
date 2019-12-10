@@ -28,8 +28,8 @@ from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
 from service.libs.cloudant_client import CloudantClient
-from .health import generateHealthReport
-from .worker import Worker
+from service.health import generateHealthReport
+from service.worker import Worker
 
 app = Flask(__name__)
 app.debug = False
@@ -39,7 +39,7 @@ private_credentials = None
 db = None
 
 
-@app.route('/start_worker', methods=['POST'])
+@app.route('/run', methods=['POST'])
 def run_workflow():
     """
     This method gets the request parameters and starts a new thread worker
@@ -49,23 +49,30 @@ def run_workflow():
     try:
         data = request.get_json(force=True, silent=True)
         namespace = data['namespace']
-        user_credentials = data['user_credentials']
+        user_credentials = data['authentication']
     except Exception as e:
         logging.error(e)
         return jsonify('Invalid input parameters'), 400
 
     # Authenticate request
-    if 'token' not in data:
-        return jsonify('Unauthorized'), 401
-    token = data['token']
-    sessions = db.get(database_name=namespace, document_id='sessions')
-    if token in sessions:
-        emitted_token_time = dateutil.parser.parse(sessions[token])
-        seconds = (datetime.utcnow() - emitted_token_time).seconds
-        if seconds > 3600:
-            return jsonify('Token expired'), 401
-    else:
-        return jsonify('Unauthorized'), 401
+    # if 'token' not in user_credentials:
+    #     logging.warn("Client {} has tried to connect without proper authentication.".format(request.remote_addr))
+    #     return jsonify('Unauthorized'), 401
+    # token = user_credentials['token']
+    # try:
+    #     sessions = db.get(database_name=namespace, document_id='sessions')
+    # except KeyError:
+    #     logging.warn("Client {} has tried to start worker {} but it doesn't exist.".format(request.remote_addr, namespace))
+    #     return jsonify('Unauthorized'), 401
+    # if token in sessions:
+    #     emitted_token_time = dateutil.parser.parse(sessions[token])
+    #     seconds = (datetime.utcnow() - emitted_token_time).seconds
+    #     if seconds > 3600:
+    #         logging.warn("Client {} has tried to connect with expired token.".format(request.remote_addr))
+    #         return jsonify('Token expired'), 401
+    # else:
+    #     logging.warn("Client {} has tried to connect without proper authentication.".format(request.remote_addr))
+    #     return jsonify('Unauthorized'), 401
 
     global workers
     if namespace in list(map(lambda wk: wk.namespace, workers)):
@@ -77,12 +84,6 @@ def run_workflow():
     workers.append(workers)
 
     return jsonify('Started worker for namespace {}'.format(namespace)), 201
-
-
-@app.route('/get_workers', methods=['GET'])
-def get_workers():
-    workers_ns = list(map(lambda wk: wk.namespace, workers))
-    return jsonify(workers=workers_ns), 200
 
 
 @app.route('/')
@@ -97,17 +98,19 @@ def health_route():
 
 
 def main():
+    global private_credentials, db
+
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.NOTSET)
 
     component = os.getenv('INSTANCE', 'event_trigger-0')
 
     # Make sure we log to the console
-    streamHandler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler()
     formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][event-router] %(message)s',
                                   datefmt="%Y-%m-%dT%H:%M:%S")
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
     logging.info('Starting event_trigger service for IBM Composer')
 
@@ -118,7 +121,6 @@ def main():
         logger.addHandler(fh)
 
     logging.info('Loading private credentials')
-    global private_credentials
     with open(os.path.expanduser('~/private_credentials.json'), 'r') as config_file:
         private_credentials = json.loads(config_file.read())['private_credentials']
 

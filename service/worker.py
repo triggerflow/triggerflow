@@ -21,6 +21,7 @@
 import logging
 import time
 import requests
+from importlib import import_module
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -61,20 +62,16 @@ class Worker(Process):
         self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
                                                 self.__private_credentials['cloudant']['apikey'])
 
-
-
         # Get global context
         dc = self.__cloudant_client.get(database_name=namespace, document_id='global_context')
         self.global_context.update(dc)
 
         # Instantiate broker client
         event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
-        # FIXME Replace by proper python import logic
-        if event_source['type'] == 'KAFKA':
-            kafka_config = event_source['KAFKA']
-            self.broker = brokers.KafkaBroker(**kafka_config)
-        else:
-            raise NotImplementedError()
+
+        broker = getattr(brokers, 'KafkaBroker')
+        config = event_source[event_source['type']]
+        self.broker = broker(**config)
 
         self.current_state = Worker.State.INITIALIZED
 
@@ -108,16 +105,25 @@ class Worker(Process):
                     triggers = self.source_events[subject]
 
                     for trigger in triggers:
-                        condition = self.triggers[trigger]['condition']
-                        action = self.triggers[trigger]['action']
+                        condition_name = self.triggers[trigger]['condition']
+                        action_name = self.triggers[trigger]['action']
                         context = self.triggers[trigger]['context']
 
                         context.update(self.global_context)
                         context.update(self.events)
 
-                        if condition(context, event):
-                            action(context, event)
-                else:
+                        mod = import_module('conditions', 'default')
+                        condition = getattr(mod, '_'.join(['default', condition_name.lower()]))
+                        mod = import_module('actions', 'default')
+                        action = getattr(mod, '_'.join(['default', action_name.lower()]))
+
+                        cond = False
+                        try:
+                            if condition(context, event):
+                                action(context, event)
+                        except Exception as e:
+                            # TODO Handle condition/action exceptions
+                            raise e
                     logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
@@ -125,7 +131,6 @@ class Worker(Process):
         self.worker_status['worker_elapsed_time'] = seconds_since(worker_start_time)
         self.__cloudant_client.put(database_name=self.namespace,
                                    document_id='worker_{}'.format(self.worker_id), data=self.worker_status)
-        self.__kafka_client.delete_topic(self.kafka_topic)
         logging.info('[{}] Worker {} finished - {} seconds'.format(self.namespace, self.worker_id,
                                                                    self.worker_status['worker_elapsed_time']))
         print('--------------- WORKER FINISHED ---------------')
@@ -196,7 +201,7 @@ class Worker(Process):
                         retry = False
 
     def __should_run(self):
-        return self.current_state == Worker.State.Running
+        return self.current_state == Worker.State.RUNNING
 
     @staticmethod
     def __dump_request_response(trigger_name, response):

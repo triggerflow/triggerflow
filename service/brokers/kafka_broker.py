@@ -2,6 +2,8 @@ import json
 from enum import Enum
 from typing import List
 
+from confluent_kafka.cimpl import TopicPartition
+
 from service.libs.kafka_client import KafkaClient
 from .broker import Broker
 
@@ -11,7 +13,6 @@ class KafkaSASLAuthMode(Enum):
 
 
 class KafkaBroker(Broker):
-
     def __init__(self, broker_list: List[str], topic: str, auth_mode: KafkaSASLAuthMode, username: str, password: str):
         super().__init__()
         self.topic = topic
@@ -29,3 +30,12 @@ class KafkaBroker(Broker):
 
     def commit(self, record):
         pass
+
+    def __get_offset_list(events):
+        offsets = []
+        for message in events:
+            # Add one to the offset, otherwise we'll consume this message again.
+            # That's just how Kafka works, you place the bookmark at the *next* message.
+            offsets.append(TopicPartition(message.topic(), message.partition(), message.offset() + 1))
+
+        return offsets
