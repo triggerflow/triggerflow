@@ -1,0 +1,7 @@
+flask
+psutil
+gevent
+cloudant
+confluent_kafka
+PyYAML
+dill
