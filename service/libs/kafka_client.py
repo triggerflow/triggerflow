@@ -14,22 +14,19 @@ class KafkaClient:
         self.password = password
         self.group_id = str(uuid.uuid1())
 
-    @property
-    def config(self):
-        config = {'bootstrap.servers': ','.join(self.brokers),
-                  'group.id': self.group_id,
-                  'default.topic.config': {'auto.offset.reset': 'earliest'},
-                  'enable.auto.commit': False
-                  }
+        self.config = {'bootstrap.servers': ','.join(self.brokers),
+                       'group.id': self.group_id,
+                       'default.topic.config': {'auto.offset.reset': 'earliest'},
+                       'enable.auto.commit': False
+                       }
 
         # append Event streams specific config
-        config.update({'ssl.ca.location': '/etc/ssl/certs/',
-                       'sasl.mechanisms': 'PLAIN',
-                       'sasl.username': self.username,
-                       'sasl.password': self.password,
-                       'security.protocol': 'sasl_ssl'
-                       })
-        return config
+        self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                            'sasl.mechanisms': 'PLAIN',
+                            'sasl.username': self.username,
+                            'sasl.password': self.password,
+                            'security.protocol': 'sasl_ssl'
+                            })
 
     def topic_exists(self, topic):
         cluster_metadata = Consumer(self.config).list_topics()
@@ -39,19 +36,14 @@ class KafkaClient:
         """
         Creates a new kafka consumer
         """
-        consumer = Consumer(**self.config)
+        consumer = Consumer(self.config)
         assigned = False
 
         def assignation(consumer, partitions):
-            nonlocal assigned
-            assigned = True
             logging.info('Consumer assigned to partition: {}'.format(partitions))
 
         consumer.subscribe([topic], on_assign=assignation)
-        while not assigned:
-            logging.info('Waiting to be assigned...')
-            time.sleep(1)
-        logging.info("Now listening on topic: {}".format(topic))
+        logging.info("Subscribed to topic: {}".format(topic))
         return consumer
 
     def create_topic(self, topic):

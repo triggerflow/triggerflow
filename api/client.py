@@ -13,7 +13,9 @@ class DefaultConditions(Enum):
 class DefaultActions(Enum):
     PASS = 0
     TERMINATE = 1
-    IBM_CF_INVOKE = 2
+    IBM_CF_INVOKE_KAFKA = 2
+    IBM_CF_INVOKE_RABBITMQ = 3
+    SIMULATE_CF_INVOKE = 4
 
 
 class CloudEventProcessorClient:
