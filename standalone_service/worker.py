@@ -67,11 +67,11 @@ class Worker(Process):
         self.global_context.update(dc)
 
         # Instantiate broker client
-        event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
+        self.event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
 
-        evt_src = event_source['type']
-        broker = getattr(brokers, '{}Broker'.format(evt_src))
-        config = event_source[evt_src]
+        self.event_source_type = self.event_source['event_source_type']
+        broker = getattr(brokers, '{}Broker'.format(self.event_source_type))
+        config = self.event_source[self.event_source_type]
         self.broker = broker(**config)
 
         self.current_state = Worker.State.INITIALIZED
@@ -112,6 +112,7 @@ class Worker(Process):
 
                         context.update(self.global_context)
                         context.update(self.events)
+                        context.update(self.event_source)
 
                         mod = import_module('conditions', 'default')
                         condition = getattr(mod, '_'.join(['condition', condition_name.lower()]))

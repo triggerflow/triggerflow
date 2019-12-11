@@ -288,7 +288,7 @@ def run():
                     try:
                         connection = pika.BlockingConnection(params)
                         channel = connection.channel()
-                        channel.queue_declare(queue=rabbit_event_queue, auto_delete=True)
+                        channel.queue_declare(queue=rabbit_event_queue)
 
                         termination_cloudevent = {'specversion': '1.0',
                                                   'id': env.get('__OW_ACTIVATION_ID'),

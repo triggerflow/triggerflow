@@ -12,8 +12,7 @@ if __name__ == "__main__":
     er = CloudEventProcessorClient(namespace='ibm_cf_test_rabbit',
                                    event_source=rabbit,
                                    global_context={
-                                       'ibm_cf_credentials': client_config['authentication']['ibm_cf_credentials'],
-                                       'rabbit_credentials': rabbit_credentials['rabbitmq']},
+                                       'ibm_cf_credentials': client_config['authentication']['ibm_cf_credentials']},
                                    api_endpoint=client_config['event_processor']['api_endpoint'],
                                    authentication=client_config['authentication'])
 

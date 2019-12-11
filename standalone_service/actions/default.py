@@ -18,7 +18,7 @@ def action_ibm_cf_invoke_rabbitmq(context, event):
     class InvokeException(Exception):
         pass
 
-    cf_auth = context['ibm_cloud_functions']['api_key'].split(':')
+    cf_auth = context['ibm_cf_credentials']['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
     url = context['url']
@@ -37,8 +37,8 @@ def action_ibm_cf_invoke_rabbitmq(context, event):
     ################################################
     def invoke(call_id, args):
         payload = args.copy()
-        payload['__OW_COMPOSER_RABBITMQ_EVENTQUEUE'] = context['rabbit_credentials']['topic']
-        payload['__OW_COMPOSER_RABBITMQ_AMQPURL'] = context['rabbit_credentials']['amqp_url']
+        payload['__OW_COMPOSER_RABBITMQ_EVENTQUEUE'] = context['RabbitMQ']['topic']
+        payload['__OW_COMPOSER_RABBITMQ_AMQPURL'] = context['RabbitMQ']['amqp_url']
         payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
                                               'subject': subject,
                                               'call_id': call_id}
@@ -81,8 +81,8 @@ def action_ibm_cf_invoke_rabbitmq(context, event):
     logging.info("[{}] Firing trigger {} - Activations: {} ".format(namespace, subject, total_activations))
     futures = []
     with ThreadPoolExecutor(max_workers=128) as executor:
-        for cid in function_args:
-            res = executor.submit(invoke, cid)
+        for cid, args in enumerate(function_args):
+            res = executor.submit(invoke, cid, args)
             futures.append(res)
 
     responses = []

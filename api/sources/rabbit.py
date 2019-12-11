@@ -12,4 +12,4 @@ class RabbitMQCloudEventSource(CloudEventSource):
     @property
     def dict(self):
         d = vars(self)
-        return {'type': self.name, self.name: d}
+        return {'event_source_type': self.name, self.name: d}
