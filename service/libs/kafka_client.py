@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 
 from confluent_kafka.admin import AdminClient, NewTopic
@@ -38,8 +39,18 @@ class KafkaClient:
         """
         Creates a new kafka consumer
         """
-        consumer = Consumer(self.config)
-        consumer.subscribe([topic])
+        consumer = Consumer(**self.config)
+        assigned = False
+
+        def assignation(consumer, partitions):
+            nonlocal assigned
+            assigned = True
+            logging.info('Consumer assigned to partition: {}'.format(partitions))
+
+        consumer.subscribe([topic], on_assign=assignation)
+        while not assigned:
+            logging.info('Waiting to be assigned...')
+            time.sleep(1)
         logging.info("Now listening on topic: {}".format(topic))
         return consumer
 
@@ -66,7 +77,7 @@ class KafkaClient:
             except Exception as e:
                 logging.info("Failed to create topic {}: {}".format(topic, e))
                 return False
-    
+
     def delete_topic(self, topic):
         """
         delete a topic
@@ -87,3 +98,7 @@ class KafkaClient:
                 logging.info("Topic {} deleted".format(topic))
             except Exception as e:
                 logging.info("Failed to delete topic {}: {}".format(topic, e))
+
+
+def print_assignment(consumer, partitions):
+    print('Assigned consumer: {}'.format(partitions))

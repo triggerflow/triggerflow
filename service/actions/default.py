@@ -41,10 +41,9 @@ def action_ibm_cf_invoke(context, event):
         payload['__OW_COMPOSER_KAFKA_USERNAME'] = context['kafka_credentials']['user']
         payload['__OW_COMPOSER_KAFKA_PASSWORD'] = context['kafka_credentials']['password']
         payload['__OW_COMPOSER_KAFKA_TOPIC'] = namespace
-        payload['__OW_COMPOSER_EXTRAMETA'] = {
-            'namespace': namespace,
-            'subject': subject,
-            'call_id': call_id}
+        payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
+                                              'subject': subject,
+                                              'call_id': call_id}
 
         act_id = None
         retry = True
@@ -59,7 +58,8 @@ def action_ibm_cf_invoke(context, event):
                     act_id = res_json['activationId']
                     logging.info('[{}][{}] Invocation success - Activation ID: {}'.format(namespace, call_id, act_id))
                 elif status_code in range(400, 500) and status_code not in [408, 409, 429]:
-                    logging.error('[{}][{}] Invocation failed - Activation status code: {}'.format(namespace, call_id, status_code))
+                    logging.error('[{}][{}] Invocation failed - Activation status code: {}'.format(namespace, call_id,
+                                                                                                   status_code))
                     raise InvokeException('Invocation failed')
             except requests.exceptions.RequestException as e:
                 logging.error('[{}][{}] Error talking to OpenWhisk: {}'.format(namespace, call_id, e))
@@ -110,5 +110,6 @@ def action_ibm_cf_invoke(context, event):
             logging.info('[{}][{}] All invocations successful'.format(namespace, subject))
         # Only some activations are successful
         else:
-            logging.info("[{}][{}] Could not be completely triggered - {} activations pending".format(namespace, subject,
-                                                                                                      len(activations_not_done)))
+            logging.info(
+                "[{}][{}] Could not be completely triggered - {} activations pending".format(namespace, subject,
+                                                                                             len(activations_not_done)))

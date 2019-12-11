@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 
-    url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/sleep_rand'
+    url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/testing/sleep_rand'
     er.add_trigger(kafka.event('init__'),
                    action=DefaultActions.IBM_CF_INVOKE,
                    context={'subject': 'ca1', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})

@@ -69,8 +69,9 @@ class Worker(Process):
         # Instantiate broker client
         event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
 
-        broker = getattr(brokers, 'KafkaBroker')
-        config = event_source[event_source['type']]
+        evt_src = event_source['type']
+        broker = getattr(brokers, '{}Broker'.format(evt_src))
+        config = event_source[evt_src]
         self.broker = broker(**config)
 
         self.current_state = Worker.State.INITIALIZED

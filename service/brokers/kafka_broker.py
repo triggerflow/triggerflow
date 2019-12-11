@@ -1,9 +1,11 @@
 import json
+import logging
 from enum import Enum
 from typing import List
 
-from confluent_kafka.cimpl import TopicPartition
+from confluent_kafka import TopicPartition, Consumer
 
+from api.utils import load_config_yaml
 from service.libs.kafka_client import KafkaClient
 from .broker import Broker
 
@@ -17,13 +19,13 @@ class KafkaBroker(Broker):
         super().__init__()
         self.topic = topic
         self.__kafka_client = KafkaClient(brokers=broker_list, username=username, password=password)
+        self.__consumer = None
         if not self.__kafka_client.topic_exists(topic):
             self.__kafka_client.create_topic(topic)
-
         self.__consumer = self.__kafka_client.create_consumer(topic)
 
     def poll(self):
-        return self.__consumer.poll()
+        return self.__consumer.poll(timeout=1.0)
 
     def body(self, record):
         return json.loads(record.value())
