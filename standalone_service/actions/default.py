@@ -14,7 +14,7 @@ def action_terminate(context, event):
     pass
 
 
-def action_ibm_cf_invoke_rabbit(context, event):
+def action_ibm_cf_invoke_rabbitmq(context, event):
     class InvokeException(Exception):
         pass
 

@@ -6,7 +6,7 @@ from typing import List
 from confluent_kafka import TopicPartition, Consumer
 
 from api.utils import load_config_yaml
-from service.libs.kafka_client import KafkaClient
+from standalone_service.libs.kafka_client import KafkaClient
 from .broker import Broker
 
 

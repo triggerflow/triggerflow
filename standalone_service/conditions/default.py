@@ -1,6 +1,6 @@
-
 def condition_true(context, event):
     return True
+
 
 def condition_join(context, event):
     context['counter'] += 1
