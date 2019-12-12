@@ -84,7 +84,7 @@ class Worker(Process):
         while self.__should_run():
             record = broker.poll()
             if record:
-                event = json.loads(record.value())
+                event = broker.body(record)
                 print('New Event-->', event)
                 subject = event['subject']
 

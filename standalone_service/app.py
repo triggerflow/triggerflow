@@ -121,7 +121,7 @@ def main():
         logger.addHandler(fh)
 
     logging.info('Loading private credentials')
-    with open(os.path.expanduser('config.yaml'), 'r') as config_file:
+    with open('config.yaml', 'r') as config_file:
         private_credentials = yaml.safe_load(config_file)
 
     db = CloudantClient(private_credentials['cloudant']['username'], private_credentials['cloudant']['apikey'])

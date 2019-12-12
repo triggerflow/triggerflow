@@ -24,6 +24,7 @@ class RabbitMQBroker(Broker):
         method_frame, header_frame, body = record
         return json.loads(body)
 
-    def commit(self, record):
-        method_frame, header_frame, body = record
-        self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+    def commit(self, records):
+        for record in records:
+            method_frame, header_frame, body = record
+            self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)

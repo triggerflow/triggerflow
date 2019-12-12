@@ -8,5 +8,5 @@ class Broker:
     def body(self, record):
         raise NotImplementedError()
 
-    def commit(self, record):
+    def commit(self, records):
         raise NotImplementedError()
