@@ -19,9 +19,6 @@
 """
 import json
 import logging
-import time
-import requests
-from importlib import import_module
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -113,7 +110,7 @@ class Worker(Process):
                         context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
 
                         condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
-                        action = getattr(default_conditions, '_'.join(['action', action_name.lower()]))
+                        action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
 
                         try:
                             if condition(context, event):

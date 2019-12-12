@@ -20,7 +20,7 @@
 
 import logging
 import os
-import json
+import  yaml
 from datetime import datetime
 
 import dateutil.parser
@@ -121,8 +121,8 @@ def main():
         logger.addHandler(fh)
 
     logging.info('Loading private credentials')
-    with open(os.path.expanduser('~/private_credentials.json'), 'r') as config_file:
-        private_credentials = json.loads(config_file.read())['private_credentials']
+    with open(os.path.expanduser('~/config.yaml'), 'r') as config_file:
+        private_credentials = yaml.safe_load(config_file)
 
     db = CloudantClient(private_credentials['cloudant']['username'], private_credentials['cloudant']['apikey'])
 
