@@ -22,6 +22,8 @@ def condition_ibm_cf_join(context, event):
                 trigger_id = prev_event['triggersource']
                 dependency_trigger_context = context['triggers'][trigger_id]['context']
                 deps.append(dependency_trigger_context['total_activations'] == dependency_trigger_context['counter'])
+            else:
+                deps.append(False)
         branch_join = all(deps)
     else:
         branch_join = True

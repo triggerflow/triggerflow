@@ -291,6 +291,7 @@ def run():
                                               'type': 'termination.event.success',
                                               'time': str(datetime.utcnow().isoformat()),
                                               'subject': extra_meta['subject'],
+                                              'triggersource': extra_meta['trigger_id'],
                                               'datacontenttype': 'application/json',
                                               'data': result}
                     print('Sending termination event to kafka topic: {}'.format(kakfa_topic))

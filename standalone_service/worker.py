@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 """
-
+import json
 import logging
 import time
 import requests
@@ -26,9 +26,12 @@ from uuid import uuid4
 from enum import Enum
 from datetime import datetime
 from multiprocessing import Process
-from confluent_kafka import TopicPartition
+
+from confluent_kafka import Consumer
 
 import standalone_service.brokers as brokers
+from api.utils import load_config_yaml
+from standalone_service.brokers import KafkaBroker
 from standalone_service.datetimeutils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient
 
@@ -66,27 +69,7 @@ class Worker(Process):
         dc = self.__cloudant_client.get(database_name=namespace, document_id='global_context')
         self.global_context.update(dc)
 
-        # Instantiate broker client
-        self.event_source = self.__cloudant_client.get(database_name=namespace, document_id='event_source')
-
-        self.event_source_type = self.event_source['event_source_type']
-        broker = getattr(brokers, '{}Broker'.format(self.event_source_type))
-        config = self.event_source[self.event_source_type]
-        self.broker = broker(**config)
-
         self.current_state = Worker.State.INITIALIZED
-
-    def __update_triggers(self):
-        try:
-            self.source_events = self.__cloudant_client.get(database_name=self.namespace, document_id='source_events')
-            new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='triggers')
-            for k, v in new_triggers.items():
-                if k not in self.triggers:
-                    self.triggers[k] = v
-            return True
-        except KeyError:
-            logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
-            return None
 
     def run(self):
         logging.info('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
@@ -94,10 +77,17 @@ class Worker(Process):
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
 
+        # Instantiate broker client
+        event_source = self.__cloudant_client.get(database_name=self.namespace, document_id='event_source')
+        event_source_type = event_source['event_source_type']
+        broker = getattr(brokers, '{}Broker'.format(event_source_type))
+        config = event_source[event_source_type]
+        broker = broker(**config)
+
         while self.__should_run():
-            record = self.broker.poll()
+            record = broker.poll()
             if record:
-                event = self.broker.body(record)
+                event = json.loads(record.value())
                 print('New Event-->', event)
                 subject = event['subject']
 
@@ -115,7 +105,7 @@ class Worker(Process):
                         context = self.triggers[trigger_id]['context']
 
                         context.update(self.global_context)
-                        context.update(self.event_source)
+                        context.update(event_source)
                         context['events'] = self.events
                         context['source_events'] = self.source_events
                         context['triggers'] = self.triggers
@@ -136,7 +126,7 @@ class Worker(Process):
                 else:
                     logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
 
-                self.broker.commit(record)
+                broker.commit([record])
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())
@@ -149,6 +139,18 @@ class Worker(Process):
 
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
+
+    def __update_triggers(self):
+        try:
+            self.source_events = self.__cloudant_client.get(database_name=self.namespace, document_id='source_events')
+            new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='triggers')
+            for k, v in new_triggers.items():
+                if k not in self.triggers:
+                    self.triggers[k] = v
+            return True
+        except KeyError:
+            logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
+            return None
 
     @staticmethod
     def __dump_request_response(trigger_name, response):

@@ -118,7 +118,7 @@ def action_ibm_cf_invoke_kafka(context, event):
     class InvokeException(Exception):
         pass
 
-    cf_auth = context['ibm_cloud_functions']['api_key'].split(':')
+    cf_auth = context['ibm_cf_credentials']['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
     url = context['url']
@@ -140,8 +140,9 @@ def action_ibm_cf_invoke_kafka(context, event):
         payload['__OW_COMPOSER_KAFKA_BROKERS'] = context['kafka_credentials']['kafka_brokers_sasl']
         payload['__OW_COMPOSER_KAFKA_USERNAME'] = context['kafka_credentials']['user']
         payload['__OW_COMPOSER_KAFKA_PASSWORD'] = context['kafka_credentials']['password']
-        payload['__OW_COMPOSER_KAFKA_TOPIC'] = namespace
+        payload['__OW_COMPOSER_KAFKA_TOPIC'] = context['Kafka']['topic']
         payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
+                                              'trigger_id': context['trigger_id'],
                                               'subject': subject,
                                               'call_id': call_id}
 
@@ -165,7 +166,7 @@ def action_ibm_cf_invoke_kafka(context, event):
                 logging.error('[{}][{}] Error talking to OpenWhisk: {}'.format(namespace, call_id, e))
                 raise e
             except Exception as e:
-                logging.error("[{}][{}] Exception - {}").format(namespace, call_id, e)
+                logging.error("[{}][{}] Exception - {}".format(namespace, call_id, e))
             if retry:
                 retry_count += 1
                 if retry_count <= max_retries:
@@ -183,8 +184,8 @@ def action_ibm_cf_invoke_kafka(context, event):
     logging.info("[{}] Firing trigger {} - Activations: {} ".format(namespace, subject, total_activations))
     futures = []
     with ThreadPoolExecutor(max_workers=128) as executor:
-        for cid in function_args:
-            res = executor.submit(invoke, cid)
+        for cid, args in enumerate(function_args):
+            res = executor.submit(invoke, cid, args)
             futures.append(res)
 
     responses = []
