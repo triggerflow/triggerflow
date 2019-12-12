@@ -27,9 +27,9 @@ import dateutil.parser
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from service.libs.cloudant_client import CloudantClient
-from service.health import generateHealthReport
-from service.worker import Worker
+from standalone_service.libs.cloudant_client import CloudantClient
+from standalone_service.health import generateHealthReport
+from standalone_service.worker import Worker
 
 app = Flask(__name__)
 app.debug = False
@@ -112,7 +112,7 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting event_trigger service for IBM Composer')
+    logging.info('Starting event_trigger standalone_service for IBM Composer')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):

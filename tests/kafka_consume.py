@@ -20,7 +20,7 @@ if __name__ == '__main__':
     def print_assignment(consumer, partitions):
         print('Assignment: {}'.format(partitions))
 
-    kafka_consumer = Consumer(**config)
+    kafka_consumer = Consumer(config)
     kafka_consumer.subscribe(['hello'], on_assign=print_assignment)
     print('consuming')
     while True:

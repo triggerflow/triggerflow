@@ -1,8 +1,8 @@
-"""Executable Python script for a proxy service to dockerSkeleton.
+"""Executable Python script for a proxy standalone_service to dockerSkeleton.
 
-Provides a proxy service (using Flask, a Python web microframework)
+Provides a proxy standalone_service (using Flask, a Python web microframework)
 that implements the required /init and /run routes to interact with
-the OpenWhisk invoker service.
+the OpenWhisk invoker standalone_service.
 
 The implementation of these routes is encapsulated in a class named
 ActionRunner which provides a basic framework for receiving code
@@ -291,6 +291,7 @@ def run():
                                               'type': 'termination.event.success',
                                               'time': str(datetime.utcnow().isoformat()),
                                               'subject': extra_meta['subject'],
+                                              'triggersource': extra_meta['trigger_id'],
                                               'datacontenttype': 'application/json',
                                               'data': result}
                     print('Sending termination event to kafka topic: {}'.format(kakfa_topic))

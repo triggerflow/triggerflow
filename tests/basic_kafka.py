@@ -12,7 +12,7 @@ if __name__ == "__main__":
                                   username=kafka_credentials['eventstreams']['user'],
                                   password=kafka_credentials['eventstreams']['password'])
 
-    er = CloudEventProcessorClient(namespace='ibm_cf_test',
+    er = CloudEventProcessorClient(namespace='ibm_cf_test_kafka',
                                    event_source=kafka,
                                    global_context={
                                        'ibm_cf_credentials': client_config['authentication']['ibm_cf_credentials'],
@@ -22,31 +22,31 @@ if __name__ == "__main__":
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 
-    url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/testing/sleep_rand'
+    url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/kafka_test'
     er.add_trigger(kafka.event('init__'),
-                   action=DefaultActions.IBM_CF_INVOKE,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'ca1', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
 
     er.add_trigger(kafka.event('ca1'),
                    condition=DefaultConditions.IBM_CF_JOIN,
-                   action=DefaultActions.IBM_CF_INVOKE,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'map1',
                             'url': url,
                             'args': [{'iter': 1}, {'iter': 2}, {'iter': 3}],
                             'kind': 'map'})
     er.add_trigger(kafka.event('ca1'),
                    condition=DefaultConditions.IBM_CF_JOIN,
-                   action=DefaultActions.IBM_CF_INVOKE,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'ca2', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
 
     er.add_trigger([kafka.event('map1'), kafka.event('ca2')],
                    condition=DefaultConditions.IBM_CF_JOIN,
-                   action=DefaultActions.IBM_CF_INVOKE,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'map2', 'url': url, 'args': [{'iter': 1}, {'iter': 2}], 'kind': 'map'})
 
     er.add_trigger(kafka.event('map2'),
                    condition=DefaultConditions.IBM_CF_JOIN,
-                   action=DefaultActions.IBM_CF_INVOKE,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'ca3', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
 
     er.add_trigger(kafka.event('ca3'),
