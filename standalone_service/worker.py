@@ -100,33 +100,43 @@ class Worker(Process):
                 event = self.broker.body(record)
                 print('New Event-->', event)
                 subject = event['subject']
-                self.events[subject] = event
+
+                if subject in self.events:
+                    self.events[subject].append(event)
+                else:
+                    self.events[subject] = [event]
 
                 if subject in self.source_events:
                     triggers = self.source_events[subject]
 
-                    for trigger in triggers:
-                        condition_name = self.triggers[trigger]['condition']
-                        action_name = self.triggers[trigger]['action']
-                        context = self.triggers[trigger]['context']
+                    for trigger_id in triggers:
+                        condition_name = self.triggers[trigger_id]['condition']
+                        action_name = self.triggers[trigger_id]['action']
+                        context = self.triggers[trigger_id]['context']
 
                         context.update(self.global_context)
-                        context.update(self.events)
                         context.update(self.event_source)
+                        context['events'] = self.events
+                        context['source_events'] = self.source_events
+                        context['triggers'] = self.triggers
+                        context['trigger_id'] = trigger_id
+                        context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
 
                         mod = import_module('conditions', 'default')
                         condition = getattr(mod, '_'.join(['condition', condition_name.lower()]))
                         mod = import_module('actions', 'default')
                         action = getattr(mod, '_'.join(['action', action_name.lower()]))
 
-                        cond = False
                         try:
                             if condition(context, event):
                                 action(context, event)
                         except Exception as e:
                             # TODO Handle condition/action exceptions
                             raise e
+                else:
                     logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
+
+                self.broker.commit(record)
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())

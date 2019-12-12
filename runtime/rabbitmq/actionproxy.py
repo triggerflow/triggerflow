@@ -297,6 +297,7 @@ def run():
                                                   'time': str(datetime.utcnow().isoformat()),
                                                   'subject': extra_meta['subject'],
                                                   'datacontenttype': 'application/json',
+                                                  'triggersource': extra_meta['trigger_id'],
                                                   'data': result}
 
                         channel.basic_publish(exchange='', routing_key=rabbit_event_queue,

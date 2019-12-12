@@ -40,6 +40,7 @@ def action_ibm_cf_invoke_rabbitmq(context, event):
         payload['__OW_COMPOSER_RABBITMQ_EVENTQUEUE'] = context['RabbitMQ']['topic']
         payload['__OW_COMPOSER_RABBITMQ_AMQPURL'] = context['RabbitMQ']['amqp_url']
         payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
+                                              'trigger_id': context['trigger_id'],
                                               'subject': subject,
                                               'call_id': call_id}
 
