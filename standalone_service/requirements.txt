@@ -6,3 +6,4 @@ confluent_kafka
 PyYAML
 dill
 pika==0.13
+python-dateutil

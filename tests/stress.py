@@ -2,7 +2,7 @@ from api.client import CloudEventProcessorClient, DefaultActions, DefaultConditi
 from api.utils import load_config_yaml
 from api.sources.kafka import KafkaCloudEventSource, KafkaSASLAuthMode
 
-if __name__ == "__main__":
+def create_triggers():
     client_config = load_config_yaml('~/event-processor_credentials.yaml')
     kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
 
@@ -22,24 +22,23 @@ if __name__ == "__main__":
 
     # [map1-1 ... map1-10] >> [map2-1 ... map2-10] >> [map3-1 ... map3-10]
 
-    for i in range(10):
-        er.add_trigger(kafka.event('init__'),
-                       condition=DefaultConditions.IBM_CF_JOIN,
-                       action=DefaultActions.SIMULATE_CF_INVOKE,
-                       context={'subject': 'map1-{}'.format(i), 'args': [{'x': x} for x in range(100)], 'kind': 'map'})
+    n_steps = 3
+    n_maps = 10
+    n_funcs_per_map = 100
 
-    for i in range(10):
-        er.add_trigger([kafka.event('map1-{}'.format(x)) for x in range(10)],
-                       condition=DefaultConditions.IBM_CF_JOIN,
-                       action=DefaultActions.SIMULATE_CF_INVOKE,
-                       context={'subject': 'map2-{}'.format(i), 'args': [{'x': x} for x in range(100)], 'kind': 'map'})
+    for step in range(n_steps):
+        for i in range(n_maps):
+            er.add_trigger(kafka.event('init__'),
+                           condition=DefaultConditions.IBM_CF_JOIN,
+                           action=DefaultActions.SIM_CF_INVOKE,
+                           context={'subject': 'map1-{}'.format(i), 'args': [{'x': x} for x in range(n_funcs_per_map)], 'kind': 'map'})
 
-    for i in range(10):
-        er.add_trigger([kafka.event('map2-{}'.format(x)) for x in range(10)],
-                       condition=DefaultConditions.IBM_CF_JOIN,
-                       action=DefaultActions.SIMULATE_CF_INVOKE,
-                       context={'subject': 'map3-{}'.format(i), 'args': [{'x': x} for x in range(100)], 'kind': 'map'})
-
-    er.add_trigger([kafka.event('map3-{}'.format(x)) for x in range(10)],
+    er.add_trigger([kafka.event('map{}-{}'.format(n_steps-1, x)) for x in range(n_maps)],
                    condition=DefaultConditions.IBM_CF_JOIN,
                    action=DefaultActions.TERMINATE)
+
+
+
+
+if __name__ == '__main__':
+    create_triggers()
