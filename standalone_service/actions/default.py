@@ -214,3 +214,13 @@ def action_ibm_cf_invoke_kafka(context, event):
             logging.info(
                 "[{}][{}] Could not be completely triggered - {} activations pending".format(namespace, subject,
                                                                                              len(activations_not_done)))
+
+
+def action_sim_cf_invoke(context, event):
+    if context['kind'] == 'callasync':
+        function_args = [context['args']]
+    else:
+        function_args = context['args']
+
+    context['total_activations'] = len(function_args)
+    time.sleep(0.01)
