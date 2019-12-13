@@ -17,7 +17,6 @@
  * limitations under the License.
  */
 """
-import json
 import logging
 from uuid import uuid4
 from enum import Enum
