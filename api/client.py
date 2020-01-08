@@ -15,7 +15,7 @@ class DefaultActions(Enum):
     TERMINATE = 1
     IBM_CF_INVOKE_KAFKA = 2
     IBM_CF_INVOKE_RABBITMQ = 3
-    SIMULATE_CF_INVOKE = 4
+    SIM_CF_INVOKE = 4
 
 
 class CloudEventProcessorClient:
@@ -85,3 +85,5 @@ class CloudEventProcessorClient:
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:
             raise Exception(res.json())
+        else:
+            return res.json()

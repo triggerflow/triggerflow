@@ -17,23 +17,19 @@
  * limitations under the License.
  */
 """
-import json
 import logging
-import time
-import requests
-from importlib import import_module
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
 from multiprocessing import Process
 
-from confluent_kafka import Consumer
 
 import standalone_service.brokers as brokers
-from api.utils import load_config_yaml
-from standalone_service.brokers import KafkaBroker
 from standalone_service.datetimeutils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient
+
+import standalone_service.conditions.default as default_conditions
+import standalone_service.actions.default as default_actions
 
 
 class AuthHandlerException(Exception):
@@ -87,7 +83,7 @@ class Worker(Process):
         while self.__should_run():
             record = broker.poll()
             if record:
-                event = json.loads(record.value())
+                event = broker.body(record)
                 print('New Event-->', event)
                 subject = event['subject']
 
@@ -112,10 +108,8 @@ class Worker(Process):
                         context['trigger_id'] = trigger_id
                         context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
 
-                        mod = import_module('conditions', 'default')
-                        condition = getattr(mod, '_'.join(['condition', condition_name.lower()]))
-                        mod = import_module('actions', 'default')
-                        action = getattr(mod, '_'.join(['action', action_name.lower()]))
+                        condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
+                        action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
 
                         try:
                             if condition(context, event):

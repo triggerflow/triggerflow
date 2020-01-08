@@ -46,8 +46,8 @@ class KafkaBroker(Broker):
     def body(self, record):
         return json.loads(record.value())
 
-    def commit(self, record):
-        self.consumer.commit(offsets=self.__get_offset_list(record), async=False)
+    def commit(self, records):
+        self.consumer.commit(offsets=self.__get_offset_list(records), async=False)
 
     def __create_topic(self, topic):
         """
