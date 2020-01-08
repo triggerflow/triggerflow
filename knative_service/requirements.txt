@@ -1,0 +1,8 @@
+flask
+psutil
+gevent
+cloudant
+confluent_kafka
+PyYAML
+dill
+pika==0.13.1
