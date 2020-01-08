@@ -69,6 +69,8 @@ class CloudantClient:
                     if not doc.exists():
                         raise KeyError("Database or document does not exist")
                     doc.fetch()
+                    del doc['_id']
+                    del doc['_rev']
                 break
             except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())

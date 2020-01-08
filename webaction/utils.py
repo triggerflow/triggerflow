@@ -1,26 +1,36 @@
 import secrets
+import dateutil.parser
+from datetime import datetime
 
 from ibm_cloudfunctions_client import CloudFunctionsClient
 
 MANDATORY_PARAMS = {'namespace', 'authentication', 'private_credentials'}
+TOKEN_LEN = 32
 
 
-def validate_params(params):
-    # Check credentials
-    if not MANDATORY_PARAMS.issubset(set(params)):
-        raise Exception("Missing mandatory parameters")
+def gen_token(db, params):
+    try:
+        ibm_cf_credentials = params['authentication']['ibm_cf_credentials']
+        ok = check_cloudfunctions_credentials(**ibm_cf_credentials)
+        if not ok:
+            raise Exception('Invalid IBM Cloud Functions credentials')
+    except KeyError:
+        return {'statusCode': 400, 'body': {'error': 'Missing parameters'}}
+    except Exception as e:
+        return {'statusCode': 400, 'body': {'error': str(e)}}
 
-    # Check Cloudant credentials
-    if 'cloudant' not in params['private_credentials'] and \
-            not {'apikey', 'username'}.issubset(params['private_credentials']['cloudant']):
-        raise Exception('Invalid private credentials')
+    # Generate session token
+    token = secrets.token_hex(TOKEN_LEN)
+    timestamp = str(datetime.utcnow().isoformat())
 
-    # Delete extra param keys
-    valid_params = params.copy()
-    for k in params.keys():
-        if '__ow' in k:
-            del valid_params[k]
-    return valid_params
+    try:
+        sessions = db.get(database_name='auth__', document_id='sessions')
+    except KeyError:
+        sessions = {}
+    sessions[token] = timestamp
+    db.put(database_name='auth__', document_id='sessions', data=sessions)
+
+    return {'statusCode': 200, 'body': {'token': token}}
 
 
 def check_cloudfunctions_credentials(endpoint, namespace, api_key):
@@ -34,5 +44,18 @@ def check_cloudfunctions_credentials(endpoint, namespace, api_key):
         return False
 
 
-def generate_token(len=32):
-    return secrets.token_hex(len)
+def auth_request(db, params):
+    if 'authorization' not in params['headers']:
+        return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
+    token = params['headers']['authorization'].split(' ')[1]
+    print(token)
+    sessions = db.get(database_name='auth__', document_id='sessions')
+    if token in sessions:
+        emitted_token_time = dateutil.parser.parse(sessions[token])
+        seconds = (datetime.utcnow() - emitted_token_time).seconds
+        if seconds > 3600:  # 1 hour
+            return False, {'statusCode': 403, 'body': {'error': 'Token expired'}}
+        else:
+            return True, None
+    else:
+        return False, {'statusCode': 401, 'body': {'error': 'Unauthorized'}}
