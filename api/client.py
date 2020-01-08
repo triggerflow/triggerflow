@@ -87,3 +87,37 @@ class CloudEventProcessorClient:
             raise Exception(res.json())
         else:
             return res.json()
+
+    def db_get(self, uri):
+        res = requests.get('/'.join([self.api_endpoint, 'db']),
+                           json={'uri': uri,
+                                 'authentication': {'token': self.token}})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()
+
+    def db_put(self, uri, data):
+        res = requests.put('/'.join([self.api_endpoint, 'db']),
+                           json={'uri': uri,
+                                 'data': data,
+                                 'authentication': {'token': self.token}})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()
+
+    def db_delete(self, uri):
+        res = requests.delete('/'.join([self.api_endpoint, 'db']),
+                           json={'uri': uri,
+                                 'authentication': {'token': self.token}})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()

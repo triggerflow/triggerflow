@@ -72,6 +72,8 @@ def deploy(dag_json):
                                        cloudlab_urv_us_east/actions/{}/{}'.format(
                                            task['operator']['function_package'], task['operator']['function_name'])})
 
+    return dagrun_id
 
-def run():
+
+def run(dag_id):
     pass
