@@ -2,8 +2,6 @@ from .model import CloudEventSource
 
 
 class RabbitMQCloudEventSource(CloudEventSource):
-    name = 'RabbitMQ'
-
     def __init__(self, amqp_url: str, topic: str):
         super().__init__()
         self.topic = topic
@@ -11,5 +9,7 @@ class RabbitMQCloudEventSource(CloudEventSource):
 
     @property
     def dict(self):
-        d = vars(self)
-        return {'event_source_type': self.name, self.name: d}
+        d = super().json
+        d['spec'] = vars(self)
+        d['class'] = self.__class__.__name__
+        return d

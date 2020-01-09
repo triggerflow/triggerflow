@@ -97,3 +97,7 @@ class CloudantClient:
                 retry -= 1
                 if retry == 0:
                     raise e
+
+    def exists(self, database_name):
+        db = CloudantDatabase(self.client, database_name)
+        return db.exists()

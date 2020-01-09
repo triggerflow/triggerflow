@@ -40,6 +40,8 @@ def deploy(dag_json):
                                    api_endpoint=ep_config['event_processor']['api_endpoint'],
                                    authentication=ep_config['authentication'])
 
+    ep.db_get()
+
     # TODO Update dag build to add function url to the json definition
     for init_task in dag_json['initial_tasks']:
         task = dag_json[init_task]

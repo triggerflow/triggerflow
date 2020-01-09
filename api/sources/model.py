@@ -1,11 +1,13 @@
 class CloudEventSource:
-    def __init__(self):
-        pass
+    def __init__(self, name: str):
+        self.name = name
 
     @property
-    def dict(self):
-        raise NotImplementedError
+    def json(self):
+        return {'name': self.name}
 
-    @staticmethod
-    def event(subject: str, type: str = 'termination.event.success'):
-        return {'subject': subject, 'type': type}
+
+class Event:
+    def __init__(self, subject: str, type: str = 'termination.event.success'):
+        self.subject = subject
+        self.type = type

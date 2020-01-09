@@ -30,7 +30,7 @@ def init(db, params):
                                         'event_source': event_source}}
 
 
-def add_trigger(db, params):
+def add_trigger(db, path, params):
     namespace = params['namespace']
 
     # Authenticate request
@@ -68,3 +68,11 @@ def add_trigger(db, params):
     db.put(database_name=namespace, document_id='triggers', data=triggers)
 
     return {"statusCode": 201, "body": {"trigger_id": trigger_id}}
+
+
+def get_trigger(db, path, params):
+    pass
+
+
+def delete_trigger(db, path, params):
+    pass

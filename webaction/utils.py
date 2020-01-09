@@ -1,11 +1,24 @@
 import secrets
 import dateutil.parser
+import types
 from datetime import datetime
 
 from ibm_cloudfunctions_client import CloudFunctionsClient
 
-MANDATORY_PARAMS = {'namespace', 'authentication', 'private_credentials'}
 TOKEN_LEN = 32
+
+def parse_path(path):
+    path = path.split('/')
+    ppath = types.SimpleNamespace()
+    if 'namespace' in path:
+        ppath.namespace = path[path.index('namespace')+1]
+    if 'eventsource' in path:
+        ppath.namespace = path[path.index('namespace')+1]
+    if 'trigger' in path:
+        ppath.namespace = path[path.index('namespace') + 1]
+    return ppath
+
+
 
 
 def gen_token(db, params):

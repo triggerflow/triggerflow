@@ -1,7 +1,11 @@
 import requests
+import hashlib
+import json
+import uuid
 from enum import Enum
 from typing import Optional, Union, List
 
+import api.exceptions
 from .sources.model import CloudEventSource
 
 
@@ -20,10 +24,10 @@ class DefaultActions(Enum):
 
 class CloudEventProcessorClient:
     def __init__(self,
-                 namespace: str,
-                 authentication: dict,
                  api_endpoint: str,
-                 event_source: Optional[CloudEventSource] = None,
+                 authentication: dict,
+                 namespace: Optional[str] = None,
+                 eventsource_name: Optional[str] = None,
                  global_context: Optional[dict] = None):
         """
         Initializes CloudEventProcessor client
@@ -31,29 +35,60 @@ class CloudEventProcessorClient:
         :param namespace: Specifies on which namespace will the triggers be added to.
         """
         self.namespace = namespace
-        self.event_source = event_source.dict if event_source is not None else None
+        self.eventsource_name = eventsource_name
         self.api_endpoint = api_endpoint
         self.default_context = {'counter': 0, 'namespace': namespace}
         if global_context is not None and type(global_context) is dict:
             self.default_context.update(global_context)
 
-        res = requests.put('/'.join([self.api_endpoint, 'init']),
-                           json={'namespace': self.namespace,
-                                 'event_source': self.event_source,
-                                 'global_context': self.default_context,
-                                 'authentication': authentication})
+        res = requests.get('/'.join([self.api_endpoint, 'auth']), json={'authentication': authentication})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:
             self.token = res.json()['token']
         else:
-            raise Exception('Could not initialize EventProcessor client')
+            raise Exception('Could not initialize EventProcessor client: {}'.format(res.json()))
+
+    def set_namespace(self, namespace: str):
+        self.namespace = namespace
+
+    def create_namespace(self, namespace: str, global_context: Optional[dict] = None):
+        if global_context is None:
+            global_context = {}
+
+        res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
+                           headers={'Authorization': 'Bearer '+self.token},
+                           json={'global_context': global_context})
+        print("{}: {}".format(res.status_code, res.json()))
+        if res.ok:
+            return res.json()
+        else:
+            raise Exception(res.json())
+
+    def set_event_source(self, eventsource_name: str):
+        self.eventsource_name = eventsource_name
+
+    def add_event_source(self, eventsource: CloudEventSource, overwrite: Optional[bool] = False):
+        if self.namespace is None:
+            raise api.exceptions.NullNamespaceException()
+
+        res = requests.put('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', eventsource.name]),
+                           params={'overwrite': overwrite},
+                           headers={'Authorization': 'Bearer ' + self.token},
+                           json={'eventsource': eventsource.json})
+        print("{}: {}".format(res.status_code, res.json()))
+        if res.ok:
+            return res.json()
+        else:
+            raise Exception(res.json())
 
     def add_trigger(self,
                     event: Union[dict, List[dict]],
                     condition: Optional[DefaultConditions] = DefaultConditions.TRUE,
                     action: Optional[DefaultActions] = DefaultActions.PASS,
-                    context: Optional[dict] = None):
+                    context: Optional[dict] = None,
+                    transient: Optional[bool] = True,
+                    id: Optional[str] = None):
         """
         Adds trigger to namespace
         :param event: The event that will fire this trigger.
@@ -62,7 +97,15 @@ class CloudEventProcessorClient:
         :param action: Action to perform when event is received and condition is True. Has to satisfy signature contract
         (context, event).
         :param context: Trigger context.
+        :param transient: Trigger is deleted after action is executed.
+        :param id: Custom ID for a persistent trigger.
         """
+        if self.namespace is None:
+            raise api.exceptions.NullNamespaceException()
+
+        if transient and id is not None:
+            raise api.exceptions.NamedTransientTrigger()
+
         # Check for arguments types
         if context is None:
             context = {}
@@ -74,13 +117,14 @@ class CloudEventProcessorClient:
             'condition': condition.name,
             'action': action.name,
             'context': context,
-            'depends_on_events': list(map(lambda evt: evt['subject'], events))}
+            'depends_on_events': list(map(lambda evt: evt['subject'], events)),
+            'is_transient': transient,
+            'id': id}
 
-        res = requests.put('/'.join([self.api_endpoint, 'add_trigger']),
-                           json={'namespace': self.namespace,
-                                 'events': events,
-                                 'trigger': trigger,
-                                 'authentication': {'token': self.token}})
+        res = requests.post('/'.join([self.api_endpoint, 'namespace', self.namespace, 'trigger']),
+                            headers={'Authorization': 'Bearer '+self.token},
+                            json={'events': events,
+                                  'trigger': trigger})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:
@@ -113,8 +157,8 @@ class CloudEventProcessorClient:
 
     def db_delete(self, uri):
         res = requests.delete('/'.join([self.api_endpoint, 'db']),
-                           json={'uri': uri,
-                                 'authentication': {'token': self.token}})
+                              json={'uri': uri,
+                                    'authentication': {'token': self.token}})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:
