@@ -1,6 +1,6 @@
-from api.sources.kafka import KafkaCloudEventSource, KafkaSASLAuthMode
-from api.utils import load_config_yaml
-from api.client import CloudEventProcessorClient, DefaultActions
+from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaSASLAuthMode
+from eventprocessor_client.utils import load_config_yaml
+from eventprocessor_client.client import CloudEventProcessorClient, DefaultActions
 from dags.dag import DAG
 
 from uuid import uuid4
