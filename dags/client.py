@@ -1,6 +1,6 @@
-from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaSASLAuthMode
+from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
 from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.client import CloudEventProcessorClient, DefaultActions
+from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
 from dags.dag import DAG
 
 from uuid import uuid4
@@ -20,59 +20,48 @@ def make(dag_def: str):
 
 
 def deploy(dag_json):
-    dagrun_id = str(uuid4()) + '-' + dag_json['dag_id']
-
+    dagrun_id = '_'.join([dag_json['dag_id'], str(uuid4())])
     kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
     ep_config = load_config_yaml('~/event-processor_credentials.yaml')
 
+
     # TODO Make event source generic
-    event_source = KafkaCloudEventSource(broker_list=kafka_credentials['eventstreams']['kafka_brokers_sasl'],
+    event_source = KafkaCloudEventSource(name=dagrun_id,
+                                         broker_list=kafka_credentials['eventstreams']['kafka_brokers_sasl'],
                                          topic=dagrun_id,
-                                         auth_mode=KafkaSASLAuthMode.SASL_PLAINTEXT,
+                                         auth_mode=KafkaAuthMode.SASL_PLAINTEXT,
                                          username=kafka_credentials['eventstreams']['user'],
                                          password=kafka_credentials['eventstreams']['password'])
 
-    ep = CloudEventProcessorClient(namespace=dagrun_id,
-                                   event_source=event_source,
-                                   global_context={
-                                       'ibm_cf_credentials': ep_config['authentication']['ibm_cf_credentials'],
-                                       'kafka_credentials': kafka_credentials['eventstreams']},
-                                   api_endpoint=ep_config['event_processor']['api_endpoint'],
-                                   authentication=ep_config['authentication'])
+    ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
+                                   authentication=ep_config['authentication'],
+                                   namespace=dagrun_id,
+                                   eventsource_name=dagrun_id)
 
-    ep.db_get()
+    ep.create_namespace(dagrun_id,
+                        global_context={'ibm_cf_credentials': ep_config['authentication']['ibm_cf_credentials'],
+                                        'kafka_credentials': kafka_credentials['eventstreams']})
+    ep.add_event_source(event_source)
 
-    # TODO Update dag build to add function url to the json definition
-    for init_task in dag_json['initial_tasks']:
-        task = dag_json[init_task]
-        ep.add_trigger(event_source.event('init__'),
-                       action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                       context={'subject': init_task,
-                                'args': task['operator']['function_args'],
-                                'url': 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/\
-                                       cloudlab_urv_us_east/actions/{}/{}'.format(
-                                           task['operator']['function_package'], task['operator']['function_name'])})
+    tasks = dag_json['tasks']
+    for task_name, task in tasks.items():
+        if not task['downstream_relatives']:
+            task['downstream_relatives'].append('__end')
 
-    for task in dag_json['tasks']:
         for downstream_relative in task['downstream_relatives']:
-            ep.add_trigger([event_source.event(upstream_relative) for upstream_relative in task['upstream_relatives']],
+
+            if not task['upstream_relatives']:
+                task['upstream_relatives'].append('init__')
+
+            ep.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
                            action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                           context={'subject': downstream_relative,
+                           condition=DefaultConditions.IBM_CF_JOIN,
+                           context={'subject': task_name,
                                     'args': task['operator']['function_args'],
                                     'url': 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/\
                                             cloudlab_urv_us_east/actions/{}/{}'.format(
                                                 task['operator']['function_package'],
                                                 task['operator']['function_name'])})
-
-    for final_task in dag_json['final_tasks']:
-        task = dag_json[final_task]
-        ep.add_trigger(event_source.event(final_task),
-                       action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                       context={'subject': 'end__',
-                                'args': task['operator']['function_args'],
-                                'url': 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/\
-                                       cloudlab_urv_us_east/actions/{}/{}'.format(
-                                           task['operator']['function_package'], task['operator']['function_name'])})
 
     return dagrun_id
 

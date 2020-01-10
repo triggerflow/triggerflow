@@ -1,3 +1,4 @@
+import re
 from utils import auth_request, parse_path
 
 
@@ -9,6 +10,9 @@ def add_namespace(db, path, params):
     path = parse_path(path)
     if db.exists(database_name=path.namespace):
         return {"statusCode": 409, "body": {"error": "Namespace {} already exists".format(path.namespace)}}
+    elif not re.fullmatch(r"^[a-zA-Z0-9_.-]*$", path.namespace):
+        return {"statusCode": 400, "body": {"error": "Illegal namespace name".format(path.namespace)}}
+
 
     db.put(database_name=path.namespace, document_id='.event_sources', data={})
     db.put(database_name=path.namespace, document_id='.events', data={})
