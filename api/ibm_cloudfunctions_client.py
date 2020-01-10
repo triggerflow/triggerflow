@@ -83,7 +83,7 @@ class CloudFunctionsClient:
         data['exec'] = cfexec
 
         logger.debug('I am about to create a new cloud function action: {}'.format(action_name))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package,
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions', package,
                         action_name + "?overwrite=" + str(overwrite)])
 
         res = self.session.put(url, json=data)
@@ -100,7 +100,7 @@ class CloudFunctionsClient:
         Get an IBM Cloud Functions action
         """
         logger.debug("I am about to get a cloud function action: {}".format(action_name))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
         res = self.session.get(url)
         return res.json()
 
@@ -109,7 +109,7 @@ class CloudFunctionsClient:
         List all IBM Cloud Functions actions in a package
         """
         logger.debug("I am about to list all actions from: {}".format(package))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, ''])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions', package, ''])
         res = self.session.get(url)
         if res.status_code == 200:
             return res.json()
@@ -121,7 +121,7 @@ class CloudFunctionsClient:
         Delete an IBM Cloud Function
         """
         logger.debug("Delete cloud function action: {}".format(action_name))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
         res = self.session.delete(url)
         resp_text = res.json()
 
@@ -130,7 +130,7 @@ class CloudFunctionsClient:
 
     def update_memory(self, package, action_name, memory):
         logger.debug('I am about to update the memory of the {} action to {}'.format(action_name, memory))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace,
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace,
                         'actions', package, action_name + "?overwrite=True"])
 
         data = {"limits": {"memory": memory}}
@@ -147,7 +147,7 @@ class CloudFunctionsClient:
         List all IBM Cloud Functions packages
         """
         logger.debug('I am about to list all the IBM CF packages')
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'packages'])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'packages'])
 
         res = self.session.get(url)
 
@@ -162,7 +162,7 @@ class CloudFunctionsClient:
         Delete an IBM Cloud Functions package
         """
         logger.debug("I am about to delete the package: {}".format(package))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'packages', package])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'packages', package])
         res = self.session.delete(url)
         resp_text = res.json()
 
@@ -176,7 +176,7 @@ class CloudFunctionsClient:
         Create an IBM Cloud Functions package
         """
         logger.debug('I am about to create the package {}'.format(package))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'packages', package + "?overwrite=False"])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'packages', package + "?overwrite=False"])
 
         data = {"name": package}
         res = self.session.put(url, json=data)
@@ -191,7 +191,7 @@ class CloudFunctionsClient:
         """
         Invoke an IBM Cloud Function by using new request.
         """
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
         parsed_url = urlparse(url)
 
         try:
@@ -234,7 +234,7 @@ class CloudFunctionsClient:
         """
         Invoke an IBM Cloud Function waiting for the result.
         """
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions',
+        url = '/'.join([self.endpoint, 'eventprocessor_client', 'v1', 'namespaces', self.effective_namespace, 'actions',
                         package, action_name + "?blocking=true&result=true"])
         resp = self.session.post(url, json=payload)
         result = resp.json()

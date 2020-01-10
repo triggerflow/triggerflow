@@ -56,12 +56,16 @@ class CloudEventProcessorClient:
         if global_context is None:
             global_context = {}
 
+        self.namespace = namespace
+
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
                            headers={'Authorization': 'Bearer '+self.token},
                            json={'global_context': global_context})
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:
             return res.json()
+        elif res.status_code == 409:
+            raise api.exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
@@ -70,7 +74,7 @@ class CloudEventProcessorClient:
 
     def add_event_source(self, eventsource: CloudEventSource, overwrite: Optional[bool] = False):
         if self.namespace is None:
-            raise api.exceptions.NullNamespaceException()
+            raise api.exceptions.NullNamespaceError()
 
         res = requests.put('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
@@ -79,6 +83,8 @@ class CloudEventProcessorClient:
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:
             return res.json()
+        elif res.status_code == 409:
+            raise api.exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
@@ -101,10 +107,10 @@ class CloudEventProcessorClient:
         :param id: Custom ID for a persistent trigger.
         """
         if self.namespace is None:
-            raise api.exceptions.NullNamespaceException()
+            raise api.exceptions.NullNamespaceError()
 
         if transient and id is not None:
-            raise api.exceptions.NamedTransientTrigger()
+            raise api.exceptions.NamedTransientTriggerError()
 
         # Check for arguments types
         if context is None:
