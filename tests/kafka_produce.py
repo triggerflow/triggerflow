@@ -3,7 +3,7 @@ import time
 
 from confluent_kafka import Producer, Consumer
 
-from api.utils import load_config_yaml
+from eventprocessor_client.utils import load_config_yaml
 
 if __name__ == '__main__':
     kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')

@@ -54,6 +54,7 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
+        doc = {}
         retry = self.max_retries
         while retry > 0:
             try:
@@ -69,6 +70,8 @@ class CloudantClient:
                     if not doc.exists():
                         raise KeyError("Database or document does not exist")
                     doc.fetch()
+                    del doc['_id']
+                    del doc['_rev']
                 break
             except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
