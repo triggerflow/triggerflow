@@ -3,21 +3,29 @@ import logging
 from uuid import uuid1
 from enum import Enum
 from typing import List
+from multiprocessing import Queue
 
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka import Consumer, TopicPartition
+from confluent_kafka import Consumer, Producer, TopicPartition
 
-from .broker import Broker
-
-
-class KafkaSASLAuthMode(Enum):
-    SASL_PLAINTEXT = 0
+from .model import Hook
 
 
-class KafkaBroker(Broker):
-    def __init__(self, broker_list: List[str], topic: str, auth_mode: KafkaSASLAuthMode, username: str, password: str):
+class KafkaAuthMode(Enum):
+    NONE = 0
+    SASL_PLAINTEXT = 1
+
+class KafkaCloudEventSourceHook(Hook):
+    def __init__(self,
+                 event_queue: Queue,
+                 broker_list: List[str],
+                 topic: str,
+                 auth_mode: str,
+                 username: str,
+                 password: str):
         super().__init__()
         self.group_id = str(uuid1())
+        self.event_queue = event_queue
 
         self.config = {'bootstrap.servers': ','.join(broker_list),
                        'group.id': self.group_id,
@@ -31,6 +39,7 @@ class KafkaBroker(Broker):
                             'sasl.password': password,
                             'security.protocol': 'sasl_ssl'
                             })
+
         self.consumer = Consumer(self.config)
 
         # Create topic if it does not exist
@@ -39,6 +48,13 @@ class KafkaBroker(Broker):
             self.__create_topic(topic)
 
         self.consumer.subscribe([topic])
+
+    def run(self):
+        while True:
+            records = self.consumer.consume()
+            for record in records:
+                if record.error() is None:
+                    self.event_queue.put(json.loads((record, record.value())))
 
     def poll(self):
         return self.consumer.poll(timeout=1.0)

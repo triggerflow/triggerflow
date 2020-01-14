@@ -280,7 +280,6 @@ def run():
             response.status_code = code
 
             if None not in [kakfa_brokers, kakfa_username, kakfa_password, kakfa_topic]:
-                # print(brokers, username, password, topic)
                 # Send a termination event to kafka
                 try:
                     kafka_config = get_kafka_config(kakfa_brokers, kakfa_username, kakfa_password)

@@ -15,7 +15,7 @@ def add_trigger(db, path, params):
     trigger = params['trigger']
     events = params['events']
 
-    source_events = db.get(database_name=namespace, document_id='.events')
+    trigger_events = db.get(database_name=namespace, document_id='.trigger_events')
     triggers = db.get(database_name=namespace, document_id='.triggers')
 
     if trigger['id'] in trigger:
@@ -27,12 +27,12 @@ def add_trigger(db, path, params):
 
     # Link source events to the trigger added
     for event in events:
-        if event['subject'] in source_events:
-            source_events[event['subject']].append(trigger['id'])
+        if event['subject'] in trigger_events:
+            trigger_events[event['subject']].append(trigger['id'])
         else:
-            source_events[event['subject']] = [trigger['id']]
+            trigger_events[event['subject']] = [trigger['id']]
 
-    db.put(database_name=namespace, document_id='.events', data=source_events)
+    db.put(database_name=namespace, document_id='.trigger_events', data=trigger_events)
     db.put(database_name=namespace, document_id='.triggers', data=triggers)
 
     return {"statusCode": 201, "body": {"trigger_id": trigger['id']}}

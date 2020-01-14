@@ -1,6 +1,12 @@
-class Broker:
+from multiprocessing import Process
+
+
+class Hook(Process):
     def __init__(self):
-        pass
+        super().__init__()
+
+    def run(self):
+        raise NotImplementedError()
 
     def poll(self):
         raise NotImplementedError()
