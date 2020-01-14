@@ -1,5 +1,5 @@
-from composer.operators import CallAsyncOperator, MapOperator
-from composer import DAG
+from dags.operators import CallAsyncOperator, MapOperator
+from dags import DAG
 
 map_dag = DAG(dag_id='branch')
 

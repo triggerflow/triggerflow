@@ -12,9 +12,12 @@ class IBMCloudFunctionsHook(BaseHook):
         if not set(self.config).issubset(MANDATORY_CREDENTIALS):
             raise Exception('Missing mandatory credentials in config file under "ibm_cloud_functions"')
 
+        self.endpoint = self.config['endpoint']
+        self.namespace = self.config['namespace']
+
         self.client = CloudFunctionsClient(
-            endpoint=self.config['endpoint'],
-            namespace=self.config['namespace'],
+            endpoint=self.endpoint,
+            namespace=self.namespace,
             api_key=self.config['api_key']
         )
 

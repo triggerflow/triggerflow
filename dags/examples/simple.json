@@ -20,7 +20,8 @@
                 "function_args": {
                     "x": 7,
                     "y": 5
-                }
+                },
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/add"
             }
         },
         "get_max": {
@@ -43,7 +44,8 @@
                         4,
                         5
                     ]
-                }
+                },
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/max"
             }
         },
         "run_this_first": {
@@ -58,7 +60,8 @@
                 "function_package": "dag_test",
                 "function_args": {
                     "name": "lab144"
-                }
+                },
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/hello"
             }
         }
     }

@@ -1,0 +1,101 @@
+{
+    "dag_id": "branch",
+    "initial_tasks": [
+        "map2",
+        "map1",
+        "random"
+    ],
+    "final_tasks": [
+        "map_join",
+        "random"
+    ],
+    "tasks": {
+        "map2": {
+            "task_id": "map2",
+            "upstream_relatives": [],
+            "downstream_relatives": [
+                "map_join"
+            ],
+            "operator": {
+                "kind": "map",
+                "function_name": "add",
+                "function_package": "dag_test",
+                "function_args": [
+                    {
+                        "x": 0
+                    },
+                    {
+                        "x": 1
+                    },
+                    {
+                        "x": 2
+                    },
+                    {
+                        "x": 3
+                    },
+                    {
+                        "x": 4
+                    }
+                ],
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/add"
+            }
+        },
+        "map_join": {
+            "task_id": "map_join",
+            "upstream_relatives": [
+                "map2",
+                "map1"
+            ],
+            "downstream_relatives": [],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "do_nothing",
+                "function_package": "dag_test",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/do_nothing"
+            }
+        },
+        "map1": {
+            "task_id": "map1",
+            "upstream_relatives": [],
+            "downstream_relatives": [
+                "map_join"
+            ],
+            "operator": {
+                "kind": "map",
+                "function_name": "add",
+                "function_package": "dag_test",
+                "function_args": [
+                    {
+                        "x": 0
+                    },
+                    {
+                        "x": 1
+                    },
+                    {
+                        "x": 2
+                    },
+                    {
+                        "x": 3
+                    },
+                    {
+                        "x": 4
+                    }
+                ],
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/add"
+            }
+        },
+        "random": {
+            "task_id": "random",
+            "upstream_relatives": [],
+            "downstream_relatives": [],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "do_nothing",
+                "function_package": "dag_test",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/dag_test/do_nothing"
+            }
+        }
+    }
+}

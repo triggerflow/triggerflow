@@ -23,7 +23,6 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process
 
-
 import standalone_service.brokers as brokers
 from standalone_service.datetimeutils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient

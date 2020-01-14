@@ -20,7 +20,7 @@
 
 import logging
 import os
-import  yaml
+import yaml
 from datetime import datetime
 
 import dateutil.parser

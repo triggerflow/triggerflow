@@ -48,7 +48,7 @@ def deploy(dag_json):
         if not task['downstream_relatives']:
             task['downstream_relatives'].append('__end')
 
-        for downstream_relative in task['downstream_relatives']:
+        for _ in task['downstream_relatives']:
 
             if not task['upstream_relatives']:
                 task['upstream_relatives'].append('init__')
@@ -57,11 +57,13 @@ def deploy(dag_json):
                            action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                            condition=DefaultConditions.IBM_CF_JOIN,
                            context={'subject': task_name,
-                                    'args': task['operator']['function_args'],
-                                    'url': 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/\
-                                            cloudlab_urv_us_east/actions/{}/{}'.format(
-                                                task['operator']['function_package'],
-                                                task['operator']['function_name'])})
+                                    'operator': task['operator'].copy()})
+
+    # Join final tasks
+    ep.add_trigger([CloudEvent(end_task) for end_task in dag_json['final_tasks']],
+                   action=DefaultActions.PASS,
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   context={'subject': '__end'})
 
     return dagrun_id
 
