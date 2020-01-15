@@ -10,7 +10,7 @@ class IBMCloudFunctionOperator(BaseOperator):
             function_package: str,
             function_memory: int = 256,
             function_timeout: int = 60000,
-            function_image: str = 'jsampe/cser-kafka-runtime-v36:0.1',
+            function_image: str = 'aitorarjona/eventprocessor-kafka-runtime-v36:0.2',
             code: str = None,
             zipfile: bytes = None,
             **kwargs):
@@ -33,6 +33,11 @@ class IBMCloudFunctionOperator(BaseOperator):
         code = textwrap.dedent(code) if bool(code) and not bool(zipfile) else zipfile
 
         self.connection = IBMCloudFunctionsHook().get_conn()
+
+        self.url = '{}/api/v1/namespaces/{}/actions/{}/{}'.format(self.connection.endpoint,
+                                                                  self.connection.namespace,
+                                                                  self.function_package,
+                                                                  self.function_name)
 
         if create_function:
             res = self.connection.create_package(
@@ -60,6 +65,7 @@ class IBMCloudFunctionOperator(BaseOperator):
         spec['function_name'] = self.function_name
         spec['function_package'] = self.function_package
         spec['function_args'] = self.function_args
+        spec['function_url'] = self.url
         baseop['operator'] = spec
         return baseop
 

@@ -1,10 +1,10 @@
 import json
 import pika
 
-from .broker import Broker
+from .model import Hook
 
 
-class RabbitMQBroker(Broker):
+class RabbitMQBroker(Hook):
     def __init__(self, amqp_url: str, topic: str):
         super().__init__()
         self.topic = topic

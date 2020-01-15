@@ -15,24 +15,28 @@ def add_trigger(db, path, params):
     trigger = params['trigger']
     events = params['events']
 
-    source_events = db.get(database_name=namespace, document_id='.events')
+    trigger_events = db.get(database_name=namespace, document_id='.trigger_events')
     triggers = db.get(database_name=namespace, document_id='.triggers')
 
+    if trigger['id'] in trigger:
+        return {"statusCode": 409, "body": {"error": "Trigger {} already exists".format(trigger['id'])}}
+
     # Add trigger to database
-    trigger_id = trigger['id'] if not trigger['transient'] else str(uuid4())
-    triggers[trigger_id] = trigger
+    trigger['id'] = trigger['id'] if not trigger['transient'] else str(uuid4())
+    triggers[trigger['id']] = trigger
 
     # Link source events to the trigger added
     for event in events:
-        if event['subject'] in source_events:
-            source_events[event['subject']].append(trigger_id)
-        else:
-            source_events[event['subject']] = [trigger_id]
+        if event['subject'] not in trigger_events:
+            trigger_events[event['subject']] = {}
+        if event['type'] not in trigger_events[event['subject']]:
+            trigger_events[event['subject']][event['type']] = []
+        trigger_events[event['subject']][event['type']].append(trigger['id'])
 
-    db.put(database_name=namespace, document_id='.events', data=source_events)
+    db.put(database_name=namespace, document_id='.trigger_events', data=trigger_events)
     db.put(database_name=namespace, document_id='.triggers', data=triggers)
 
-    return {"statusCode": 201, "body": {"trigger_id": trigger_id}}
+    return {"statusCode": 201, "body": {"trigger_id": trigger['id']}}
 
 
 def get_trigger(db, path, params):

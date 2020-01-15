@@ -60,7 +60,7 @@ class CloudEventProcessorClient:
         :param namespace: Namespace name.
         :param global_context: Key-value state that is visible for all triggers in the namespace.
         """
-        default_context = {'counter': 0, 'namespace': namespace}
+        default_context = {'namespace': namespace}
 
         if namespace is None:
             namespace = self.namespace

@@ -3,21 +3,30 @@ import logging
 from uuid import uuid1
 from enum import Enum
 from typing import List
+from multiprocessing import Queue
 
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka import Consumer, TopicPartition
+from confluent_kafka import Consumer, Producer, TopicPartition
 
-from .broker import Broker
-
-
-class KafkaSASLAuthMode(Enum):
-    SASL_PLAINTEXT = 0
+from .model import Hook
 
 
-class KafkaBroker(Broker):
-    def __init__(self, broker_list: List[str], topic: str, auth_mode: KafkaSASLAuthMode, username: str, password: str):
-        super().__init__()
+class KafkaAuthMode(Enum):
+    NONE = 0
+    SASL_PLAINTEXT = 1
+
+class KafkaCloudEventSourceHook(Hook):
+    def __init__(self,
+                 event_queue: Queue,
+                 broker_list: List[str],
+                 topic: str,
+                 auth_mode: str,
+                 username: str,
+                 password: str,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.group_id = str(uuid1())
+        self.event_queue = event_queue
 
         self.config = {'bootstrap.servers': ','.join(broker_list),
                        'group.id': self.group_id,
@@ -31,14 +40,35 @@ class KafkaBroker(Broker):
                             'sasl.password': password,
                             'security.protocol': 'sasl_ssl'
                             })
+
+        self.consumer = None
+        self.topic = topic
+        self.records = list()
+
+    def run(self):
         self.consumer = Consumer(self.config)
 
         # Create topic if it does not exist
         topics = self.consumer.list_topics().topics
-        if topic not in topics:
-            self.__create_topic(topic)
+        if self.topic not in topics:
+            self.__create_topic(self.topic)
 
-        self.consumer.subscribe([topic])
+        logging.info("[{}] Started consuming from topic {}".format(self.name, self.topic))
+        self.consumer.subscribe([self.topic])
+        payload = None
+        while True:
+            try:
+                records = self.consumer.consume()
+                for record in records:
+                    logging.info("[{}] Received event - Key: {}".format(self.name, record.key()))
+                    if record.error() is None:
+                        payload = record.value()
+                        event = json.loads(payload)
+                        self.event_queue.put(event)
+                        self.records.append(record)
+            except TypeError:
+                logging.error("[{}] Received event did not contain "
+                              "JSON payload, got {} instead".format(self.name, type(payload)))
 
     def poll(self):
         return self.consumer.poll(timeout=1.0)
@@ -47,7 +77,7 @@ class KafkaBroker(Broker):
         return json.loads(record.value())
 
     def commit(self, records):
-        self.consumer.commit(offsets=self.__get_offset_list(records), async=False)
+        self.consumer.commit(offsets=self.__get_offset_list(self.records), async=False)
 
     def __create_topic(self, topic):
         """
