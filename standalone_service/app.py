@@ -20,7 +20,7 @@
 
 import logging
 import os
-import  yaml
+import yaml
 from datetime import datetime
 
 import dateutil.parser
@@ -79,7 +79,7 @@ def run_workflow():
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
     logging.info('New request to run worker for namespace {}'.format(namespace))
     worker = Worker(namespace, private_credentials, user_credentials)
-    worker.daemon = True
+    # worker.daemon = True
     worker.start()
     workers.append(workers)
 

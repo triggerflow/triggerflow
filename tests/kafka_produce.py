@@ -23,7 +23,7 @@ if __name__ == '__main__':
             print('Message delivered: {} {} {}'.format(msg.topic(), msg.partition(), msg.offset()))
 
     kafka_producer = Producer(**config)
-    termination_event = {'subject': 'init__'}
-    kafka_producer.produce(topic='hello', value=json.dumps(termination_event), callback=delivery_callback)
+    termination_event = {'subject': 'init__', 'type': 'termination.event.success'}
+    kafka_producer.produce(topic='branch_b078e8f0-870b-41a7-917f-70f4cf6799fb', value=json.dumps(termination_event), callback=delivery_callback)
     kafka_producer.flush()
 

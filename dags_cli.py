@@ -22,22 +22,10 @@ def cli_make(dag_def, output):
             dagf.write(dag_json)
 
 
-@cli.command('put')
-@click.argument('dag_json', type=click.File('r'))
-def cli_put(dag_json):
-    status_code, res = client.put(dag_json)
-    if status_code == 200:
-        pass
-    else:
-        print('{}: {}'.format(status_code, res))
-
-
 @cli.command('deploy')
-@click.argument('dag_id', type=click.File('r'))
-def cli_deploy(dag_id):
-    dagrun_id = client.deploy(dag_id)
-    if dagrun_id:
-        print('dagrun_id: {}'.format(dagrun_id))
+@click.argument('dag_json', type=click.File('r'))
+def cli_deploy(dag_json):
+    client.deploy(json.loads(dag_json.read()))
 
 
 @cli.command('run')
