@@ -2,8 +2,9 @@ from multiprocessing import Process
 
 
 class Hook(Process):
-    def __init__(self):
+    def __init__(self, name: str, *args, **kwargs):
         super().__init__()
+        self.name = name
 
     def run(self):
         raise NotImplementedError()

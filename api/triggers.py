@@ -27,10 +27,11 @@ def add_trigger(db, path, params):
 
     # Link source events to the trigger added
     for event in events:
-        if event['subject'] in trigger_events:
-            trigger_events[event['subject']].append(trigger['id'])
-        else:
-            trigger_events[event['subject']] = [trigger['id']]
+        if event['subject'] not in trigger_events:
+            trigger_events[event['subject']] = {}
+        if event['type'] not in trigger_events[event['subject']]:
+            trigger_events[event['subject']][event['type']] = []
+        trigger_events[event['subject']][event['type']].append(trigger['id'])
 
     db.put(database_name=namespace, document_id='.trigger_events', data=trigger_events)
     db.put(database_name=namespace, document_id='.triggers', data=triggers)

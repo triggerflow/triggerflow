@@ -51,11 +51,14 @@ def deploy(dag_json):
         for _ in task['downstream_relatives']:
 
             if not task['upstream_relatives']:
+                condition = DefaultConditions.TRUE
                 task['upstream_relatives'].append('init__')
+            else:
+                condition = DefaultConditions.IBM_CF_JOIN
 
             ep.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
                            action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                           condition=DefaultConditions.IBM_CF_JOIN,
+                           condition=condition,
                            context={'subject': task_name,
                                     'operator': task['operator'].copy()})
 

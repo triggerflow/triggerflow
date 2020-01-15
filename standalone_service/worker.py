@@ -18,6 +18,7 @@
  */
 """
 import logging
+import re
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -77,24 +78,25 @@ class Worker(Process):
 
         # Instantiate broker client
         event_sources = self.__cloudant_client.get(database_name=self.namespace, document_id='.event_sources')
-        for evt_src in event_sources:
+        for evt_src in event_sources.values():
             hook_class = getattr(hooks, '{}Hook'.format(evt_src['class']))
             hook = hook_class(event_queue=self.event_queue, **evt_src['spec'])
-            hook.run()
+            hook.start()
 
         while self.__should_run():
-            record, event = self.event_queue.get()
-            if record:
+            event = self.event_queue.get()
+            if event:
                 print('New Event-->', event)
                 subject = event['subject']
+                event_type = event['type']
 
                 if subject in self.events:
                     self.events[subject].append(event)
                 else:
                     self.events[subject] = [event]
 
-                if subject in self.trigger_events:
-                    triggers = self.trigger_events[subject]
+                if subject in self.trigger_events and event_type in self.trigger_events[subject]:
+                    triggers = self.trigger_events[subject][event_type]
 
                     for trigger_id in triggers:
                         condition_name = self.triggers[trigger_id]['condition']
