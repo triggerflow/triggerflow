@@ -87,7 +87,11 @@ def test_route():
     else:
         return_statement = {'Internet Connection': "False", "Total Requests": TOTAL_REQUESTS}
 
-
+    config = {
+      "broker_list": ["192.168.2.51:9092"],
+      "username": "token",
+      "password": "ZHmkYJVF9H9pMqPVspuez8RADRtkASXhIrOZCU6nmNY-",
+      "topic": "FirstTopic"}
 
     kb = KafkaBroker(**config)
 

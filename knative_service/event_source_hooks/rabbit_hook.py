@@ -1,10 +1,10 @@
 import json
 import pika
 
-from .broker import Broker
+from .model import Hook
 
 
-class RabbitMQBroker(Broker):
+class RabbitMQBroker(Hook):
     def __init__(self, amqp_url: str, topic: str):
         super().__init__()
         self.topic = topic
@@ -24,6 +24,7 @@ class RabbitMQBroker(Broker):
         method_frame, header_frame, body = record
         return json.loads(body)
 
-    def commit(self, record):
-        method_frame, header_frame, body = record
-        self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+    def commit(self, records):
+        for record in records:
+            method_frame, header_frame, body = record
+            self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
