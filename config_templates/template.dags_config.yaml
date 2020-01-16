@@ -1,0 +1,4 @@
+ibm_cloud_functions:
+    endpoint  : <ENDPOINT>
+    namespace : <NAMESPACE>
+    api_key   : <APIKEY>

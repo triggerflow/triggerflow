@@ -43,7 +43,6 @@ class CloudEventProcessorClient:
         self.eventsource_name = eventsource_name
         self.api_endpoint = api_endpoint
 
-        print(password)
         if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
             raise ValueError('Invalid Username')
         if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
@@ -72,7 +71,7 @@ class CloudEventProcessorClient:
         """
         Creates a namespace.
         :param namespace: Namespace name.
-        :param global_context: Key-value state that is visible for all triggers in the namespace.
+        :param global_context: Read-only key-value state that is visible for all triggers in the namespace.
         """
         default_context = {'namespace': namespace}
 
@@ -87,6 +86,7 @@ class CloudEventProcessorClient:
             raise Exception('Global context must be json-serializable dict')
         if global_context is None:
             global_context = {}
+
 
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
                            headers={'Authorization': 'Bearer ' + self.token},
@@ -215,7 +215,7 @@ class CloudEventProcessorClient:
 
     def db_delete(self, uri):
         """
-        Deletes an object from the databse.
+        Deletes an object from the database.
         :param uri: URI of the object (e.g. db://foo/bar)
         """
         res = requests.delete('/'.join([self.api_endpoint, 'db']),

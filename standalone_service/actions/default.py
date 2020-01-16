@@ -45,16 +45,15 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
     cf_auth = context['ibm_cf_credentials']['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
-    ibm_cf = context['operator']
-    url = ibm_cf['function_url']
+    url = context['function_url']
     namespace = context['namespace']
     subject = context['subject']
 
     # Transform a callasync trigger to a map trigger of a single function
-    if ibm_cf['kind'] == 'callasync':
-        function_args = [ibm_cf['function_args']]
+    if context['kind'] == 'callasync':
+        function_args = [context['function_args']]
     else:
-        function_args = ibm_cf['function_args']
+        function_args = context['function_args']
     total_activations = len(function_args)
 
     max_retries = 5

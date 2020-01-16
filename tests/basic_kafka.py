@@ -4,28 +4,24 @@ from eventprocessor_client import exceptions as client_errors
 from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
 
 if __name__ == "__main__":
-    client_config = load_config_yaml('~/event-processor_credentials.yaml')
-    kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
+    client_config = load_config_yaml('~/client_config.yaml')
+    kafka_config = client_config['event_sources']['kafka']
 
-    er = CloudEventProcessorClient(api_endpoint=client_config['event_processor']['api_endpoint'],
-                                   user=client_config['event_processor']['user'],
-                                   password=client_config['event_processor']['password'])
+    er = CloudEventProcessorClient(**client_config['event_processor'])
 
     kafka = KafkaCloudEventSource(name='my_kafka_eventsource',
-                                  broker_list=kafka_credentials['eventstreams']['kafka_brokers_sasl'],
+                                  broker_list=kafka_config['kafka_brokers_sasl'],
                                   topic='hello',
                                   auth_mode=KafkaAuthMode.SASL_PLAINTEXT,
-                                  username=kafka_credentials['eventstreams']['user'],
-                                  password=kafka_credentials['eventstreams']['password'])
+                                  username=kafka_config['user'],
+                                  password=kafka_config['password'])
 
     try:
-        er.create_namespace(namespace='new_ibm_cf_test_kafka2',
-                            global_context={'ibm_cf_credentials': client_config['authentication']['ibm_cf_credentials'],
-                                            'kafka_credentials': kafka_credentials['eventstreams']})
+        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'])
     except client_errors.ResourceAlreadyExistsError:
         pass
 
-    er.set_namespace('new_ibm_cf_test_kafka2')
+    er.set_namespace('basic_kafka')
 
     try:
         er.add_event_source(kafka)
@@ -35,32 +31,46 @@ if __name__ == "__main__":
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 
     url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/kafka_test'
+
     er.add_trigger(CloudEvent('init__'),
                    action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                   context={'subject': 'ca1', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
+                   context={'subject': 'ca1',
+                            'function_args': {'iter': 1},
+                            'function_url': url,
+                            'kind': 'callasync'})
 
-    # er.add_trigger(kafka.event('ca1'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'map1',
-    #                         'url': url,
-    #                         'args': [{'iter': 1}, {'iter': 2}, {'iter': 3}],
-    #                         'kind': 'map'})
-    # er.add_trigger(kafka.event('ca1'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'ca2', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
-    #
-    # er.add_trigger([kafka.event('map1'), kafka.event('ca2')],
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'map2', 'url': url, 'args': [{'iter': 1}, {'iter': 2}], 'kind': 'map'})
-    #
-    # er.add_trigger(kafka.event('map2'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'ca3', 'url': url, 'args': {'iter': 1}, 'kind': 'callasync'})
-    #
-    # er.add_trigger(kafka.event('ca3'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.TERMINATE)
+    er.add_trigger(CloudEvent('ca1'),
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
+                   context={'subject': 'map1',
+                            'function_args': [{'iter': x} for x in range(3)],
+                            'function_url': url,
+                            'kind': 'map'})
+
+    er.add_trigger(CloudEvent('ca1'),
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
+                   context={'subject': 'ca2',
+                            'function_args': {'iter': 1},
+                            'function_url': url,
+                            'kind': 'callasync'})
+
+    er.add_trigger([CloudEvent('map1'), CloudEvent('ca2')],
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
+                   context={'subject': 'map2',
+                            'function_args': [{'iter': x} for x in range(3)],
+                            'function_url': url,
+                            'kind': 'map'})
+
+    er.add_trigger(CloudEvent('map2'),
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
+                   context={'subject': 'ca3',
+                            'function_args': {'iter': 1},
+                            'function_url': url,
+                            'kind': 'callasync'})
+
+    er.add_trigger(CloudEvent('ca3'),
+                   condition=DefaultConditions.IBM_CF_JOIN,
+                   action=DefaultActions.TERMINATE)
