@@ -1,5 +1,7 @@
 import requests
+import re
 from enum import Enum
+from base64 import b64encode
 from typing import Optional, Union, List
 
 import eventprocessor_client.exceptions
@@ -25,13 +27,15 @@ class DefaultActions(Enum):
 class CloudEventProcessorClient:
     def __init__(self,
                  api_endpoint: str,
-                 authentication: dict,
+                 user: str,
+                 password: str,
                  namespace: Optional[str] = None,
                  eventsource_name: Optional[str] = None):
         """
         Initializes CloudEventProcessor client.
         :param api_endpoint: Endpoint of the Event Processor API.
-        :param authentication: Authentication parameters.
+        :param user: Username to authenticate this client towards the API REST.
+        :param password: Password to authenticate this client towards the API REST.
         :param namespace: Namespace which this client targets by default when managing triggers.
         :param eventsource_name: Eventsource which this client targets by default when managing triggers.
         """
@@ -39,7 +43,17 @@ class CloudEventProcessorClient:
         self.eventsource_name = eventsource_name
         self.api_endpoint = api_endpoint
 
-        res = requests.get('/'.join([self.api_endpoint, 'auth']), json={'authentication': authentication})
+        print(password)
+        if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
+            raise ValueError('Invalid Username')
+        if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
+            raise ValueError('Invalid Password')
+
+        basic_auth = b64encode(bytes(user+':'+password, 'utf-8')).decode('utf-8')
+
+        res = requests.get('/'.join([self.api_endpoint, 'auth']),
+                           headers={'Authorization': 'Basic ' + basic_auth},
+                           json={})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:

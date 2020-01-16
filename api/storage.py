@@ -1,7 +1,7 @@
 import json
 from urllib.parse import urlparse
 
-from utils import auth_request
+from utils import authorize_request
 
 
 def parse_uri(uri):
@@ -14,7 +14,7 @@ def parse_uri(uri):
 
 def put(db, params):
     # Authenticate request
-    ok, res = auth_request(db, params)
+    ok, res = authorize_request(db, params)
     if not ok:
         return res
 
@@ -29,7 +29,7 @@ def put(db, params):
 
 def get(db, params):
     # Authenticate request
-    ok, res = auth_request(db, params)
+    ok, res = authorize_request(db, params)
     if not ok:
         return res
 
@@ -44,7 +44,7 @@ def get(db, params):
 
 def delete(db, params):
     # Authenticate request
-    ok, res = auth_request(db, params)
+    ok, res = authorize_request(db, params)
     if not ok:
         return res
 

@@ -8,7 +8,8 @@ if __name__ == "__main__":
     kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
 
     er = CloudEventProcessorClient(api_endpoint=client_config['event_processor']['api_endpoint'],
-                                   authentication=client_config['authentication'])
+                                   user=client_config['event_processor']['user'],
+                                   password=client_config['event_processor']['password'])
 
     kafka = KafkaCloudEventSource(name='my_kafka_eventsource',
                                   broker_list=kafka_credentials['eventstreams']['kafka_brokers_sasl'],
@@ -18,13 +19,13 @@ if __name__ == "__main__":
                                   password=kafka_credentials['eventstreams']['password'])
 
     try:
-        er.create_namespace(namespace='new_ibm_cf_test_kafka',
+        er.create_namespace(namespace='new_ibm_cf_test_kafka2',
                             global_context={'ibm_cf_credentials': client_config['authentication']['ibm_cf_credentials'],
                                             'kafka_credentials': kafka_credentials['eventstreams']})
     except client_errors.ResourceAlreadyExistsError:
         pass
 
-    er.set_namespace('new_ibm_cf_test_kafka')
+    er.set_namespace('new_ibm_cf_test_kafka2')
 
     try:
         er.add_event_source(kafka)
