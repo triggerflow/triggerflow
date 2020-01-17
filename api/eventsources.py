@@ -1,8 +1,8 @@
-from utils import auth_request, parse_path
+from utils import authorize_request, parse_path
 
 
 def add_eventsource(db, path, params):
-    ok, res = auth_request(db, params)
+    ok, res = authorize_request(db, params)
     if not ok:
         return res
 

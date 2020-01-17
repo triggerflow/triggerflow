@@ -138,4 +138,7 @@ dmypy.json
 /.project
 /.pydevproject
 
-config.yaml
+# Ignore config files containing sensible content
+*.yaml
+!config_templates/
+!config_templates/*

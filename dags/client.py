@@ -21,26 +21,25 @@ def make(dag_def: str):
 
 def deploy(dag_json):
     dagrun_id = '_'.join([dag_json['dag_id'], str(uuid4())])
-    kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
-    ep_config = load_config_yaml('~/event-processor_credentials.yaml')
+    ep_config = load_config_yaml('~/client_config.yaml')
+    kafka_credentials = ep_config['event_sources']['kafka']
 
 
     # TODO Make event source generic
     event_source = KafkaCloudEventSource(name=dagrun_id,
-                                         broker_list=kafka_credentials['eventstreams']['kafka_brokers_sasl'],
+                                         broker_list=kafka_credentials['kafka_brokers_sasl'],
                                          topic=dagrun_id,
                                          auth_mode=KafkaAuthMode.SASL_PLAINTEXT,
-                                         username=kafka_credentials['eventstreams']['user'],
-                                         password=kafka_credentials['eventstreams']['password'])
+                                         username=kafka_credentials['user'],
+                                         password=kafka_credentials['password'])
 
     ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
-                                   authentication=ep_config['authentication'],
+                                   user=ep_config['event_processor']['user'],
+                                   password=ep_config['event_processor']['password'],
                                    namespace=dagrun_id,
                                    eventsource_name=dagrun_id)
 
-    ep.create_namespace(dagrun_id,
-                        global_context={'ibm_cf_credentials': ep_config['authentication']['ibm_cf_credentials'],
-                                        'kafka_credentials': kafka_credentials['eventstreams']})
+    ep.create_namespace(dagrun_id, global_context=ep_config['global_context'])
     ep.add_event_source(event_source)
 
     tasks = dag_json['tasks']
@@ -56,11 +55,12 @@ def deploy(dag_json):
             else:
                 condition = DefaultConditions.IBM_CF_JOIN
 
+            context = {'subject': task_name}
+            context.update(task['operator'])
             ep.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
                            action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                            condition=condition,
-                           context={'subject': task_name,
-                                    'operator': task['operator'].copy()})
+                           context=context)
 
     # Join final tasks
     ep.add_trigger([CloudEvent(end_task) for end_task in dag_json['final_tasks']],
