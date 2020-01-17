@@ -1,0 +1,3 @@
+cloudant:
+    username: <USER>
+    apikey: <APIKEY>

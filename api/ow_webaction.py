@@ -26,7 +26,11 @@ def ow_webaction_main(args):
 
         if re.fullmatch(r"/auth", path):
             if args['__ow_method'] == 'get':
-                res = utils.gen_token(db, params)
+                ok, res = utils.authenticate_user(db, params)
+                if not ok:
+                    return res
+                else:
+                    return utils.generate_session_token(db)
         elif re.fullmatch(r"/namespace/[^/]+", path):
             if args['__ow_method'] == 'put':
                 res = namespaces.add_namespace(db, path, params)

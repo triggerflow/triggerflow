@@ -1,9 +1,9 @@
 import secrets
 import dateutil.parser
 import types
+import re
+from base64 import b64decode
 from datetime import datetime
-
-from ibm_cloudfunctions_client import CloudFunctionsClient
 
 TOKEN_LEN = 32
 
@@ -20,17 +20,34 @@ def parse_path(path):
     return ppath
 
 
-def gen_token(db, params):
+def authenticate_user(db, params):
     try:
-        ibm_cf_credentials = params['authentication']['ibm_cf_credentials']
-        ok = check_cloudfunctions_credentials(**ibm_cf_credentials)
-        if not ok:
-            raise Exception('Invalid IBM Cloud Functions credentials')
-    except KeyError:
-        return {'statusCode': 400, 'body': {'error': 'Missing parameters'}}
-    except Exception as e:
-        return {'statusCode': 400, 'body': {'error': str(e)}}
+        if 'authorization' not in params['headers']:
+            return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
 
+        encoded_userpasswd = params['headers']['authorization'].split(' ')[1]
+        decoded_userpasswd = b64decode(encoded_userpasswd.encode('utf-8')).decode('utf-8')
+
+        if decoded_userpasswd.count(':') > 1:
+            return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
+
+        user, password = tuple(decoded_userpasswd.split(':'))
+
+        if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
+            raise ValueError('Invalid Username')
+        if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
+            raise ValueError('Invalid Password')
+
+        users = db.get(database_name='auth$', document_id='users')
+
+        ok = user in users and password == users[user]
+        return ok, None
+
+    except KeyError or ValueError or IndexError as e:
+        return False, {'statusCode': 400, 'body': {'error': str(e)}}
+
+
+def generate_session_token(db):
     # Generate session token
     token = secrets.token_hex(TOKEN_LEN)
     timestamp = str(datetime.utcnow().isoformat())
@@ -45,20 +62,7 @@ def gen_token(db, params):
     return {'statusCode': 200, 'body': {'token': token}}
 
 
-def check_cloudfunctions_credentials(endpoint, namespace, api_key):
-    try:
-        cf_client = CloudFunctionsClient(endpoint=endpoint,
-                                         namespace=namespace,
-                                         api_key=api_key)
-        cf_client.list_packages()
-        return True
-    except Exception as e:
-        print(e)
-        return True
-        # return False
-
-
-def auth_request(db, params):
+def authorize_request(db, params):
     if 'authorization' not in params['headers']:
         return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
 

@@ -1,0 +1,28 @@
+event_processor:
+    api_endpoint: <API_ENDPOINT>
+    user: <USER>
+    password: <PASSWORD>
+
+
+global_context:
+    ibm_cf:
+        endpoint  : <ENDPOINT>
+        namespace : <NAMESPACE>
+        api_key   : <APIKEY>
+
+    eventstreams:
+        kafka_brokers_sasl: <BROKER_LIST>
+        user: <USER>
+        password: <PASSWORD>
+    
+    rabbitmq:
+        amqp_url: <AMQP_URL>
+
+
+event_sources:
+    kafka:
+        kafka_brokers_sasl: <BROKER_LIST>
+        user: <USER>
+        password: <PASSWORD>
+
+
