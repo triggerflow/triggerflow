@@ -17,7 +17,7 @@ if __name__ == "__main__":
                                   password=kafka_config['password'])
 
     try:
-        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'])
+        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], )
     except client_errors.ResourceAlreadyExistsError:
         pass
 

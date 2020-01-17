@@ -48,7 +48,7 @@ class CloudEventProcessorClient:
         if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
             raise ValueError('Invalid Password')
 
-        basic_auth = b64encode(bytes(user+':'+password, 'utf-8')).decode('utf-8')
+        basic_auth = b64encode(bytes(user + ':' + password, 'utf-8')).decode('utf-8')
 
         res = requests.get('/'.join([self.api_endpoint, 'auth']),
                            headers={'Authorization': 'Basic ' + basic_auth},
@@ -67,18 +67,21 @@ class CloudEventProcessorClient:
         """
         self.namespace = namespace
 
-    def create_namespace(self, namespace: Optional[str] = None, global_context: Optional[dict] = None):
+    def create_namespace(self, namespace: Optional[str] = None,
+                         global_context: Optional[dict] = None,
+                         event_source: Optional[CloudEventSource] = None):
         """
         Creates a namespace.
         :param namespace: Namespace name.
         :param global_context: Read-only key-value state that is visible for all triggers in the namespace.
+        :param event_source: Applies this event source to the new namespace.
         """
         default_context = {'namespace': namespace}
 
-        if namespace is None:
+        if namespace is None and self.namespace is None:
+            raise ValueError('Namespace cannot be None')
+        elif namespace is None:
             namespace = self.namespace
-        else:
-            self.namespace = namespace
 
         if global_context is not None and type(global_context) is dict:
             global_context.update(default_context)
@@ -87,10 +90,10 @@ class CloudEventProcessorClient:
         if global_context is None:
             global_context = {}
 
-
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
                            headers={'Authorization': 'Bearer ' + self.token},
-                           json={'global_context': global_context})
+                           json={'global_context': global_context,
+                                 'event_source': event_source.json})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:

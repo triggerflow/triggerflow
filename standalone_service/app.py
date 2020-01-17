@@ -49,7 +49,7 @@ def run_workflow():
     try:
         data = request.get_json(force=True, silent=True)
         namespace = data['namespace']
-        user_credentials = data['authentication']
+        # user_credentials = data['authentication']
     except Exception as e:
         logging.error(e)
         return jsonify('Invalid input parameters'), 400
@@ -78,7 +78,7 @@ def run_workflow():
     if namespace in list(map(lambda wk: wk.namespace, workers)):
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
     logging.info('New request to run worker for namespace {}'.format(namespace))
-    worker = Worker(namespace, private_credentials, user_credentials)
+    worker = Worker(namespace, private_credentials)
     # worker.daemon = True
     worker.start()
     workers.append(workers)
