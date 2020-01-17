@@ -83,6 +83,8 @@ class CloudEventProcessorClient:
         elif namespace is None:
             namespace = self.namespace
 
+        self.namespace = namespace
+
         if global_context is not None and type(global_context) is dict:
             global_context.update(default_context)
         if global_context is not None and type(global_context) is not dict:

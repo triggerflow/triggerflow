@@ -17,16 +17,16 @@ if __name__ == "__main__":
                                   password=kafka_config['password'])
 
     try:
-        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], )
+        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], event_source=kafka)
     except client_errors.ResourceAlreadyExistsError:
         pass
 
     er.set_namespace('basic_kafka')
-
-    try:
-        er.add_event_source(kafka)
-    except client_errors.ResourceAlreadyExistsError:
-        pass
+    #
+    # try:
+    #     er.add_event_source(kafka)
+    # except client_errors.ResourceAlreadyExistsError:
+    #     pass
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 
