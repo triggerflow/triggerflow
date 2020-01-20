@@ -43,14 +43,13 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    def __init__(self, namespace, private_credentials, user_credentials):
+    def __init__(self, namespace, private_credentials):
         super().__init__()
 
         self.worker_status = {}
         self.namespace = namespace
         self.worker_id = str(uuid4())
         self.__private_credentials = private_credentials
-        self.__user_credentials = user_credentials
 
         self.triggers = {}
         self.trigger_events = {}

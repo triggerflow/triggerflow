@@ -20,6 +20,7 @@
 
 import logging
 import os
+import signal
 import yaml
 from datetime import datetime
 
@@ -49,7 +50,7 @@ def run_workflow():
     try:
         data = request.get_json(force=True, silent=True)
         namespace = data['namespace']
-        user_credentials = data['authentication']
+        # user_credentials = data['authentication']
     except Exception as e:
         logging.error(e)
         return jsonify('Invalid input parameters'), 400
@@ -78,7 +79,7 @@ def run_workflow():
     if namespace in list(map(lambda wk: wk.namespace, workers)):
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
     logging.info('New request to run worker for namespace {}'.format(namespace))
-    worker = Worker(namespace, private_credentials, user_credentials)
+    worker = Worker(namespace, private_credentials)
     # worker.daemon = True
     worker.start()
     workers.append(workers)
@@ -99,6 +100,9 @@ def health_route():
 
 def main():
     global private_credentials, db
+
+    # Create process group
+    os.setpgrp()
 
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
@@ -133,6 +137,8 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         print('exiting...')
+    finally:
+        os.killpg(0, signal.SIGKILL)
 
 
 if __name__ == '__main__':

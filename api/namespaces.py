@@ -1,4 +1,5 @@
 import re
+import requests
 from utils import authorize_request, parse_path
 
 
@@ -13,10 +14,19 @@ def add_namespace(db, path, params):
     elif not re.fullmatch(r"^[a-zA-Z0-9_.-]*$", path.namespace):
         return {"statusCode": 400, "body": {"error": "Illegal namespace name".format(path.namespace)}}
 
-    db.put(database_name=path.namespace, document_id='.event_sources', data={})
+    if 'event_source' in params and params['event_source'] is not None:
+        event_sources = {params['event_source']['name']: params['event_source'].copy()}
+    else:
+        event_sources = {}
+
+    db.put(database_name=path.namespace, document_id='.event_sources', data=event_sources)
     db.put(database_name=path.namespace, document_id='.trigger_events', data={})
     db.put(database_name=path.namespace, document_id='.triggers', data={})
     db.put(database_name=path.namespace, document_id='.global_context', data=params['global_context'])
+
+    requests.post(params['private_credentials']['event-router-endpoint'],
+                  json={'namespace': path.namespace})
+
     return {"statusCode": 201, "body": {"created": path.namespace}}
 
 

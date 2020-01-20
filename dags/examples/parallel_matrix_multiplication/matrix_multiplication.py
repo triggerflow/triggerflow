@@ -7,19 +7,20 @@ import shutil
 from dags.operators import CallAsyncOperator, MapOperator
 from dags import DAG
 
-N = 10  # Matrix size
-chunks = 4  # Number of chunks
-step = (N*N) // chunks  # Rows and columns per chunk
+N = 15000  # Matrix size
+chunks = 1000  # Number of chunks
+step = (N * N) // chunks  # Rows and columns per chunk
 bucket = 'aitor-data'  # Bucket name to store temporary data
 generate_matrices_flag = True  # Flag to generate new matrices
-nbytes = 8 * (N*N)  # sizeof(float64) * N*N
+nbytes = 8 * (N * N)  # sizeof(float64) * N*N
 
-if ((N*N) % chunks) != 0:
+if ((N * N) % chunks) != 0:
     raise Exception('Unbalanced partitioning')
 
 
 def generate_matrices():
-    with open(os.path.expanduser('~/cos_credentials.json'), 'r') as cos_credentials:
+    cos_credentials_path = os.path.expanduser('~/cos_credentials.json')
+    with open(cos_credentials_path, 'r') as cos_credentials:
         cos_config = json.loads(cos_credentials.read())['cos_credentials']
 
     cos = ibm_boto3.client('s3',
@@ -45,18 +46,20 @@ if generate_matrices_flag:
 pmm = DAG(dag_id='parallel_matrix_multiplication')
 
 shutil.make_archive('multiply', 'zip', os.path.join(os.getcwd(),
-                                                'dags', 'examples', 'parallel_matrix_multiplication',
-                                                'ibm-cf_matrix_multiply'))
+                                                    'dags', 'examples', 'parallel_matrix_multiplication',
+                                                    'ibm-cf_matrix_multiply'))
 
 with open(os.path.join(os.getcwd(), 'multiply.zip'), 'rb') as zipf:
     codebin = zipf.read()
+
+print(step)
 
 parallel_multiplications = MapOperator(
     task_id='parallel_multiplications',
     function_name='matrix_multiply',
     function_package='eventprocessor_functions',
     function_memory=1024,
-    code=codebin,
+    zipfile=codebin,
     iter_data=[{'chunk': x,
                 'step': step,
                 'N': N,
@@ -76,7 +79,7 @@ join_results = CallAsyncOperator(
     function_name='matrix_join',
     function_package='eventprocessor_functions',
     function_memory=2048,
-    code=codebin,
+    zipfile=codebin,
     args={'chunks': chunks,
           'N': N},
     dag=pmm

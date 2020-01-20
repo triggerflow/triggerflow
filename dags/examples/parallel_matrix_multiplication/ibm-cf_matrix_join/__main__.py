@@ -15,7 +15,7 @@ def main(args):
                            aws_secret_access_key=params.cos_credentials['secret_access_key'],
                            endpoint_url=params.cos_credentials['endpoint'])
 
-    result = np.zeros([params.N, params.N], dtype=np.float32)
+    result = np.zeros([params.N, params.N], dtype=np.float64)
 
     for i in range(params.chunks):
         obj = cos.get_object(Bucket=bucket, Key='result_chunk{}'.format(i))
