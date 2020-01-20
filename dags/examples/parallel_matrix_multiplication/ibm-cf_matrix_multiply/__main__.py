@@ -34,6 +34,7 @@ def main(args):
             row_array = rows_cache[row]
 
         column = (i + (params.step * params.chunk)) % params.N
+
         if column not in columns_cache:
             bytes0 = column * (params.nbytes // params.N)
             bytes1 = (bytes0 + (params.nbytes // params.N)) - 1
@@ -44,6 +45,7 @@ def main(args):
         else:
             column_array = columns_cache[column]
 
+        print("Iteration {}: {} * {}", i, row, column)
         res_array = np.multiply(row_array, column_array)
         res = np.sum(res_array)
         results[(row, column)] = res
