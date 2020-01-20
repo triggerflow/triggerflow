@@ -20,6 +20,7 @@
 
 import logging
 import os
+import signal
 import yaml
 from datetime import datetime
 
@@ -100,6 +101,9 @@ def health_route():
 def main():
     global private_credentials, db
 
+    # Create process group
+    os.setpgrp()
+
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
@@ -133,6 +137,8 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         print('exiting...')
+    finally:
+        os.killpg(0, signal.SIGKILL)
 
 
 if __name__ == '__main__':

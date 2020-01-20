@@ -16,9 +16,9 @@ def action_terminate(context, event):
 
 def build_kafka_payload(args, context, namespace, subject, call_id):
     payload = args.copy()
-    payload['__OW_COMPOSER_KAFKA_BROKERS'] = context['kafka_credentials']['kafka_brokers_sasl']
-    payload['__OW_COMPOSER_KAFKA_USERNAME'] = context['kafka_credentials']['user']
-    payload['__OW_COMPOSER_KAFKA_PASSWORD'] = context['kafka_credentials']['password']
+    payload['__OW_COMPOSER_KAFKA_BROKERS'] = context['eventstreams']['kafka_brokers_sasl']
+    payload['__OW_COMPOSER_KAFKA_USERNAME'] = context['eventstreams']['user']
+    payload['__OW_COMPOSER_KAFKA_PASSWORD'] = context['eventstreams']['password']
     payload['__OW_COMPOSER_KAFKA_TOPIC'] = context['namespace']
     payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
                                           'trigger_id': context['trigger_id'],
@@ -42,7 +42,7 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
     class InvokeException(Exception):
         pass
 
-    cf_auth = context['ibm_cf_credentials']['api_key'].split(':')
+    cf_auth = context['ibm_cf']['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
     url = context['function_url']

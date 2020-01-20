@@ -1,0 +1,67 @@
+{
+    "dag_id": "parallel_matrix_multiplication",
+    "initial_tasks": [
+        "parallel_multiplications"
+    ],
+    "final_tasks": [
+        "join_results"
+    ],
+    "tasks": {
+        "join_results": {
+            "task_id": "join_results",
+            "upstream_relatives": [
+                "parallel_multiplications"
+            ],
+            "downstream_relatives": [],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "matrix_join",
+                "function_package": "eventprocessor_functions",
+                "function_args": {
+                    "chunks": 4,
+                    "N": 10
+                },
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/matrix_join"
+            }
+        },
+        "parallel_multiplications": {
+            "task_id": "parallel_multiplications",
+            "upstream_relatives": [],
+            "downstream_relatives": [
+                "join_results"
+            ],
+            "operator": {
+                "kind": "map",
+                "function_name": "matrix_multiply",
+                "function_package": "eventprocessor_functions",
+                "function_args": [
+                    {
+                        "chunk": 0,
+                        "step": 25,
+                        "N": 10,
+                        "nbytes": 800
+                    },
+                    {
+                        "chunk": 1,
+                        "step": 25,
+                        "N": 10,
+                        "nbytes": 800
+                    },
+                    {
+                        "chunk": 2,
+                        "step": 25,
+                        "N": 10,
+                        "nbytes": 800
+                    },
+                    {
+                        "chunk": 3,
+                        "step": 25,
+                        "N": 10,
+                        "nbytes": 800
+                    }
+                ],
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/matrix_multiply"
+            }
+        }
+    }
+}

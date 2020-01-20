@@ -6,18 +6,24 @@ from dags.dag import DAG
 from uuid import uuid4
 import json
 
+from importlib import import_module
 
-def make(dag_def: str):
-    dag_vars = {}
-    exec(dag_def, globals(), dag_vars)
-    l = list(filter(lambda obj: type(obj) is DAG, dag_vars.values()))
-    if len(l) != 1:
-        raise Exception("Found more than one DAG definition in the same file, or not definition at all")
 
-    dag_obj = l.pop()
-    dag_dict = dag_obj.to_dict()
+def make(dag_path: str):
+    dag_module = dag_path.split('/')[:-1]
+    mod = import_module('.'.join(dag_module + dag_path))
+    attributes = dir(mod)
+
+    dags = [attribute for attribute in attributes if type(getattr(mod, attribute)) is DAG]
+
+    if len(dags) < 1:
+        raise Exception("No DAGs found")
+    elif len(dags) > 1:
+        raise Exception("Multiple DAGs in the same file is not supported yet")
+
+    dag = getattr(mod, dags.pop())
+    dag_dict = dag.to_dict()
     return json.dumps(dag_dict, indent=4)
-
 
 def deploy(dag_json):
     dagrun_id = '_'.join([dag_json['dag_id'], str(uuid4())])

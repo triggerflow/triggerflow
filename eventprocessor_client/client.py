@@ -92,10 +92,12 @@ class CloudEventProcessorClient:
         if global_context is None:
             global_context = {}
 
+        evt_src = event_source.json if event_source is not None else None
+
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
                            headers={'Authorization': 'Bearer ' + self.token},
                            json={'global_context': global_context,
-                                 'event_source': event_source.json})
+                                 'event_source': evt_src})
 
         print("{}: {}".format(res.status_code, res.json()))
         if res.ok:

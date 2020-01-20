@@ -6,13 +6,13 @@ from confluent_kafka import Producer, Consumer
 from eventprocessor_client.utils import load_config_yaml
 
 if __name__ == '__main__':
-    kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')
+    kafka_credentials = load_config_yaml('~/client_config.yaml')['event_sources']['kafka']
 
-    config = {'bootstrap.servers': ','.join(kafka_credentials['eventstreams']['kafka_brokers_sasl']),
+    config = {'bootstrap.servers': ','.join(kafka_credentials['kafka_brokers_sasl']),
               'ssl.ca.location': '/etc/ssl/certs/',
               'sasl.mechanisms': 'PLAIN',
-              'sasl.username': kafka_credentials['eventstreams']['user'],
-              'sasl.password': kafka_credentials['eventstreams']['password'],
+              'sasl.username': kafka_credentials['user'],
+              'sasl.password': kafka_credentials['password'],
               'security.protocol': 'sasl_ssl'
               }
 
@@ -24,6 +24,6 @@ if __name__ == '__main__':
 
     kafka_producer = Producer(**config)
     termination_event = {'subject': 'init__', 'type': 'termination.event.success'}
-    kafka_producer.produce(topic='branch_b078e8f0-870b-41a7-917f-70f4cf6799fb', value=json.dumps(termination_event), callback=delivery_callback)
+    kafka_producer.produce(topic='parallel_matrix_multiplication_0fa5b7e7-23a9-431c-a1fa-660fb4ab4407', value=json.dumps(termination_event), callback=delivery_callback)
     kafka_producer.flush()
 
