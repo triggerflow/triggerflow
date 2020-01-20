@@ -1,7 +1,7 @@
 import os
 import yaml
 
-CONFIG_FILE = 'dags.config.yaml'
+CONFIG_FILE = 'dags_config.yaml'
 CONFIG_FILE_PATH = os.path.expanduser(os.path.join('~', CONFIG_FILE))
 
 

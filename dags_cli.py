@@ -11,10 +11,10 @@ def cli(ctx):
 
 
 @cli.command('make')
-@click.argument('dag_def', type=click.File('r'))
+@click.argument('dag_path')
 @click.option('--output', '-o', help='Resulting dag in json format', type=str)
-def cli_make(dag_def, output):
-    dag_json = client.make(dag_def.read())
+def cli_make(dag_path, output):
+    dag_json = client.make(dag_path)
     if output is None:
         print(dag_json)
     else:
