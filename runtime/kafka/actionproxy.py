@@ -268,21 +268,18 @@ def run():
 
     if runner.verify():
         try:
-            kakfa_brokers = args.pop('__OW_COMPOSER_KAFKA_BROKERS', None)
-            kakfa_username = args.pop('__OW_COMPOSER_KAFKA_USERNAME', None)
-            kakfa_password = args.pop('__OW_COMPOSER_KAFKA_PASSWORD', None)
-            kakfa_topic = args.pop('__OW_COMPOSER_KAFKA_TOPIC', None)
-            extra_meta = args.pop('__OW_COMPOSER_EXTRAMETA', {})
+            kafka_config = args.pop('__OW_EVENTS_KAFKA_CONFIG', None)
+            extra_meta = args.pop('__OW_EVENTS_EXTRAMETA', {})
 
             env = runner.env(message or {})
+            env['__OW_EVENTS_EXTRAMETA'] = json.dumps(extra_meta)
             code, result = runner.run(args, env)
             response = flask.jsonify(result)
             response.status_code = code
 
-            if None not in [kakfa_brokers, kakfa_username, kakfa_password, kakfa_topic]:
+            if kafka_config:
                 # Send a termination event to kafka
                 try:
-                    kafka_config = get_kafka_config(kakfa_brokers, kakfa_username, kakfa_password)
                     kafka_producer = Producer(kafka_config)
                     termination_cloudevent = {'specversion': '1.0',
                                               'id': env.get('__OW_ACTIVATION_ID'),
@@ -290,9 +287,9 @@ def run():
                                               'type': 'termination.event.success',
                                               'time': str(datetime.utcnow().isoformat()),
                                               'subject': extra_meta['subject'],
-                                              'triggersource': extra_meta['trigger_id'],
                                               'datacontenttype': 'application/json',
                                               'data': result}
+                    kakfa_topic = extra_meta['namespace']
                     print('Sending termination event to kafka topic: {}'.format(kakfa_topic))
                     kafka_producer.produce(topic=kakfa_topic, value=json.dumps(termination_cloudevent),
                                            callback=delivery_callback)
@@ -309,24 +306,12 @@ def run():
     return complete(response)
 
 
-def get_kafka_config(brokers, username, password):
-    config = {'bootstrap.servers': ','.join(brokers),
-              'ssl.ca.location': '/etc/ssl/certs/',
-              'sasl.mechanisms': 'PLAIN',
-              'sasl.username': username,
-              'sasl.password': password,
-              'security.protocol': 'sasl_ssl'
-              }
-
-    return config
-
 def delivery_callback(err, msg):
     if err:
         print('Message failed delivery: %s' % err)
     else:
         print('Message delivered to %s partition [%d] @ offset %d' %
-                (msg.topic(), msg.partition(), msg.offset()))
-
+              (msg.topic(), msg.partition(), msg.offset()))
 
 
 def complete(response):

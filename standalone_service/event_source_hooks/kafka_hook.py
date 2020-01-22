@@ -15,6 +15,7 @@ class KafkaAuthMode(Enum):
     NONE = 0
     SASL_PLAINTEXT = 1
 
+
 class KafkaCloudEventSourceHook(Hook):
     def __init__(self,
                  event_queue: Queue,
@@ -60,12 +61,11 @@ class KafkaCloudEventSourceHook(Hook):
             try:
                 records = self.consumer.consume()
                 for record in records:
-                    logging.info("[{}] Received event - Key: {}".format(self.name, record.key()))
-                    if record.error() is None:
-                        payload = record.value()
-                        event = json.loads(payload)
-                        self.event_queue.put(event)
-                        self.records.append(record)
+                    logging.info("[{}] Received event".format(self.topic))
+                    payload = record.value().decode('utf-8')
+                    event = json.loads(payload)
+                    self.event_queue.put(event)
+                    self.records.append(record)
             except TypeError:
                 logging.error("[{}] Received event did not contain "
                               "JSON payload, got {} instead".format(self.name, type(payload)))
