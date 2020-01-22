@@ -11,7 +11,7 @@ N = 15000  # Matrix size
 chunks = 1000  # Number of chunks
 step = (N * N) // chunks  # Rows and columns per chunk
 bucket = 'aitor-data'  # Bucket name to store temporary data
-generate_matrices_flag = True  # Flag to generate new matrices
+generate_matrices_flag = False  # Flag to generate new matrices
 nbytes = 8 * (N * N)  # sizeof(float64) * N*N
 
 if ((N * N) % chunks) != 0:
@@ -59,6 +59,7 @@ parallel_multiplications = MapOperator(
     function_name='matrix_multiply',
     function_package='eventprocessor_functions',
     function_memory=1024,
+    function_timeout=120,
     zipfile=codebin,
     iter_data=[{'chunk': x,
                 'step': step,
@@ -79,6 +80,7 @@ join_results = CallAsyncOperator(
     function_name='matrix_join',
     function_package='eventprocessor_functions',
     function_memory=2048,
+    function_timeout=120,
     zipfile=codebin,
     args={'chunks': chunks,
           'N': N},

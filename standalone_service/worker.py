@@ -56,6 +56,7 @@ class Worker(Process):
         self.global_context = {}
         self.events = {}
         self.event_queue = None
+        self.dead_letter_queue = None
 
         # Instantiate DB client
         # TODO Make storage abstract
@@ -74,6 +75,7 @@ class Worker(Process):
         self.__update_triggers()
 
         self.event_queue = Queue()
+        self.dead_letter_queue = Queue()
 
         # Instantiate broker client
         event_sources = self.__cloudant_client.get(database_name=self.namespace, document_id='.event_sources')
@@ -84,44 +86,49 @@ class Worker(Process):
 
         while self.__should_run():
             event = self.event_queue.get()
-            if event:
-                print('New Event-->', event)
-                subject = event['subject']
-                event_type = event['type']
+            print('New Event-->', event)
+            subject = event['subject']
+            event_type = event['type']
 
-                if subject in self.events:
-                    self.events[subject].append(event)
+            if subject in self.events:
+                self.events[subject].append(event)
+            else:
+                self.events[subject] = [event]
+
+            if subject in self.trigger_events and event_type in self.trigger_events[subject]:
+                triggers = self.trigger_events[subject][event_type]
+
+                for trigger_id in triggers:
+                    condition_name = self.triggers[trigger_id]['condition']
+                    action_name = self.triggers[trigger_id]['action']
+                    context = self.triggers[trigger_id]['context']
+
+                    context.update(self.global_context)
+                    context['events'] = self.events
+                    context['trigger_events'] = self.trigger_events
+                    context['triggers'] = self.triggers
+                    context['trigger_id'] = trigger_id
+                    context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
+
+                    condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
+                    action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
+
+                    try:
+                        if condition(context, event):
+                            action(context, event)
+                    except Exception as e:
+                        # TODO Handle condition/action exceptions
+                        raise e
+            else:
+                logging.warn('[{}] Event with subject {} not in cache'.format(self.namespace, subject))
+                self.__update_triggers()
+                if subject in self.trigger_events:
+                    self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
-                    self.events[subject] = [event]
+                    self.dead_letter_queue.put(event)
 
-                if subject in self.trigger_events and event_type in self.trigger_events[subject]:
-                    triggers = self.trigger_events[subject][event_type]
+            # TODO Commit events that successfully fired triggers
 
-                    for trigger_id in triggers:
-                        condition_name = self.triggers[trigger_id]['condition']
-                        action_name = self.triggers[trigger_id]['action']
-                        context = self.triggers[trigger_id]['context']
-
-                        context.update(self.global_context)
-                        context['events'] = self.events
-                        context['trigger_events'] = self.trigger_events
-                        context['triggers'] = self.triggers
-                        context['trigger_id'] = trigger_id
-                        context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
-
-                        condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
-                        action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
-
-                        try:
-                            if condition(context, event):
-                                action(context, event)
-                        except Exception as e:
-                            # TODO Handle condition/action exceptions
-                            raise e
-                else:
-                    logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
-
-                # broker.commit([record])
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())
@@ -136,6 +143,7 @@ class Worker(Process):
         return self.current_state == Worker.State.RUNNING
 
     def __update_triggers(self):
+        logging.info("[{}] Updating triggers cache".format(self.namespace))
         try:
             self.trigger_events = self.__cloudant_client.get(database_name=self.namespace, document_id='.trigger_events')
             new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
@@ -146,6 +154,8 @@ class Worker(Process):
         except KeyError:
             logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
             return None
+        logging.info("[{}] Triggers updated".format(self.namespace))
+
 
     @staticmethod
     def __dump_request_response(trigger_name, response):

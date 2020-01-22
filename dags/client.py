@@ -1,17 +1,20 @@
+import json
+import os
+from uuid import uuid4
+from importlib import import_module
+
 from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
 from eventprocessor_client.utils import load_config_yaml
 from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
 from dags.dag import DAG
 
-from uuid import uuid4
-import json
-
-from importlib import import_module
 
 
 def make(dag_path: str):
-    dag_module = dag_path.split('/')[:-1]
-    mod = import_module('.'.join(dag_module + dag_path))
+    if not (dag_path.endswith('.py') or os.path.isfile(dag_path)):
+        raise Exception('Path must be a python script containing a DAG definition')
+    package, _ = dag_path.replace('/', '.').rsplit('.', 1)
+    mod = import_module(package)
     attributes = dir(mod)
 
     dags = [attribute for attribute in attributes if type(getattr(mod, attribute)) is DAG]

@@ -138,6 +138,7 @@ def main():
     except KeyboardInterrupt:
         print('exiting...')
     finally:
+        # Kill all child processes
         os.killpg(0, signal.SIGKILL)
 
 
