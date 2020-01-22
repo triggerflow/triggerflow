@@ -3,47 +3,45 @@ import ibm_boto3
 import pickle
 from types import SimpleNamespace
 
+lookahead = 50
+
 
 def main(args):
+
+    def get_array(matrix, n):
+        if matrix not in cache:
+            cache[matrix] = {}
+
+        if n not in cache[matrix]:
+            bytes0 = n * (params.nbytes // params.N)
+            bytes1 = ((bytes0 + (params.nbytes // params.N) * lookahead) % params.nbytes) - 1
+
+            obj = cos.get_object(Bucket=bucket, Key='A', Range='bytes={}-{}'.format(bytes0, bytes1))
+            arrays = np.frombuffer(obj['Body'].read(), dtype=np.float64)
+            arrays = arrays.reshape(len(arrays) % params.N, params.N)
+            for i, array in enumerate(arrays):
+                cache[matrix][i+n] = array
+
+        return cache[matrix][n]
     print(args)
 
+    cache = {}
     params = SimpleNamespace(**args)
-
     bucket = params.cos_credentials['bucket']
+    results = {}
 
     cos = ibm_boto3.client('s3',
                            aws_access_key_id=params.cos_credentials['access_key'],
                            aws_secret_access_key=params.cos_credentials['secret_access_key'],
                            endpoint_url=params.cos_credentials['endpoint'])
 
-    results = {}
-    rows_cache = {}
-    columns_cache = {}
-
     for i in range(params.step):
         row = (i + (params.step * params.chunk)) // params.N
-
-        if row not in rows_cache:
-            bytes0 = row * (params.nbytes // params.N)
-            bytes1 = (bytes0 + (params.nbytes // params.N)) - 1
-
-            obj = cos.get_object(Bucket=bucket, Key='A', Range='bytes={}-{}'.format(bytes0, bytes1))
-            row_array = np.frombuffer(obj['Body'].read(), dtype=np.float64)
-            rows_cache[row] = row_array
-        else:
-            row_array = rows_cache[row]
-
+        row_array = get_array('A', row)
         column = (i + (params.step * params.chunk)) % params.N
-        if column not in columns_cache:
-            bytes0 = column * (params.nbytes // params.N)
-            bytes1 = (bytes0 + (params.nbytes // params.N)) - 1
+        column_array = get_array('B', column)
 
-            obj = cos.get_object(Bucket=bucket, Key='B', Range='bytes={}-{}'.format(bytes0, bytes1))
-            column_array = np.frombuffer(obj['Body'].read(), dtype=np.float64)
-            columns_cache[column] = column_array
-        else:
-            column_array = columns_cache[column]
-
+        # print("Iteration {}: {} * {}", i, row, column)
         res_array = np.multiply(row_array, column_array)
         res = np.sum(res_array)
         results[(row, column)] = res
