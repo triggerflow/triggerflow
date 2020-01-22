@@ -3,16 +3,19 @@ import os
 import numpy as np
 import ibm_boto3
 import shutil
+import gc
+import math
 
 from dags.operators import CallAsyncOperator, MapOperator
 from dags import DAG
 
-N = 15000  # Matrix size
-chunks = 1000  # Number of chunks
-step = (N * N) // chunks  # Rows and columns per chunk
+N = 8192  # Matrix size
+chunks = 256  # Number of chunks
+step = (N * N) // chunks  # Number of elements to calculate per chunk
 bucket = 'aitor-data'  # Bucket name to store temporary data
 generate_matrices_flag = False  # Flag to generate new matrices
-nbytes = 8 * (N * N)  # sizeof(float64) * N*N
+matrix_size = 8 * (N * N)  # sizeof(np.float64) * N*N
+chunk_matrix_dimension = N // int(math.sqrt(chunks))  # Dimension of the chunk's submatrix
 
 if ((N * N) % chunks) != 0:
     raise Exception('Unbalanced partitioning')
@@ -28,13 +31,16 @@ def generate_matrices():
                            aws_secret_access_key=cos_config['secret_access_key'],
                            endpoint_url=cos_config['endpoint'])
 
-    a = np.random.rand(N, N)
-    byte_data = a.tobytes()
+    matrix = np.random.rand(N, N).flatten()
+    byte_data = matrix.tobytes()
     cos.put_object(Bucket=bucket, Key='A', Body=byte_data)
 
-    b = np.random.rand(N, N)
-    b = np.transpose(b)
-    byte_data = b.tobytes()
+    matrix = None
+    byte_data = None
+    gc.collect()
+
+    matrix = np.random.rand(N, N).transpose().flatten()
+    byte_data = matrix.tobytes()
     cos.put_object(Bucket=bucket, Key='B', Body=byte_data)
 
     print('Done')
@@ -59,12 +65,15 @@ parallel_multiplications = MapOperator(
     function_name='matrix_multiply',
     function_package='eventprocessor_functions',
     function_memory=1024,
-    function_timeout=120,
+    function_timeout=120000,
     zipfile=codebin,
     iter_data=[{'chunk': x,
                 'step': step,
                 'N': N,
-                'nbytes': nbytes} for x in range(chunks)],
+                'matrix_size': matrix_size,
+                'element': ((x * chunk_matrix_dimension) % N,
+                            ((x * chunk_matrix_dimension) // N) * chunk_matrix_dimension),
+                'chunk_matrix_dimension': chunk_matrix_dimension} for x in range(chunks)],
     dag=pmm,
 )
 
@@ -80,7 +89,7 @@ join_results = CallAsyncOperator(
     function_name='matrix_join',
     function_package='eventprocessor_functions',
     function_memory=2048,
-    function_timeout=120,
+    function_timeout=120000,
     zipfile=codebin,
     args={'chunks': chunks,
           'N': N},
