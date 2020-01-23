@@ -22,11 +22,6 @@ if __name__ == "__main__":
         pass
 
     er.set_namespace('basic_kafka')
-    #
-    # try:
-    #     er.add_event_source(kafka)
-    # except client_errors.ResourceAlreadyExistsError:
-    #     pass
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 

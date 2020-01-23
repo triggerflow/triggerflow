@@ -1,11 +1,7 @@
-from utils import authorize_request, parse_path
+from utils import parse_path
 
 
 def add_eventsource(db, path, params):
-    ok, res = authorize_request(db, params)
-    if not ok:
-        return res
-
     path = parse_path(path)
     try:
         event_sources = db.get(database_name=path.namespace, document_id='.event_sources')
