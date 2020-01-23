@@ -5,4 +5,5 @@ cloudant
 confluent_kafka
 PyYAML
 dill
-pika==0.13.1
+pika==0.13
+python-dateutil

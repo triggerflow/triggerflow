@@ -85,6 +85,7 @@ class Worker(Process):
             hook.start()
 
         while self.__should_run():
+            print('Waiting for events...')
             event = self.event_queue.get()
             print('New Event-->', event)
             subject = event['subject']
@@ -128,7 +129,6 @@ class Worker(Process):
                     self.dead_letter_queue.put(event)
 
             # TODO Commit events that successfully fired triggers
-
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())
