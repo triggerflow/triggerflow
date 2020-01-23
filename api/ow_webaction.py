@@ -6,6 +6,8 @@ import eventsources
 from cloudant_client import CloudantClient
 from utils import authenticate_request
 
+import traceback  # debug
+
 
 def ow_webaction_main(args):
     print(args)  # DEBUG
@@ -55,8 +57,8 @@ def ow_webaction_main(args):
 
         return res
     except KeyError as e:
-        print(e)  # debug
+        print(traceback.format_exc())  # debug
         return {"statusCode": 400, "body": {'error': 'Key error: {}'.format(str(e))}}
     except Exception as e:
-        print(e)  # debug
+        print(traceback.format_exc())  # debug
         return {"statusCode": 500, "body": {'error': "Internal error: {}".format(str(e))}}
