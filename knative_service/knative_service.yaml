@@ -23,5 +23,5 @@ spec:
             value: 'None'
           resources:
             limits:
-              memory: 4Gi
+              memory: 2Gi
               cpu: 2

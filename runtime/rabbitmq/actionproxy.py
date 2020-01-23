@@ -269,9 +269,9 @@ def run():
 
     if runner.verify():
         try:
-            rabbit_event_queue = args.pop('__OW_COMPOSER_RABBITMQ_EVENTQUEUE', None)
-            rabbit_amqp_url = args.pop('__OW_COMPOSER_RABBITMQ_AMQPURL', None)
-            extra_meta = args.pop('__OW_COMPOSER_EXTRAMETA', {})
+            rabbit_amqp_url = args.pop('__OW_EVENTS_RABBITMQ_AMQPURL', None)
+            extra_meta = args.pop('__OW_EVENTS_EXTRAMETA', {})
+            rabbit_event_queue = extra_meta['namespace']
 
             env = runner.env(message or {})
             code, result = runner.run(args, env)
@@ -296,7 +296,6 @@ def run():
                                                   'type': 'termination.event.success',
                                                   'time': str(datetime.utcnow().isoformat()),
                                                   'subject': extra_meta['subject'],
-                                                  'triggersource': extra_meta['trigger_id'],
                                                   'datacontenttype': 'application/json',
                                                   'data': result}
 

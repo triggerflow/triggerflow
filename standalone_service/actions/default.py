@@ -14,27 +14,40 @@ def action_terminate(context, event):
     pass
 
 
-def build_kafka_payload(args, context, namespace, subject, call_id):
+def build_kafka_payload(args, context, call_id):
     payload = args.copy()
-    payload['__OW_COMPOSER_KAFKA_BROKERS'] = context['eventstreams']['kafka_brokers_sasl']
-    payload['__OW_COMPOSER_KAFKA_USERNAME'] = context['eventstreams']['user']
-    payload['__OW_COMPOSER_KAFKA_PASSWORD'] = context['eventstreams']['password']
-    payload['__OW_COMPOSER_KAFKA_TOPIC'] = context['namespace']
-    payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
-                                          'trigger_id': context['trigger_id'],
-                                          'subject': subject,
-                                          'call_id': call_id}
+    config = context['eventstreams']
+    kafka_config = get_kafka_config(config['kafka_brokers_sasl'],
+                                    config['user'],
+                                    config['password'])
+
+    payload['__OW_EVENTS_KAFKA_CONFIG'] = kafka_config
+    payload['__OW_EVENTS_EXTRAMETA'] = {'namespace': context['namespace'],
+                                        'trigger_id': context['trigger_id'],
+                                        'subject': context['subject'],
+                                        'call_id': call_id}
     return payload
 
 
-def build_rabbitmq_payload(args, context, namespace, subject, call_id):
+def get_kafka_config(kafka_brokers_sasl, user, password):
+    config = {'bootstrap.servers': ','.join(kafka_brokers_sasl),
+              'ssl.ca.location': '/etc/ssl/certs/',
+              'sasl.mechanisms': 'PLAIN',
+              'sasl.username': user,
+              'sasl.password': password,
+              'security.protocol': 'sasl_ssl'
+              }
+
+    return config
+
+
+def build_rabbitmq_payload(args, context, call_id):
     payload = args.copy()
-    payload['__OW_COMPOSER_RABBITMQ_EVENTQUEUE'] = context['RabbitMQ']['topic']
-    payload['__OW_COMPOSER_RABBITMQ_AMQPURL'] = context['RabbitMQ']['amqp_url']
-    payload['__OW_COMPOSER_EXTRAMETA'] = {'namespace': namespace,
-                                          'trigger_id': context['trigger_id'],
-                                          'subject': subject,
-                                          'call_id': call_id}
+    payload['__OW_EVENTS_RABBITMQ_AMQPURL'] = context['RabbitMQ']['amqp_url']
+    payload['__OW_EVENTS_EXTRAMETA'] = {'namespace': context['namespace'],
+                                        'trigger_id': context['trigger_id'],
+                                        'subject': context['subject'],
+                                        'call_id': call_id}
     return payload
 
 
@@ -60,7 +73,7 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
 
     ################################################
     def invoke(call_id, args):
-        payload = payload_builder(args, context, namespace, subject, call_id)
+        payload = payload_builder(args, context, call_id)
 
         act_id = None
         retry = True
@@ -104,7 +117,6 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
         for cid, args in enumerate(function_args):
             res = executor.submit(invoke, cid, args)
             futures.append(res)
-
     responses = []
     try:
         responses = [fut.result() for fut in futures]
@@ -114,12 +126,13 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
     activations_done = [call_id for call_id, _ in responses]
     activations_not_done = [call_id for call_id in range(total_activations) if call_id not in activations_done]
 
-    downstream_triggers = context['trigger_events'][subject]['termination.event.success']
-    for downstream_trigger in downstream_triggers:
-        if 'total_activations' in context['triggers'][downstream_trigger]['context']:
-            context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
-        else:
-            context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
+    if subject in context['trigger_events']:
+        downstream_triggers = context['trigger_events'][subject]['termination.event.success']
+        for downstream_trigger in downstream_triggers:
+            if 'total_activations' in context['triggers'][downstream_trigger]['context']:
+                context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
+            else:
+                context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
 
     # All activations are unsuccessful
     if not activations_done:

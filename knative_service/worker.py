@@ -17,16 +17,19 @@
  * limitations under the License.
  */
 """
-import json
 import logging
-from importlib import import_module
+import re
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
-from multiprocessing import Process
-import brokers as brokers
-from datetimeutils import seconds_since
-from libs.cloudant_client import CloudantClient
+from multiprocessing import Process, Queue
+
+import standalone_service.event_source_hooks as hooks
+from standalone_service.datetimeutils import seconds_since
+from standalone_service.libs.cloudant_client import CloudantClient
+
+import standalone_service.conditions.default as default_conditions
+import standalone_service.actions.default as default_actions
 
 
 class AuthHandlerException(Exception):
@@ -50,17 +53,18 @@ class Worker(Process):
         self.__user_credentials = user_credentials
 
         self.triggers = {}
-        self.source_events = {}
+        self.trigger_events = {}
         self.global_context = {}
         self.events = {}
+        self.event_queue = None
 
         # Instantiate DB client
+        # TODO Make storage abstract
         self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
                                                 self.__private_credentials['cloudant']['apikey'])
 
         # Get global context
-        dc = self.__cloudant_client.get(database_name=namespace, document_id='global_context')
-        self.global_context.update(dc)
+        self.global_context = self.__cloudant_client.get(database_name=namespace, document_id='.global_context')
 
         self.current_state = Worker.State.INITIALIZED
 
@@ -70,27 +74,29 @@ class Worker(Process):
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
 
+        self.event_queue = Queue()
+
         # Instantiate broker client
-        event_source = self.__cloudant_client.get(database_name=self.namespace, document_id='event_source')
-        event_source_type = event_source['event_source_type']
-        broker = getattr(brokers, '{}Broker'.format(event_source_type))
-        config = event_source[event_source_type]
-        broker = broker(**config)
+        event_sources = self.__cloudant_client.get(database_name=self.namespace, document_id='.event_sources')
+        for evt_src in event_sources.values():
+            hook_class = getattr(hooks, '{}Hook'.format(evt_src['class']))
+            hook = hook_class(event_queue=self.event_queue, **evt_src['spec'])
+            hook.start()
 
         while self.__should_run():
-            record = broker.poll()
-            if record:
-                event = json.loads(record.value())
+            event = self.event_queue.get()
+            if event:
                 print('New Event-->', event)
                 subject = event['subject']
+                event_type = event['type']
 
                 if subject in self.events:
                     self.events[subject].append(event)
                 else:
                     self.events[subject] = [event]
 
-                if subject in self.source_events:
-                    triggers = self.source_events[subject]
+                if subject in self.trigger_events and event_type in self.trigger_events[subject]:
+                    triggers = self.trigger_events[subject][event_type]
 
                     for trigger_id in triggers:
                         condition_name = self.triggers[trigger_id]['condition']
@@ -98,17 +104,14 @@ class Worker(Process):
                         context = self.triggers[trigger_id]['context']
 
                         context.update(self.global_context)
-                        context.update(event_source)
                         context['events'] = self.events
-                        context['source_events'] = self.source_events
+                        context['trigger_events'] = self.trigger_events
                         context['triggers'] = self.triggers
                         context['trigger_id'] = trigger_id
                         context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
 
-                        mod = import_module('conditions', 'default')
-                        condition = getattr(mod, '_'.join(['condition', condition_name.lower()]))
-                        mod = import_module('actions', 'default')
-                        action = getattr(mod, '_'.join(['action', action_name.lower()]))
+                        condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
+                        action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
 
                         try:
                             if condition(context, event):
@@ -119,7 +122,7 @@ class Worker(Process):
                 else:
                     logging.warn('[{}] Received unexpected event: {} '.format(self.namespace, subject))
 
-                broker.commit([record])
+                # broker.commit([record])
 
         self.worker_status['worker_start_time'] = str(worker_start_time)
         self.worker_status['worker_end_time'] = str(datetime.now())
@@ -135,8 +138,8 @@ class Worker(Process):
 
     def __update_triggers(self):
         try:
-            self.source_events = self.__cloudant_client.get(database_name=self.namespace, document_id='source_events')
-            new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='triggers')
+            self.trigger_events = self.__cloudant_client.get(database_name=self.namespace, document_id='.trigger_events')
+            new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
             for k, v in new_triggers.items():
                 if k not in self.triggers:
                     self.triggers[k] = v
