@@ -60,6 +60,7 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
 
     url = context['function_url']
     namespace = context['namespace']
+    subject = context['subject']
 
     # Transform a callasync trigger to a map trigger of a single function
     if context['kind'] == 'callasync':
@@ -110,7 +111,6 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
 
     ################################################
 
-    subject = event['subject']
     logging.info("[{}] Firing trigger {} - Activations: {} ".format(namespace, subject, total_activations))
     futures = []
     with ThreadPoolExecutor(max_workers=128) as executor:
@@ -126,13 +126,13 @@ def dags_ibm_cf_invoke(context, event, payload_builder):
     activations_done = [call_id for call_id, _ in responses]
     activations_not_done = [call_id for call_id in range(total_activations) if call_id not in activations_done]
 
-    downstream_triggers = context['trigger_events'][subject]['termination.event.success']
-
-    for downstream_trigger in downstream_triggers:
-        if 'total_activations' in context['triggers'][downstream_trigger]['context']:
-            context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
-        else:
-            context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
+    if subject in context['trigger_events']:
+        downstream_triggers = context['trigger_events'][subject]['termination.event.success']
+        for downstream_trigger in downstream_triggers:
+            if 'total_activations' in context['triggers'][downstream_trigger]['context']:
+                context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
+            else:
+                context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
 
     # All activations are unsuccessful
     if not activations_done:
