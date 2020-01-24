@@ -1,6 +1,5 @@
 from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
 from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client import exceptions as client_errors
 from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
 
 if __name__ == "__main__":
@@ -16,17 +15,7 @@ if __name__ == "__main__":
                                   username=kafka_config['user'],
                                   password=kafka_config['password'])
 
-    try:
-        er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], event_source=kafka)
-    except client_errors.ResourceAlreadyExistsError:
-        pass
-
-    er.set_namespace('basic_kafka')
-    #
-    # try:
-    #     er.add_event_source(kafka)
-    # except client_errors.ResourceAlreadyExistsError:
-    #     pass
+    er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], event_source=kafka)
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 

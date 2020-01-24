@@ -20,7 +20,7 @@ def parse_path(path):
     return ppath
 
 
-def authenticate_user(db, params):
+def authenticate_request(db, params):
     try:
         if 'authorization' not in params['headers']:
             return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
@@ -33,10 +33,8 @@ def authenticate_user(db, params):
 
         user, password = tuple(decoded_userpasswd.split(':'))
 
-        if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
-            raise ValueError('Invalid Username')
-        if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
-            raise ValueError('Invalid Password')
+        if not re.fullmatch(r"[a-zA-Z0-9_]+", user) or not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
+            return False, {'statusCode': 401, 'body': {'error': "Invalid user:password"}}
 
         users = db.get(database_name='auth$', document_id='users')
 
@@ -45,39 +43,3 @@ def authenticate_user(db, params):
 
     except KeyError or ValueError or IndexError as e:
         return False, {'statusCode': 400, 'body': {'error': str(e)}}
-
-
-def generate_session_token(db):
-    # Generate session token
-    token = secrets.token_hex(TOKEN_LEN)
-    timestamp = str(datetime.utcnow().isoformat())
-
-    try:
-        sessions = db.get(database_name='auth$', document_id='sessions')
-    except KeyError:
-        sessions = {}
-    sessions[token] = timestamp
-    db.put(database_name='auth$', document_id='sessions', data=sessions)
-
-    return {'statusCode': 200, 'body': {'token': token}}
-
-
-def authorize_request(db, params):
-    if 'authorization' not in params['headers']:
-        return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
-
-    token = params['headers']['authorization'].split(' ')[1]
-    try:
-        sessions = db.get(database_name='auth$', document_id='sessions')
-    except KeyError:
-        return False, {'statusCode': 401, 'body': {'error': "Unauthorized"}}
-
-    if token in sessions:
-        emitted_token_time = dateutil.parser.parse(sessions[token])
-        seconds = (datetime.utcnow() - emitted_token_time).seconds
-        if seconds > 3600:  # 1 hour
-            return False, {'statusCode': 403, 'body': {'error': 'Token expired'}}
-        else:
-            return True, None
-    else:
-        return False, {'statusCode': 401, 'body': {'error': 'Unauthorized'}}

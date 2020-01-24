@@ -1,11 +1,12 @@
 import re
 
-import utils
 import triggers
 import namespaces
 import eventsources
-import storage
 from cloudant_client import CloudantClient
+from utils import authenticate_request
+
+import traceback  # debug
 
 
 def ow_webaction_main(args):
@@ -19,19 +20,17 @@ def ow_webaction_main(args):
     path = args['__ow_path']
 
     try:
+
+        # Instantiate database client
         db = CloudantClient(username=params['private_credentials']['cloudant']['username'],
                             apikey=params['private_credentials']['cloudant']['apikey'])
 
-        res = {"statusCode": 400, "body": {"error": "Bad request"}}
+        # Authorize request
+        ok, res = authenticate_request(db, params)
+        if not ok:
+            return res
 
-        if re.fullmatch(r"/auth", path):
-            if args['__ow_method'] == 'get':
-                ok, res = utils.authenticate_user(db, params)
-                if not ok:
-                    return res
-                else:
-                    return utils.generate_session_token(db)
-        elif re.fullmatch(r"/namespace/[^/]+", path):
+        if re.fullmatch(r"/namespace/[^/]+", path):
             if args['__ow_method'] == 'put':
                 res = namespaces.add_namespace(db, path, params)
             elif args['__ow_method'] == 'get':
@@ -53,18 +52,13 @@ def ow_webaction_main(args):
                 res = triggers.get_trigger(db, path, params)
             elif args['__ow_method'] == 'delete':
                 res = triggers.delete_trigger(db, path, params)
-        elif re.fullmatch(r"/db/.+", path):
-            if args['__ow_method'] == 'put':
-                res = storage.put(db, params)
-            elif args['__ow_method'] == 'get':
-                res = storage.get(db, params)
-            elif args['__ow_method'] == 'delete':
-                res = storage.delete(db, params)
+        else:
+            res = {"statusCode": 400, "body": {"error": "Bad request"}}
 
         return res
     except KeyError as e:
-        raise e # debug
+        print(traceback.format_exc())  # debug
         return {"statusCode": 400, "body": {'error': 'Key error: {}'.format(str(e))}}
     except Exception as e:
-        raise e  # debug
+        print(traceback.format_exc())  # debug
         return {"statusCode": 500, "body": {'error': "Internal error: {}".format(str(e))}}

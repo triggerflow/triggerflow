@@ -1,4 +1,5 @@
 import requests
+from requests.auth import HTTPBasicAuth
 import re
 from enum import Enum
 from base64 import b64encode
@@ -48,17 +49,7 @@ class CloudEventProcessorClient:
         if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
             raise ValueError('Invalid Password')
 
-        basic_auth = b64encode(bytes(user + ':' + password, 'utf-8')).decode('utf-8')
-
-        res = requests.get('/'.join([self.api_endpoint, 'auth']),
-                           headers={'Authorization': 'Basic ' + basic_auth},
-                           json={})
-
-        print("{}: {}".format(res.status_code, res.json()))
-        if res.ok:
-            self.token = res.json()['token']
-        else:
-            raise Exception('Could not initialize EventProcessor client: {}'.format(res.json()))
+        self.basic_auth = HTTPBasicAuth(user, password)
 
     def set_namespace(self, namespace: str):
         """
@@ -87,15 +78,15 @@ class CloudEventProcessorClient:
 
         if global_context is not None and type(global_context) is dict:
             global_context.update(default_context)
-        if global_context is not None and type(global_context) is not dict:
+        elif global_context is not None and type(global_context) is not dict:
             raise Exception('Global context must be json-serializable dict')
-        if global_context is None:
+        else:
             global_context = {}
 
         evt_src = event_source.json if event_source is not None else None
 
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
-                           headers={'Authorization': 'Bearer ' + self.token},
+                           auth=self.basic_auth,
                            json={'global_context': global_context,
                                  'event_source': evt_src})
 
@@ -120,12 +111,10 @@ class CloudEventProcessorClient:
         :param eventsource: Instance of CloudEventSource containing the specifications of the event source.
         :param overwrite: True for overwriting the event source specification.
         """
-        if self.namespace is None:
-            raise eventprocessor_client.exceptions.NullNamespaceError()
 
         res = requests.put('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
-                           headers={'Authorization': 'Bearer ' + self.token},
+                           auth=self.basic_auth,
                            json={'eventsource': eventsource.json})
 
         print("{}: {}".format(res.status_code, res.json()))
@@ -177,57 +166,9 @@ class CloudEventProcessorClient:
             'id': id}
 
         res = requests.post('/'.join([self.api_endpoint, 'namespace', self.namespace, 'trigger']),
-                            headers={'Authorization': 'Bearer ' + self.token},
+                            auth=self.basic_auth,
                             json={'events': events,
                                   'trigger': trigger})
-
-        print('{}: {}'.format(res.status_code, res.json()))
-        if not res.ok:
-            raise Exception(res.json())
-        else:
-            return res.json()
-
-    def db_get(self, uri):
-        """
-        Gets an object from the database.
-        :param uri: URI of the object (e.g. db://foo/bar)
-        :return: Object.
-        """
-        res = requests.get('/'.join([self.api_endpoint, 'db']),
-                           json={'uri': uri,
-                                 'authentication': {'token': self.token}})
-
-        print('{}: {}'.format(res.status_code, res.json()))
-        if not res.ok:
-            raise Exception(res.json())
-        else:
-            return res.json()
-
-    def db_put(self, uri, data):
-        """
-        Puts an object to the database.
-        :param uri: URI of the object (e.g. db://foo/bar)
-        :param data: Data to be stored.
-        """
-        res = requests.put('/'.join([self.api_endpoint, 'db']),
-                           json={'uri': uri,
-                                 'data': data,
-                                 'authentication': {'token': self.token}})
-
-        print('{}: {}'.format(res.status_code, res.json()))
-        if not res.ok:
-            raise Exception(res.json())
-        else:
-            return res.json()
-
-    def db_delete(self, uri):
-        """
-        Deletes an object from the database.
-        :param uri: URI of the object (e.g. db://foo/bar)
-        """
-        res = requests.delete('/'.join([self.api_endpoint, 'db']),
-                              json={'uri': uri,
-                                    'authentication': {'token': self.token}})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:

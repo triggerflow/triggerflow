@@ -1,9 +1,8 @@
 import numpy as np
 import ibm_boto3
 import pickle
+import math
 from types import SimpleNamespace
-
-lookahead = 50
 
 
 def main(args):
@@ -13,16 +12,18 @@ def main(args):
             cache[matrix] = {}
 
         if n not in cache[matrix]:
-            bytes0 = n * (params.nbytes // params.N)
-            bytes1 = ((bytes0 + (params.nbytes // params.N) * lookahead) % params.nbytes) - 1
+            bytes0 = n * (params.matrix_size // params.N)
+            bytes1 = ((bytes0 + (params.matrix_size // params.N) *
+                       params.chunk_matrix_dimension) % params.matrix_size) - 1
 
-            obj = cos.get_object(Bucket=bucket, Key='A', Range='bytes={}-{}'.format(bytes0, bytes1))
+            obj = cos.get_object(Bucket=bucket, Key=matrix, Range='bytes={}-{}'.format(bytes0, bytes1))
             arrays = np.frombuffer(obj['Body'].read(), dtype=np.float64)
-            arrays = arrays.reshape(len(arrays) % params.N, params.N)
+            arrays = arrays.reshape(len(arrays) // params.N, params.N)
             for i, array in enumerate(arrays):
                 cache[matrix][i+n] = array
 
         return cache[matrix][n]
+
     print(args)
 
     cache = {}
@@ -35,16 +36,16 @@ def main(args):
                            aws_secret_access_key=params.cos_credentials['secret_access_key'],
                            endpoint_url=params.cos_credentials['endpoint'])
 
-    for i in range(params.step):
-        row = (i + (params.step * params.chunk)) // params.N
-        row_array = get_array('A', row)
-        column = (i + (params.step * params.chunk)) % params.N
-        column_array = get_array('B', column)
+    er, ec = params.element
+    for row in range(params.chunk_matrix_dimension):
+        row_array = get_array('A', er + row)
+        for column in range(params.chunk_matrix_dimension):
+            column_array = get_array('B', ec + column)
 
-        # print("Iteration {}: {} * {}", i, row, column)
-        res_array = np.multiply(row_array, column_array)
-        res = np.sum(res_array)
-        results[(row, column)] = res
+            # print("Iteration: {} * {}", row, column)
+            res_array = np.multiply(row_array, column_array)
+            res = np.sum(res_array)
+            results[(row, column)] = res
 
     byte_data = pickle.dumps(results)
     cos.put_object(Bucket=bucket, Key='result_chunk{}'.format(params.chunk), Body=byte_data)

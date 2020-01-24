@@ -145,17 +145,24 @@ class Worker(Process):
     def __update_triggers(self):
         logging.info("[{}] Updating triggers cache".format(self.namespace))
         try:
-            self.trigger_events = self.__cloudant_client.get(database_name=self.namespace, document_id='.trigger_events')
-            new_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
+            all_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
+            new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
+
+            for new_trigger_id, new_trigger in new_triggers.items():
+                for event in new_trigger['depends_on_events']:
+                    if event['subject'] not in self.trigger_events:
+                        self.trigger_events[event['subject']] = {}
+                    if event['type'] not in self.trigger_events[event['subject']]:
+                        self.trigger_events[event['subject']][event['type']] = []
+
+                    self.trigger_events[event['subject']][event['type']].append(new_trigger_id)
+
             for k, v in new_triggers.items():
                 if k not in self.triggers:
                     self.triggers[k] = v
-            return True
         except KeyError:
             logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
-            return None
         logging.info("[{}] Triggers updated".format(self.namespace))
-
 
     @staticmethod
     def __dump_request_response(trigger_name, response):

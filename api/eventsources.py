@@ -1,16 +1,12 @@
-from utils import authorize_request, parse_path
+from utils import parse_path
 
 
 def add_eventsource(db, path, params):
-    ok, res = authorize_request(db, params)
-    if not ok:
-        return res
-
     path = parse_path(path)
-    try:
-        event_sources = db.get(database_name=path.namespace, document_id='.event_sources')
-    except KeyError:
-        return {"statusCode": 404, "body": {"error": "Namespace {} not found".format(path.eventsource)}}
+    if not db.database_exists(database_name=path.namespace):
+        return {"statusCode": 409, "body": {"error": "Namespace {} does not exists".format(path.namespace)}}
+
+    event_sources = db.get(database_name=path.namespace, document_id='.event_sources')
 
     if path.eventsource not in event_sources:
         event_sources[path.eventsource] = params['eventsource'].copy()
