@@ -48,8 +48,7 @@ def deploy(dag_json):
                                    namespace=dagrun_id,
                                    eventsource_name=dagrun_id)
 
-    ep.create_namespace(dagrun_id, global_context=ep_config['global_context'])
-    ep.add_event_source(event_source)
+    ep.create_namespace(dagrun_id, global_context=ep_config['global_context'], event_source=event_source)
 
     tasks = dag_json['tasks']
     for task_name, task in tasks.items():
@@ -73,7 +72,7 @@ def deploy(dag_json):
 
     # Join final tasks
     ep.add_trigger([CloudEvent(end_task) for end_task in dag_json['final_tasks']],
-                   action=DefaultActions.PASS,
+                   action=DefaultActions.TERMINATE,
                    condition=DefaultConditions.IBM_CF_JOIN,
                    context={'subject': '__end'})
 
