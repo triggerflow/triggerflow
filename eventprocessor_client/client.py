@@ -2,10 +2,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 import re
 from enum import Enum
-from base64 import b64encode
 from typing import Optional, Union, List
 
-import eventprocessor_client.exceptions
+from . import exceptions
 from .sources.model import CloudEventSource
 from .sources.cloudevent import CloudEvent
 
@@ -94,7 +93,7 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceAlreadyExistsError(res.json())
+            raise exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
@@ -121,7 +120,7 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceAlreadyExistsError(res.json())
+            raise exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
@@ -144,10 +143,10 @@ class CloudEventProcessorClient:
         :param id: Custom ID for a persistent trigger.
         """
         if self.namespace is None:
-            raise eventprocessor_client.exceptions.NullNamespaceError()
+            raise exceptions.NullNamespaceError()
 
         if transient and id is not None:
-            raise eventprocessor_client.exceptions.NamedTransientTriggerError()
+            raise exceptions.NamedTransientTriggerError()
 
         # Check for arguments types
         if context is None:
