@@ -17,3 +17,7 @@ class Hook(Process):
 
     def commit(self, records):
         raise NotImplementedError()
+
+    def stop(self):
+        raise NotImplementedError()
+

@@ -22,69 +22,56 @@ import logging
 import os
 import signal
 import yaml
-from datetime import datetime
 
-import dateutil.parser
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
 from standalone_service.libs.cloudant_client import CloudantClient
 from standalone_service.health import generateHealthReport
 from standalone_service.worker import Worker
+from standalone_service.utils import authenticate_request
 
 app = Flask(__name__)
 app.debug = False
 
-workers = []
+workers = {}
 private_credentials = None
 db = None
 
 
-@app.route('/run', methods=['POST'])
-def run_workflow():
+@app.route('/namespace/<namespace>', methods=['POST'])
+def start_worker(namespace):
     """
     This method gets the request parameters and starts a new thread worker
     that will act as the event-processor for the the specific trigger namespace.
-    It returns 404 error if the provided parameters are not correct.
+    It returns 400 error if the provided parameters are not correct.
     """
-    try:
-        data = request.get_json(force=True, silent=True)
-        namespace = data['namespace']
-        # user_credentials = data['authentication']
-    except Exception as e:
-        logging.error(e)
-        return jsonify('Invalid input parameters'), 400
-
-    # Authenticate request
-    # if 'token' not in user_credentials:
-    #     logging.warn("Client {} has tried to connect without proper authentication.".format(request.remote_addr))
-    #     return jsonify('Unauthorized'), 401
-    # token = user_credentials['token']
-    # try:
-    #     sessions = db.get(database_name=namespace, document_id='sessions')
-    # except KeyError:
-    #     logging.warn("Client {} has tried to start worker {} but it doesn't exist.".format(request.remote_addr, namespace))
-    #     return jsonify('Unauthorized'), 401
-    # if token in sessions:
-    #     emitted_token_time = dateutil.parser.parse(sessions[token])
-    #     seconds = (datetime.utcnow() - emitted_token_time).seconds
-    #     if seconds > 3600:
-    #         logging.warn("Client {} has tried to connect with expired token.".format(request.remote_addr))
-    #         return jsonify('Token expired'), 401
-    # else:
-    #     logging.warn("Client {} has tried to connect without proper authentication.".format(request.remote_addr))
-    #     return jsonify('Unauthorized'), 401
+    if not authenticate_request(db, request):
+        return jsonify('Unauthorized'), 401
 
     global workers
-    if namespace in list(map(lambda wk: wk.namespace, workers)):
+    if namespace in workers.keys():
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
     logging.info('New request to run worker for namespace {}'.format(namespace))
     worker = Worker(namespace, private_credentials)
-    # worker.daemon = True
     worker.start()
-    workers.append(workers)
+    workers[namespace] = worker
 
     return jsonify('Started worker for namespace {}'.format(namespace)), 201
+
+
+@app.route('/namespace/<namespace>', methods=['DELETE'])
+def delete_worker(namespace):
+    if not authenticate_request(db, request):
+        return jsonify('Unauthorized'), 401
+
+    global workers
+    if namespace not in workers:
+        return jsonify('Worker for namespcace {} is not active'.format(namespace)), 400
+    else:
+        workers[namespace].stop_worker()
+        return jsonify('Worker for namespcace {} stopped'.format(namespace)), 200
+
 
 
 @app.route('/')
