@@ -18,7 +18,7 @@
  */
 """
 import logging
-import re
+import traceback
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -120,6 +120,7 @@ class Worker(Process):
                         if condition(context, event):
                             action(context, event)
                     except Exception as e:
+                        print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
                         raise e
             else:

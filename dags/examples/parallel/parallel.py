@@ -1,4 +1,4 @@
-from dags.operators import CallAsyncOperator, MapOperator
+from dags.operators import IBMCloudFunctionsCallAsyncOperator, IBMCloudFunctionsMapOperator
 from dags import DAG
 
 dag = DAG(dag_id='parallel')
@@ -21,7 +21,7 @@ concurrency = 80
 #         dag=dag,
 #     )
 
-task = MapOperator(
+task = IBMCloudFunctionsMapOperator(
     task_id='my_map',
     function_name='sleep3',
     function_package='triggers-experiments',

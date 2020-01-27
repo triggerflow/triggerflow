@@ -3,7 +3,7 @@ from dags.models.baseoperator import BaseOperator
 from dags.hooks import IBMCloudFunctionsHook
 
 
-class IBMCloudFunctionOperator(BaseOperator):
+class IBMCloudFunctionsOperator(BaseOperator):
     def __init__(
             self,
             function_name: str,
@@ -71,7 +71,7 @@ class IBMCloudFunctionOperator(BaseOperator):
         return baseop
 
 
-class CallAsyncOperator(IBMCloudFunctionOperator):
+class IBMCloudFunctionsCallAsyncOperator(IBMCloudFunctionsOperator):
     def __init__(
             self,
             args: dict = None,
@@ -87,7 +87,7 @@ class CallAsyncOperator(IBMCloudFunctionOperator):
         self.function_args = args
 
 
-class MapOperator(IBMCloudFunctionOperator):
+class IBMCloudFunctionsMapOperator(IBMCloudFunctionsOperator):
     def __init__(
             self,
             iter_data: list,

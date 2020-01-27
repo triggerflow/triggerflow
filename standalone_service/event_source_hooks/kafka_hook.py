@@ -22,8 +22,8 @@ class KafkaCloudEventSourceHook(Hook):
                  broker_list: List[str],
                  topic: str,
                  auth_mode: str,
-                 username: str,
-                 password: str,
+                 username: str = None,
+                 password: str = None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.group_id = str(uuid1())
@@ -34,13 +34,15 @@ class KafkaCloudEventSourceHook(Hook):
                        'default.topic.config': {'auto.offset.reset': 'earliest'},
                        'enable.auto.commit': False
                        }
-        # append Event streams specific config
-        self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
-                            'sasl.mechanisms': 'PLAIN',
-                            'sasl.username': username,
-                            'sasl.password': password,
-                            'security.protocol': 'sasl_ssl'
-                            })
+
+        if auth_mode == 'SASL_PLAINTEXT':
+            # append Event streams specific config
+            self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                                'sasl.mechanisms': 'PLAIN',
+                                'sasl.username': username,
+                                'sasl.password': password,
+                                'security.protocol': 'sasl_ssl'
+                                })
 
         self.consumer = None
         self.topic = topic

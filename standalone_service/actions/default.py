@@ -16,10 +16,16 @@ def action_terminate(context, event):
 
 def build_kafka_payload(args, context, call_id):
     payload = args.copy()
-    config = context['eventstreams']
-    kafka_config = get_kafka_config(config['kafka_brokers_sasl'],
-                                    config['user'],
-                                    config['password'])
+    config = context['kafka']
+
+    kafka_config = {'bootstrap.servers': ','.join(config['broker_list'])}
+
+    if 'auth_mode' in kafka_config and kafka_config['auth_mode'] == 'SASL_PLAINTEXT':
+        kafka_config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                             'sasl.mechanisms': 'PLAIN',
+                             'sasl.username': config['user'],
+                             'sasl.password': config['password'],
+                             'security.protocol': 'sasl_ssl'})
 
     payload['__OW_EVENTS_KAFKA_CONFIG'] = kafka_config
     payload['__OW_EVENTS_EXTRAMETA'] = {'namespace': context['namespace'],
@@ -27,18 +33,6 @@ def build_kafka_payload(args, context, call_id):
                                         'subject': context['subject'],
                                         'call_id': call_id}
     return payload
-
-
-def get_kafka_config(kafka_brokers_sasl, user, password):
-    config = {'bootstrap.servers': ','.join(kafka_brokers_sasl),
-              'ssl.ca.location': '/etc/ssl/certs/',
-              'sasl.mechanisms': 'PLAIN',
-              'sasl.username': user,
-              'sasl.password': password,
-              'security.protocol': 'sasl_ssl'
-              }
-
-    return config
 
 
 def build_rabbitmq_payload(args, context, call_id):

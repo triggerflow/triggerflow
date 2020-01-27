@@ -4,6 +4,6 @@
       "username": "<USERNAME>",
       "apikey": "<APIKEY>"
     },
-    "event-router_endpoint": "<ENDPOINT>"
+    "event-router-endpoint": "<ENDPOINT>"
   }
 }

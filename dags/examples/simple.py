@@ -1,12 +1,12 @@
 import shutil
 import os
 import getpass
-from dags.operators import CallAsyncOperator
+from dags.operators import IBMCloudFunctionsCallAsyncOperator
 from dags import DAG
 
 my_dag = DAG(dag_id='example_dag')
 
-task1 = CallAsyncOperator(
+task1 = IBMCloudFunctionsCallAsyncOperator(
     task_id='run_this_first',
     function_name='hello',
     function_package='dag_test',
@@ -27,7 +27,7 @@ shutil.make_archive('func', 'zip', os.path.join(os.getcwd(), 'dags', 'examples',
 with open(os.path.join(os.getcwd(), 'func.zip'), 'rb') as zipf:
     codebin = zipf.read()
 
-task2 = CallAsyncOperator(
+task2 = IBMCloudFunctionsCallAsyncOperator(
     task_id='get_max',
     function_name='max',
     function_package='dag_test',
@@ -37,7 +37,7 @@ task2 = CallAsyncOperator(
     dag=my_dag
 )
 
-task3 = CallAsyncOperator(
+task3 = IBMCloudFunctionsCallAsyncOperator(
     task_id='add_value',
     function_name='add',
     function_package='dag_test',
