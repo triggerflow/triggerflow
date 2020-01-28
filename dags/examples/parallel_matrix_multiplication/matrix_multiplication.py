@@ -6,7 +6,7 @@ import shutil
 import gc
 import math
 
-from dags.operators import CallAsyncOperator, MapOperator
+from dags.operators import IBMCloudFunctionsCallAsyncOperator, IBMCloudFunctionsMapOperator
 from dags import DAG
 
 N = 8192  # Matrix size
@@ -60,7 +60,7 @@ with open(os.path.join(os.getcwd(), 'multiply.zip'), 'rb') as zipf:
 
 print(step)
 
-parallel_multiplications = MapOperator(
+parallel_multiplications = IBMCloudFunctionsMapOperator(
     task_id='parallel_multiplications',
     function_name='matrix_multiply',
     function_package='eventprocessor_functions',
@@ -84,7 +84,7 @@ shutil.make_archive('join', 'zip', os.path.join(os.getcwd(),
 with open(os.path.join(os.getcwd(), 'join.zip'), 'rb') as zipf:
     codebin = zipf.read()
 
-join_results = CallAsyncOperator(
+join_results = IBMCloudFunctionsCallAsyncOperator(
     task_id='join_results',
     function_name='matrix_join',
     function_package='eventprocessor_functions',

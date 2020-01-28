@@ -8,3 +8,7 @@ class NamedTransientTriggerError(Exception):
 
 class ResourceAlreadyExistsError(Exception):
     pass
+
+
+class ResourceDoesNotExist(Exception):
+    pass

@@ -15,8 +15,9 @@ class KafkaCloudEventSource(CloudEventSource):
         self.broker_list = broker_list
         self.topic = topic
         self.auth_mode = auth_mode
-        self.username = username
-        self.password = password
+        if auth_mode == KafkaAuthMode.SASL_PLAINTEXT:
+            self.username = username
+            self.password = password
 
     @property
     def json(self):

@@ -22,8 +22,8 @@ class KafkaCloudEventSourceHook(Hook):
                  broker_list: List[str],
                  topic: str,
                  auth_mode: str,
-                 username: str,
-                 password: str,
+                 username: str = None,
+                 password: str = None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.group_id = str(uuid1())
@@ -34,17 +34,20 @@ class KafkaCloudEventSourceHook(Hook):
                        'default.topic.config': {'auto.offset.reset': 'earliest'},
                        'enable.auto.commit': False
                        }
-        # append Event streams specific config
-        self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
-                            'sasl.mechanisms': 'PLAIN',
-                            'sasl.username': username,
-                            'sasl.password': password,
-                            'security.protocol': 'sasl_ssl'
-                            })
+
+        if auth_mode == 'SASL_PLAINTEXT':
+            # append Event streams specific config
+            self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                                'sasl.mechanisms': 'PLAIN',
+                                'sasl.username': username,
+                                'sasl.password': password,
+                                'security.protocol': 'sasl_ssl'
+                                })
 
         self.consumer = None
         self.topic = topic
         self.records = list()
+        self.created_topic = False
 
     def run(self):
         self.consumer = Consumer(self.config)
@@ -53,6 +56,7 @@ class KafkaCloudEventSourceHook(Hook):
         topics = self.consumer.list_topics().topics
         if self.topic not in topics:
             self.__create_topic(self.topic)
+            self.created_topic = True
 
         logging.info("[{}] Started consuming from topic {}".format(self.name, self.topic))
         self.consumer.subscribe([self.topic])
@@ -79,10 +83,20 @@ class KafkaCloudEventSourceHook(Hook):
     def commit(self, records):
         self.consumer.commit(offsets=self.__get_offset_list(self.records), async=False)
 
+    def stop(self):
+        self.consumer.close()
+        logging.info('[{}] Consumer closed for topic {}'.format(self.name, self.topic))
+
+        if self.created_topic:
+            try:
+                admin_client = AdminClient(self.config)
+                admin_client.delete_topics([self.topic])
+                logging.info('[{}] Topic {} deleted'.format(self.name, self.topic))
+            except Exception as e:
+                logging.info("[{}] Failed to delete topic {}: {}".format(self.name, self.topic, e))
+        self.terminate()
+
     def __create_topic(self, topic):
-        """
-        Create topics
-        """
         admin_client = AdminClient(self.config)
 
         new_topic = [NewTopic(topic, num_partitions=3, replication_factor=3)]
@@ -96,10 +110,10 @@ class KafkaCloudEventSourceHook(Hook):
         for topic, f in fs.items():
             try:
                 f.result()  # The result itself is None
-                logging.info("Topic {} created".format(topic))
+                logging.info("[{}] Topic {} created".format(self.name, topic))
                 return True
             except Exception as e:
-                logging.info("Failed to create topic {}: {}".format(topic, e))
+                logging.info("[{}] Failed to create topic {}: {}".format(self.name, topic, e))
                 return False
 
     @staticmethod

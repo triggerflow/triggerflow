@@ -24,3 +24,8 @@ from datetime import datetime
 def seconds_since(some_date_time):
     delta = datetime.now() - some_date_time
     return delta.total_seconds()
+
+
+def authenticate_request(db, request):
+    passwd = db.get_key(database_name='auth$', document_id='users', key=request.authorization['username'])
+    return passwd == request.authorization['password']

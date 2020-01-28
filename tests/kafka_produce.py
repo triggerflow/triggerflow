@@ -24,6 +24,6 @@ if __name__ == '__main__':
 
     kafka_producer = Producer(**config)
     termination_event = {'subject': 'init__', 'type': 'termination.event.success'}
-    kafka_producer.produce(topic='parallel_matrix_multiplication_28c01e64-f60d-4113-97bf-0e103bab0eb1', value=json.dumps(termination_event), callback=delivery_callback)
+    kafka_producer.produce(topic='parallel_2ad799fc-f51c-472b-a0d9-6958fda3417a', value=json.dumps(termination_event), callback=delivery_callback)
     kafka_producer.flush()
 

@@ -3,16 +3,17 @@ from dags.models.baseoperator import BaseOperator
 from dags.hooks import IBMCloudFunctionsHook
 
 
-class IBMCloudFunctionOperator(BaseOperator):
+class IBMCloudFunctionsOperator(BaseOperator):
     def __init__(
             self,
             function_name: str,
             function_package: str,
             function_memory: int = 256,
             function_timeout: int = 60000,
-            function_image: str = 'aitorarjona/eventprocessor-kafka-runtime-v36:0.2',
+            function_image: str = 'aitorarjona/eventprocessor-kafka-runtime-v36:0.3',
             code: str = None,
             zipfile: bytes = None,
+            overwrite: bool = False,
             **kwargs):
         super().__init__(**kwargs)
 
@@ -27,7 +28,7 @@ class IBMCloudFunctionOperator(BaseOperator):
         if bool(code) and bool(zipfile):
             raise Exception("Both 'code' and 'zipfile' arguments not permitted.")
 
-        create_function = bool(code) or bool(zipfile)
+        create_function = overwrite and (bool(code) or bool(zipfile))
         is_binary = not bool(code) and bool(zipfile)
 
         code = textwrap.dedent(code) if bool(code) and not bool(zipfile) else zipfile
@@ -70,7 +71,7 @@ class IBMCloudFunctionOperator(BaseOperator):
         return baseop
 
 
-class CallAsyncOperator(IBMCloudFunctionOperator):
+class IBMCloudFunctionsCallAsyncOperator(IBMCloudFunctionsOperator):
     def __init__(
             self,
             args: dict = None,
@@ -86,7 +87,7 @@ class CallAsyncOperator(IBMCloudFunctionOperator):
         self.function_args = args
 
 
-class MapOperator(IBMCloudFunctionOperator):
+class IBMCloudFunctionsMapOperator(IBMCloudFunctionsOperator):
     def __init__(
             self,
             iter_data: list,
