@@ -98,6 +98,24 @@ class CloudEventProcessorClient:
         else:
             raise Exception(res.json())
 
+    def delete_namespace(self, namespace: str = None):
+        if namespace is None and self.namespace is None:
+            raise eventprocessor_client.exceptions.NullNamespaceError()
+        elif namespace is None:
+            namespace = self.namespace
+
+        res = requests.delete('/'.join([self.api_endpoint, 'namespace', namespace]),
+                              auth=self.basic_auth,
+                              json={})
+
+        print("{}: {}".format(res.status_code, res.json()))
+        if res.ok:
+            return res.json()
+        elif res.status_code == 409:
+            raise eventprocessor_client.exceptions.ResourceDoesNotExist(res.json())
+        else:
+            raise Exception(res.json())
+
     def set_event_source(self, eventsource_name: str):
         """
         Sets the default event source for this client when managing triggers.

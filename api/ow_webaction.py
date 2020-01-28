@@ -19,6 +19,9 @@ def ow_webaction_main(args):
     params['headers'] = args['__ow_headers'].copy()
     path = args['__ow_path']
 
+    print('-------------')
+    print(params)
+
     try:
 
         # Instantiate database client

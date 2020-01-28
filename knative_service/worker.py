@@ -25,7 +25,7 @@ from datetime import datetime
 from multiprocessing import Process, Queue
 
 import standalone_service.event_source_hooks as hooks
-from standalone_service.datetimeutils import seconds_since
+from standalone_service.utils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient
 
 import standalone_service.conditions.default as default_conditions

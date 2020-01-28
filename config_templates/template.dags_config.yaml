@@ -1,4 +1,10 @@
-ibm_cloud_functions:
-    endpoint  : <ENDPOINT>
-    namespace : <NAMESPACE>
-    api_key   : <APIKEY>
+operators:
+    ibm_cf:
+        endpoint    : <ENDPOINT>
+        namespace   : <NAMESPACE>
+        api_key     : <APIKEY>
+
+event_sources:
+    kafka:
+        class: Kafka
+        broker_list: <BROKER_LIST>

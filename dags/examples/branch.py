@@ -1,9 +1,9 @@
-from dags.operators import CallAsyncOperator, MapOperator
+from dags.operators import IBMCloudFunctionsCallAsyncOperator, IBMCloudFunctionsMapOperator
 from dags import DAG
 
 map_dag = DAG(dag_id='branch')
 
-random = CallAsyncOperator(
+random = IBMCloudFunctionsCallAsyncOperator(
     task_id='random',
     function_name='do_nothing',
     function_package='dag_test',
@@ -16,7 +16,7 @@ random = CallAsyncOperator(
     dag=map_dag
 )
 
-map1 = MapOperator(
+map1 = IBMCloudFunctionsMapOperator(
     task_id='map1',
     function_name='add',
     function_package='dag_test',
@@ -30,7 +30,7 @@ map1 = MapOperator(
     dag=map_dag,
 )
 
-map2 = MapOperator(
+map2 = IBMCloudFunctionsMapOperator(
     task_id='map2',
     function_name='add',
     function_package='dag_test',
@@ -44,7 +44,7 @@ map2 = MapOperator(
     dag=map_dag,
 )
 
-join = CallAsyncOperator(
+join = IBMCloudFunctionsCallAsyncOperator(
     task_id='map_join',
     function_name='do_nothing',
     function_package='dag_test',

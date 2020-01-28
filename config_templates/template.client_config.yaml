@@ -10,8 +10,8 @@ global_context:
         namespace : <NAMESPACE>
         api_key   : <APIKEY>
 
-    eventstreams:
-        kafka_brokers_sasl: <BROKER_LIST>
+    kafka:
+        broker_list: <BROKER_LIST>
         user: <USER>
         password: <PASSWORD>
     
@@ -21,7 +21,7 @@ global_context:
 
 event_sources:
     kafka:
-        kafka_brokers_sasl: <BROKER_LIST>
+        broker_list: <BROKER_LIST>
         user: <USER>
         password: <PASSWORD>
 

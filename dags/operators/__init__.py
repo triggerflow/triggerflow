@@ -1,1 +1,1 @@
-from .ibm_functions import CallAsyncOperator, MapOperator
+from .ibm_functions import IBMCloudFunctionsCallAsyncOperator, IBMCloudFunctionsMapOperator
