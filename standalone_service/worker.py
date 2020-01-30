@@ -102,8 +102,8 @@ class Worker(Process):
                 triggers = self.trigger_events[subject][event_type]
 
                 for trigger_id in triggers:
-                    condition_name = self.triggers[trigger_id]['condition']
-                    action_name = self.triggers[trigger_id]['action']
+                    condition_name = self.triggers[trigger_id]['condition']['name']
+                    action_name = self.triggers[trigger_id]['action']['name']
                     context = self.triggers[trigger_id]['context']
 
                     context.update(self.global_context)
@@ -112,6 +112,8 @@ class Worker(Process):
                     context['triggers'] = self.triggers
                     context['trigger_id'] = trigger_id
                     context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
+                    context['condition'] = self.triggers[trigger_id]['condition']
+                    context['action'] = self.triggers[trigger_id]['action']
 
                     condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
                     action = getattr(default_actions, '_'.join(['action', action_name.lower()]))

@@ -11,16 +11,22 @@ from .sources.cloudevent import CloudEvent
 
 
 class DefaultConditions(Enum):
-    TRUE = 0
-    IBM_CF_JOIN = 1
+    TRUE = {'name': 'TRUE'}
+    IBM_CF_JOIN = {'name': 'IBM_CF_JOIN'}
 
 
 class DefaultActions(Enum):
-    PASS = 0
-    TERMINATE = 1
-    IBM_CF_INVOKE_KAFKA = 2
-    IBM_CF_INVOKE_RABBITMQ = 3
-    SIM_CF_INVOKE = 4
+    PASS = {'name': 'PASS'}
+    TERMINATE = {'name': 'TERMINATE'}
+    IBM_CF_INVOKE_KAFKA = {'name': 'IBM_CF_INVOKE_KAFKA'}
+    IBM_CF_INVOKE_RABBITMQ = {'name': 'IBM_CF_INVOKE_RABBITMQ'}
+
+
+class DockerImage:
+    def __init__(self, image: str, class_name: str):
+        self.value = {'name': 'DOCKER_IMAGE',
+                      'image': image,
+                      'class_name': class_name}
 
 
 # TODO Replace prints with proper logging
@@ -145,8 +151,8 @@ class CloudEventProcessorClient:
 
     def add_trigger(self,
                     event: Union[CloudEvent, List[CloudEvent]],
-                    condition: Optional[DefaultConditions] = DefaultConditions.TRUE,
-                    action: Optional[DefaultActions] = DefaultActions.PASS,
+                    condition: Optional[Union[DefaultConditions, DockerImage]] = DefaultConditions.TRUE,
+                    action: Optional[Union[DefaultActions, DockerImage]] = DefaultActions.PASS,
                     context: Optional[dict] = None,
                     transient: Optional[bool] = True,
                     id: Optional[str] = None):
@@ -176,8 +182,8 @@ class CloudEventProcessorClient:
         events = [event] if type(event) is not list else event
         events = list(map(lambda evt: evt.json, events))
         trigger = {
-            'condition': condition.name,
-            'action': action.name,
+            'condition': condition.value,
+            'action': action.value,
             'context': context,
             'depends_on_events': events,
             'transient': transient,
