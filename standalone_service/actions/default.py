@@ -1,5 +1,11 @@
 import logging
 import time
+import docker
+import json
+import tarfile
+import io
+import dill
+from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -12,6 +18,45 @@ def action_pass(context, event):
 
 def action_terminate(context, event):
     pass
+
+
+def action_docker_image(context, event):
+    client = docker.from_env()
+
+    context_copy = context.copy()
+
+    print(client.images.list())
+
+    for k, v in context_copy['triggers'].items():
+        del v['context']['triggers']
+
+    env = {'CLASS': context['action']['class_name'],
+           'EVENT': json.dumps(event),
+           'CONTEXT': json.dumps(context_copy)}
+    container = client.containers.create(context['action']['image'], environment=env)
+    container.start()
+    container.wait()
+    output, _ = container.get_archive('/out.json')
+
+    res = {}
+
+    for buffer in output:
+        tar = tarfile.open(mode="r|", fileobj=io.BytesIO(buffer))
+        for l in tar:
+            x = tar.extractfile(l)
+            res = json.loads(x.read())
+
+    context.update(res['context'])
+    return res['result']
+
+
+def action_python_callable(context, event):
+    decoded_callable = b64decode(context['condition']['callable'].encode('utf-8'))
+    f = dill.loads(decoded_callable)
+
+    result = f(context=context, event=event)
+
+    return result
 
 
 def build_kafka_payload(args, context, call_id):
