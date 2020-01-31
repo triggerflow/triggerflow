@@ -13,6 +13,7 @@ from .sources.cloudevent import CloudEvent
 class DefaultConditions(Enum):
     TRUE = {'name': 'TRUE'}
     IBM_CF_JOIN = {'name': 'IBM_CF_JOIN'}
+    COUNTER_THRESHOLD = {'name': 'COUNTER_THRESHOLD'}
 
 
 class DefaultActions(Enum):
