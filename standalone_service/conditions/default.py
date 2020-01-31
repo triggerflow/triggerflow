@@ -2,6 +2,8 @@ import docker
 import json
 import tarfile
 import io
+import dill
+from base64 import b64decode
 
 
 def condition_docker_image(context, event):
@@ -55,3 +57,14 @@ def condition_counter_threshold(context, event):
         context['counter'] += 1
 
     return context['counter'] >= context['threshold']
+
+
+def condition_python_callable(context, event):
+    decoded_callable = b64decode(context['condition']['callable'].encode('utf-8'))
+    f = dill.loads(decoded_callable)
+
+    result = f(context=context, event=event)
+
+    assert isinstance(result, bool)
+
+    return result

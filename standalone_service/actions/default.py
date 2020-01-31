@@ -4,6 +4,8 @@ import docker
 import json
 import tarfile
 import io
+import dill
+from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -28,10 +30,10 @@ def action_docker_image(context, event):
     for k, v in context_copy['triggers'].items():
         del v['context']['triggers']
 
-    env = {'CLASS': context['condition']['class_name'],
+    env = {'CLASS': context['action']['class_name'],
            'EVENT': json.dumps(event),
            'CONTEXT': json.dumps(context_copy)}
-    container = client.containers.create(context['condition']['image'], environment=env)
+    container = client.containers.create(context['action']['image'], environment=env)
     container.start()
     container.wait()
     output, _ = container.get_archive('/out.json')
@@ -46,6 +48,17 @@ def action_docker_image(context, event):
 
     context.update(res['context'])
     return res['result']
+
+
+def condition_python_callable(context, event):
+    decoded_callable = b64decode(context['condition']['callable'].encode('utf-8'))
+    f = dill.loads(decoded_callable)
+
+    result = f(context=context, event=event)
+
+    assert isinstance(result, bool)
+
+    return result
 
 
 def build_kafka_payload(args, context, call_id):

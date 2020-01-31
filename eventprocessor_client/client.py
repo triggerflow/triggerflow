@@ -1,33 +1,12 @@
 import requests
-from requests.auth import HTTPBasicAuth
 import re
-from enum import Enum
-from base64 import b64encode
+from requests.auth import HTTPBasicAuth
 from typing import Optional, Union, List
 
 import eventprocessor_client.exceptions
 from .sources.model import CloudEventSource
 from .sources.cloudevent import CloudEvent
-
-
-class DefaultConditions(Enum):
-    TRUE = {'name': 'TRUE'}
-    IBM_CF_JOIN = {'name': 'IBM_CF_JOIN'}
-    COUNTER_THRESHOLD = {'name': 'COUNTER_THRESHOLD'}
-
-
-class DefaultActions(Enum):
-    PASS = {'name': 'PASS'}
-    TERMINATE = {'name': 'TERMINATE'}
-    IBM_CF_INVOKE_KAFKA = {'name': 'IBM_CF_INVOKE_KAFKA'}
-    IBM_CF_INVOKE_RABBITMQ = {'name': 'IBM_CF_INVOKE_RABBITMQ'}
-
-
-class DockerImage:
-    def __init__(self, image: str, class_name: str):
-        self.value = {'name': 'DOCKER_IMAGE',
-                      'image': image,
-                      'class_name': class_name}
+from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
 
 
 # TODO Replace prints with proper logging
@@ -152,8 +131,8 @@ class CloudEventProcessorClient:
 
     def add_trigger(self,
                     event: Union[CloudEvent, List[CloudEvent]],
-                    condition: Optional[Union[DefaultConditions, DockerImage]] = DefaultConditions.TRUE,
-                    action: Optional[Union[DefaultActions, DockerImage]] = DefaultActions.PASS,
+                    condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
+                    action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
                     transient: Optional[bool] = True,
                     id: Optional[str] = None):
