@@ -25,8 +25,8 @@ from datetime import datetime
 from multiprocessing import Process, Queue
 
 import standalone_service.event_source_hooks as hooks
-from standalone_service.utils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient
+from standalone_service.event_store import AsyncEventStore
 
 import standalone_service.conditions.default as default_conditions
 import standalone_service.actions.default as default_actions
@@ -58,6 +58,7 @@ class Worker(Process):
         self.event_queue = None
         self.dead_letter_queue = None
         self.event_source_hooks = []
+        self.store_event_queue = None
 
         # Instantiate DB client
         # TODO Make storage abstract
@@ -85,6 +86,11 @@ class Worker(Process):
             hook = hook_class(event_queue=self.event_queue, **evt_src['spec'])
             hook.start()
             self.event_source_hooks.append(hook)
+
+        # Instantiate async event store
+        self.store_event_queue = Queue()
+        event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
+        event_store.start()
 
         while self.__should_run():
             print('Waiting for events...')
@@ -121,6 +127,8 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
+                            self.store_event_queue.put((subject, self.events[subject]))
+                            del self.events[subject]
                     except Exception as e:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
@@ -132,8 +140,6 @@ class Worker(Process):
                     self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
                     self.dead_letter_queue.put(event)
-
-            # TODO Commit events that successfully fired triggers
 
     def stop_worker(self):
         for hook in self.event_source_hooks:

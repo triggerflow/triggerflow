@@ -18,6 +18,7 @@ def add_namespace(db, path, params):
 
         db.put(database_name=path.namespace, document_id='.event_sources', data=event_sources)
         db.put(database_name=path.namespace, document_id='.triggers', data={})
+        db.put(database_name=path.namespace, document_id='.events', data={})
         db.put(database_name=path.namespace, document_id='.global_context', data=params['global_context'])
 
     user, password = get_authentication_parameters(params)
