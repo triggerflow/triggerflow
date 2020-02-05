@@ -93,9 +93,9 @@ class Worker(Process):
         event_store.start()
 
         while self.__should_run():
-            print('Waiting for events...')
+            logging.info('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
-            print('New Event-->', event)
+            logging.info('[{}] New Event: {}'.format(self.namespace, event))
             subject = event['subject']
             event_type = event['type']
 
