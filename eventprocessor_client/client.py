@@ -1,25 +1,12 @@
 import requests
-from requests.auth import HTTPBasicAuth
 import re
-from enum import Enum
+from requests.auth import HTTPBasicAuth
 from typing import Optional, Union, List
 
 from . import exceptions
 from .sources.model import CloudEventSource
 from .sources.cloudevent import CloudEvent
-
-
-class DefaultConditions(Enum):
-    TRUE = 0
-    IBM_CF_JOIN = 1
-
-
-class DefaultActions(Enum):
-    PASS = 0
-    TERMINATE = 1
-    IBM_CF_INVOKE_KAFKA = 2
-    IBM_CF_INVOKE_RABBITMQ = 3
-    SIM_CF_INVOKE = 4
+from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
 
 
 # TODO Replace prints with proper logging
@@ -99,7 +86,7 @@ class CloudEventProcessorClient:
 
     def delete_namespace(self, namespace: str = None):
         if namespace is None and self.namespace is None:
-            raise eventprocessor_client.exceptions.NullNamespaceError()
+            raise exceptions.NullNamespaceError()
         elif namespace is None:
             namespace = self.namespace
 
@@ -111,7 +98,7 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceDoesNotExist(res.json())
+            raise exceptions.ResourceDoesNotExist(res.json())
         else:
             raise Exception(res.json())
 
@@ -144,8 +131,8 @@ class CloudEventProcessorClient:
 
     def add_trigger(self,
                     event: Union[CloudEvent, List[CloudEvent]],
-                    condition: Optional[DefaultConditions] = DefaultConditions.TRUE,
-                    action: Optional[DefaultActions] = DefaultActions.PASS,
+                    condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
+                    action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
                     transient: Optional[bool] = True,
                     id: Optional[str] = None):
@@ -175,8 +162,8 @@ class CloudEventProcessorClient:
         events = [event] if type(event) is not list else event
         events = list(map(lambda evt: evt.json, events))
         trigger = {
-            'condition': condition.name,
-            'action': action.name,
+            'condition': condition.value,
+            'action': action.value,
             'context': context,
             'depends_on_events': events,
             'transient': transient,

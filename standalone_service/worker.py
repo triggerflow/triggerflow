@@ -25,8 +25,8 @@ from datetime import datetime
 from multiprocessing import Process, Queue
 
 import standalone_service.event_source_hooks as hooks
-from standalone_service.utils import seconds_since
 from standalone_service.libs.cloudant_client import CloudantClient
+from standalone_service.event_store import AsyncEventStore
 
 import standalone_service.conditions.default as default_conditions
 import standalone_service.actions.default as default_actions
@@ -58,6 +58,7 @@ class Worker(Process):
         self.event_queue = None
         self.dead_letter_queue = None
         self.event_source_hooks = []
+        self.store_event_queue = None
 
         # Instantiate DB client
         # TODO Make storage abstract
@@ -86,6 +87,11 @@ class Worker(Process):
             hook.start()
             self.event_source_hooks.append(hook)
 
+        # Instantiate async event store
+        self.store_event_queue = Queue()
+        event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
+        event_store.start()
+
         while self.__should_run():
             logging.info('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
@@ -102,8 +108,8 @@ class Worker(Process):
                 triggers = self.trigger_events[subject][event_type]
 
                 for trigger_id in triggers:
-                    condition_name = self.triggers[trigger_id]['condition']
-                    action_name = self.triggers[trigger_id]['action']
+                    condition_name = self.triggers[trigger_id]['condition']['name']
+                    action_name = self.triggers[trigger_id]['action']['name']
                     context = self.triggers[trigger_id]['context']
 
                     context.update(self.global_context)
@@ -112,6 +118,8 @@ class Worker(Process):
                     context['triggers'] = self.triggers
                     context['trigger_id'] = trigger_id
                     context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
+                    context['condition'] = self.triggers[trigger_id]['condition']
+                    context['action'] = self.triggers[trigger_id]['action']
 
                     condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
                     action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
@@ -119,6 +127,8 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
+                            self.store_event_queue.put((subject, self.events[subject]))
+                            del self.events[subject]
                     except Exception as e:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
@@ -130,8 +140,6 @@ class Worker(Process):
                     self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
                     self.dead_letter_queue.put(event)
-
-            # TODO Commit events that successfully fired triggers
 
     def stop_worker(self):
         for hook in self.event_source_hooks:
