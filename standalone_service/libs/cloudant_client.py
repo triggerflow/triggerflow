@@ -131,9 +131,9 @@ class CloudantClient:
                     raise e
 
     def set_key(self, database_name, document_id, key, value):
-        db = CloudantDatabase(self.client, database_name)
         retry = self.max_retries
         while retry > 0:
+            db = CloudantDatabase(self.client, database_name)
             try:
                 doc = Document(db, document_id=document_id)
                 doc.update_field(
@@ -146,7 +146,7 @@ class CloudantClient:
             except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
                 retry -= 1
-                if retry == self.max_retries:
+                if retry == 0:
                     raise e
 
     def get_key(self, database_name, document_id, key):

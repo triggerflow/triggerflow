@@ -31,7 +31,7 @@ def cli_deploy(dag_json):
 @cli.command('run')
 @click.argument('dagrun_id', type=str)
 def cli_run(dagrun_id):
-    status_code, res = client.run(dag_id)
+    status_code, res = client.run(dagrun_id)
     print('{} {}'.format(status_code, res))
 
 

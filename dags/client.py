@@ -3,7 +3,6 @@ import os
 from uuid import uuid4
 from importlib import import_module
 
-from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
 from eventprocessor_client.utils import load_config_yaml
 from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
 from dags.dag import DAG

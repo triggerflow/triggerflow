@@ -36,13 +36,7 @@ if __name__ == "__main__":
                             'function_url': url,
                             'kind': 'map'})
 
-    er.add_trigger(CloudEvent('ca1'),
-                   condition=DefaultConditions.IBM_CF_JOIN,
-                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-                   context={'subject': 'ca2',
-                            'function_args': {'iter': 1},
-                            'function_url': url,
-                            'kind': 'callasync'})
+
 
     er.add_trigger([CloudEvent('map1'), CloudEvent('ca2')],
                    condition=DefaultConditions.IBM_CF_JOIN,

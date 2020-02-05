@@ -5,7 +5,7 @@ from dags import DAG
 dag = DAG(dag_id='sequence',
           event_source='kafka')
 
-sequence_length = 80
+sequence_length = 20
 
 
 tasks = []
@@ -19,11 +19,13 @@ for i in range(sequence_length):
         code="""
         import time
         def main(args):
+            print(time.time)
             time.sleep(3)
+            print(time.time)
             return {'result': 'I slept for 3 seconds'}
         """,
         dag=dag,
-        overwrite=False
+        overwrite=True
     )
     tasks.append(task)
 

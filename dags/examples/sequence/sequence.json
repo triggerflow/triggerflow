@@ -1,0 +1,328 @@
+{
+    "dag_id": "sequence",
+    "initial_tasks": [
+        "task_0"
+    ],
+    "final_tasks": [
+        "task_19"
+    ],
+    "eventsource": "kafka",
+    "tasks": {
+        "task_3": {
+            "task_id": "task_3",
+            "upstream_relatives": [
+                "task_2"
+            ],
+            "downstream_relatives": [
+                "task_4"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_7": {
+            "task_id": "task_7",
+            "upstream_relatives": [
+                "task_6"
+            ],
+            "downstream_relatives": [
+                "task_8"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_0": {
+            "task_id": "task_0",
+            "upstream_relatives": [],
+            "downstream_relatives": [
+                "task_1"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_14": {
+            "task_id": "task_14",
+            "upstream_relatives": [
+                "task_13"
+            ],
+            "downstream_relatives": [
+                "task_15"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_15": {
+            "task_id": "task_15",
+            "upstream_relatives": [
+                "task_14"
+            ],
+            "downstream_relatives": [
+                "task_16"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_5": {
+            "task_id": "task_5",
+            "upstream_relatives": [
+                "task_4"
+            ],
+            "downstream_relatives": [
+                "task_6"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_8": {
+            "task_id": "task_8",
+            "upstream_relatives": [
+                "task_7"
+            ],
+            "downstream_relatives": [
+                "task_9"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_18": {
+            "task_id": "task_18",
+            "upstream_relatives": [
+                "task_17"
+            ],
+            "downstream_relatives": [
+                "task_19"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_10": {
+            "task_id": "task_10",
+            "upstream_relatives": [
+                "task_9"
+            ],
+            "downstream_relatives": [
+                "task_11"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_9": {
+            "task_id": "task_9",
+            "upstream_relatives": [
+                "task_8"
+            ],
+            "downstream_relatives": [
+                "task_10"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_4": {
+            "task_id": "task_4",
+            "upstream_relatives": [
+                "task_3"
+            ],
+            "downstream_relatives": [
+                "task_5"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_2": {
+            "task_id": "task_2",
+            "upstream_relatives": [
+                "task_1"
+            ],
+            "downstream_relatives": [
+                "task_3"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_19": {
+            "task_id": "task_19",
+            "upstream_relatives": [
+                "task_18"
+            ],
+            "downstream_relatives": [],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_12": {
+            "task_id": "task_12",
+            "upstream_relatives": [
+                "task_11"
+            ],
+            "downstream_relatives": [
+                "task_13"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_1": {
+            "task_id": "task_1",
+            "upstream_relatives": [
+                "task_0"
+            ],
+            "downstream_relatives": [
+                "task_2"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_11": {
+            "task_id": "task_11",
+            "upstream_relatives": [
+                "task_10"
+            ],
+            "downstream_relatives": [
+                "task_12"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_16": {
+            "task_id": "task_16",
+            "upstream_relatives": [
+                "task_15"
+            ],
+            "downstream_relatives": [
+                "task_17"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_17": {
+            "task_id": "task_17",
+            "upstream_relatives": [
+                "task_16"
+            ],
+            "downstream_relatives": [
+                "task_18"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_6": {
+            "task_id": "task_6",
+            "upstream_relatives": [
+                "task_5"
+            ],
+            "downstream_relatives": [
+                "task_7"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        },
+        "task_13": {
+            "task_id": "task_13",
+            "upstream_relatives": [
+                "task_12"
+            ],
+            "downstream_relatives": [
+                "task_14"
+            ],
+            "operator": {
+                "kind": "callasync",
+                "function_name": "sleep3",
+                "function_package": "triggers-experiments",
+                "function_args": {},
+                "function_url": "https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/triggers-experiments/sleep3"
+            }
+        }
+    }
+}
