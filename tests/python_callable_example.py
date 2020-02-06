@@ -20,11 +20,13 @@ if __name__ == "__main__":
 
     def my_condition(context, event):
         if 'data' in event:
-            return event['data'] == 123
+            return event['data']['number'] == 123
         else:
             return False
 
+    def my_action(context, event):
+        print('Hello')
+
     er.add_trigger(CloudEvent('hello'),
                    condition=PythonCallable(function=my_condition),
-                   action=DefaultActions.PASS,
-                   context={'example_key': 'example_value'})
+                   action=PythonCallable(function=my_action))

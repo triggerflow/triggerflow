@@ -51,7 +51,7 @@ def action_docker_image(context, event):
 
 
 def action_python_callable(context, event):
-    decoded_callable = b64decode(context['condition']['callable'].encode('utf-8'))
+    decoded_callable = b64decode(context['action']['callable'].encode('utf-8'))
     f = dill.loads(decoded_callable)
 
     result = f(context=context, event=event)

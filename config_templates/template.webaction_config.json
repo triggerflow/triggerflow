@@ -1,8 +1,9 @@
 {
   "private_credentials": {
     "cloudant": {
-      "username": "<USERNAME>",
-      "apikey": "<APIKEY>"
+      "cloudant_user": "<USERNAME>",
+      "auth_token": "<PASSWORD>",
+      "url": "<SERVICE_URL>"
     },
     "event-router-endpoint": "<ENDPOINT>"
   }
