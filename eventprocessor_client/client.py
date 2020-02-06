@@ -3,7 +3,7 @@ import re
 from requests.auth import HTTPBasicAuth
 from typing import Optional, Union, List
 
-import eventprocessor_client.exceptions
+from . import exceptions
 from .sources.model import CloudEventSource
 from .sources.cloudevent import CloudEvent
 from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
@@ -80,13 +80,13 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceAlreadyExistsError(res.json())
+            raise exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
     def delete_namespace(self, namespace: str = None):
         if namespace is None and self.namespace is None:
-            raise eventprocessor_client.exceptions.NullNamespaceError()
+            raise exceptions.NullNamespaceError()
         elif namespace is None:
             namespace = self.namespace
 
@@ -98,7 +98,7 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceDoesNotExist(res.json())
+            raise exceptions.ResourceDoesNotExist(res.json())
         else:
             raise Exception(res.json())
 
@@ -125,7 +125,7 @@ class CloudEventProcessorClient:
         if res.ok:
             return res.json()
         elif res.status_code == 409:
-            raise eventprocessor_client.exceptions.ResourceAlreadyExistsError(res.json())
+            raise exceptions.ResourceAlreadyExistsError(res.json())
         else:
             raise Exception(res.json())
 
@@ -148,10 +148,10 @@ class CloudEventProcessorClient:
         :param id: Custom ID for a persistent trigger.
         """
         if self.namespace is None:
-            raise eventprocessor_client.exceptions.NullNamespaceError()
+            raise exceptions.NullNamespaceError()
 
         if transient and id is not None:
-            raise eventprocessor_client.exceptions.NamedTransientTriggerError()
+            raise exceptions.NamedTransientTriggerError()
 
         # Check for arguments types
         if context is None:

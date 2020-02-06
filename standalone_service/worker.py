@@ -92,20 +92,20 @@ class Worker(Process):
         event_store.start()
 
         while self.__should_run():
-            print('Waiting for events...')
+            logging.info('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
-            print('New Event-->', event)
+            logging.info('[{}] New Event: {}'.format(self.namespace, event))
             subject = event['subject']
             event_type = event['type']
 
-            if subject in self.events:
-                self.events[subject].append(event)
-            else:
-                self.events[subject] = [event]
-
             if subject in self.trigger_events and event_type in self.trigger_events[subject]:
-                triggers = self.trigger_events[subject][event_type]
 
+                if subject not in self.events:
+                    self.events[subject] = []
+                self.events[subject].append(event)
+
+                triggers = self.trigger_events[subject][event_type]
+                sucess = True
                 for trigger_id in triggers:
                     condition_name = self.triggers[trigger_id]['condition']['name']
                     action_name = self.triggers[trigger_id]['action']['name']
@@ -126,12 +126,16 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
-                            self.store_event_queue.put((subject, self.events[subject]))
-                            del self.events[subject]
+                        else:
+                            sucess = False
                     except Exception as e:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
                         raise e
+                if sucess:
+                    logging.info('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
+                    self.store_event_queue.put((subject, self.events[subject]))
+
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.namespace, subject))
                 self.__update_triggers()
