@@ -1,4 +1,5 @@
 from multiprocessing import Process, Queue
+import time
 
 
 class AsyncEventStore(Process):
@@ -10,6 +11,12 @@ class AsyncEventStore(Process):
 
     def run(self):
         while True:
+            sucess = False
             event_key, events = self.event_store_queue.get()
-            self.database_client.set_key(database_name=self.namespace, document_id='.events',
-                                         key=event_key, value=events)
+            while not sucess:
+                try:
+                    self.database_client.set_key(database_name=self.namespace, document_id='.events',
+                                                 key=event_key, value=events)
+                    sucess = True
+                except Exception:
+                    time.sleep(1)
