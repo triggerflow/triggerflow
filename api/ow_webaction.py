@@ -25,8 +25,7 @@ def ow_webaction_main(args):
     try:
 
         # Instantiate database client
-        db = CloudantClient(username=params['private_credentials']['cloudant']['username'],
-                            apikey=params['private_credentials']['cloudant']['apikey'])
+        db = CloudantClient(**params['private_credentials']['cloudant'])
 
         # Authorize request
         ok, res = authenticate_request(db, params)

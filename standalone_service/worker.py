@@ -62,8 +62,7 @@ class Worker(Process):
 
         # Instantiate DB client
         # TODO Make storage abstract
-        self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
-                                                self.__private_credentials['cloudant']['apikey'])
+        self.__cloudant_client = CloudantClient(**self.__private_credentials['cloudant'])
 
         # Get global context
         self.global_context = self.__cloudant_client.get(database_name=namespace, document_id='.global_context')
