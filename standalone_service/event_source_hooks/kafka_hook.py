@@ -31,8 +31,8 @@ class KafkaCloudEventSourceHook(Hook):
 
         self.config = {'bootstrap.servers': ','.join(broker_list),
                        'group.id': self.group_id,
-                       'default.topic.config': {'auto.offset.reset': 'earliest'},
-                       'enable.auto.commit': False
+                       #'default.topic.config': {'auto.offset.reset': 'earliest'},
+                       #'enable.auto.commit': False
                        }
 
         if auth_mode == 'SASL_PLAINTEXT':
@@ -63,13 +63,12 @@ class KafkaCloudEventSourceHook(Hook):
         payload = None
         while True:
             try:
-                records = self.consumer.consume()
-                for record in records:
-                    logging.info("[{}] Received event".format(self.topic))
-                    payload = record.value().decode('utf-8')
-                    event = json.loads(payload)
-                    self.event_queue.put(event)
-                    self.records.append(record)
+                message = self.consumer.poll()
+                logging.info("[{}] Received event".format(self.topic))
+                payload = message.value().decode('utf-8')
+                event = json.loads(payload)
+                self.event_queue.put(event)
+                self.records.append(message)
             except TypeError:
                 logging.error("[{}] Received event did not contain "
                               "JSON payload, got {} instead".format(self.name, type(payload)))

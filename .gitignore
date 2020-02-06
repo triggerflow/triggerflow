@@ -142,3 +142,4 @@ dmypy.json
 *.yaml
 !config_templates/
 !config_templates/*
+/deploy.py
