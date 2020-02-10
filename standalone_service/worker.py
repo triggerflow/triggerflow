@@ -28,8 +28,8 @@ import standalone_service.event_source_hooks as hooks
 from standalone_service.libs.cloudant_client import CloudantClient
 from standalone_service.event_store import AsyncEventStore
 
-import standalone_service.conditions.default as default_conditions
-import standalone_service.actions.default as default_actions
+import standalone_service.conditions as conditions
+import standalone_service.actions as actions
 
 
 class AuthHandlerException(Exception):
@@ -62,8 +62,7 @@ class Worker(Process):
 
         # Instantiate DB client
         # TODO Make storage abstract
-        self.__cloudant_client = CloudantClient(self.__private_credentials['cloudant']['username'],
-                                                self.__private_credentials['cloudant']['apikey'])
+        self.__cloudant_client = CloudantClient(**self.__private_credentials['cloudant'])
 
         # Get global context
         self.global_context = self.__cloudant_client.get(database_name=namespace, document_id='.global_context')
@@ -92,6 +91,8 @@ class Worker(Process):
         event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
         event_store.start()
 
+        self.event_queue.put({'subject': '$init', 'type': 'termination.event.success'})
+
         while self.__should_run():
             print('Waiting for events...')
             event = self.event_queue.get()
@@ -112,7 +113,9 @@ class Worker(Process):
                     action_name = self.triggers[trigger_id]['action']['name']
                     context = self.triggers[trigger_id]['context']
 
-                    context.update(self.global_context)
+                    context['global_context'] = self.global_context
+                    context['namespace'] = self.namespace
+                    context['local_event_queue'] = self.event_queue
                     context['events'] = self.events
                     context['trigger_events'] = self.trigger_events
                     context['triggers'] = self.triggers
@@ -121,13 +124,13 @@ class Worker(Process):
                     context['condition'] = self.triggers[trigger_id]['condition']
                     context['action'] = self.triggers[trigger_id]['action']
 
-                    condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
-                    action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
+                    condition = getattr(conditions, '_'.join(['condition', condition_name.lower()]))
+                    action = getattr(actions, '_'.join(['action', action_name.lower()]))
 
                     try:
                         if condition(context, event):
                             action(context, event)
-                            self.store_event_queue.put((subject, self.events[subject]))
+                            # self.store_event_queue.put((subject, self.events[subject]))
                             del self.events[subject]
                     except Exception as e:
                         print(traceback.format_exc())

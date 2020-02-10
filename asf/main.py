@@ -1,27 +1,24 @@
-import json
-import os
 from uuid import uuid4
 from importlib import import_module
 
 from eventprocessor_client.utils import load_config_yaml
 from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
-from .conditions_actions import AwsAsfActions, AwsAsfConditions
-from dags.dag import DAG
+from asf.conditions_actions import AwsAsfActions, AwsAsfConditions
 
 ep = None
-
-
+sm = 0
 
 
 def asf2triggers(asf_json):
-    global ep
-    run_id = 'asf' + '_' + str(uuid4())
+    global ep, sm
+    # run_id = '_'.join(['asf_state-machine', str(uuid4())])
+    run_id = 'asf_test'
     ep_config = load_config_yaml('~/client_config.yaml')
-    dags_config = load_config_yaml('~/dags_config.yaml')
+    asf_config = load_config_yaml('~/asf_config.yaml')
 
-    evt_src_type = asf_json['EventSource']
-    evt_src_config = dags_config['event_sources'][evt_src_type]
-    evt_src_class = dags_config['event_sources'][evt_src_type]['class']
+    evt_src_type = asf_config['event_source']
+    evt_src_config = asf_config['event_sources'][evt_src_type]
+    evt_src_class = asf_config['event_sources'][evt_src_type]['class']
     del evt_src_config['class']
 
     mod = import_module('eventprocessor_client.sources')
@@ -36,27 +33,27 @@ def asf2triggers(asf_json):
                                    namespace=run_id,
                                    eventsource_name=run_id)
 
-    final_state_name, _ = process_states(asf_json)
+    # ep.create_namespace(run_id, event_source=event_source)
 
-    ep.add_trigger(CloudEvent(final_state_name),
-                   condition=DefaultConditions.TRUE,
-                   action=DefaultActions.TERMINATE)
+    state_machine(asf_json)
 
 
-def process_states(asf_json, iterator=False):
+
+
+def state_machine(asf_json, iterator=False):
     global ep
     upstream_relatives = {}
     final_states = []
 
-    for state_name, state in asf_json['States'].values():
-        upstream_relatives[state['Next']] = state_name
-
+    for state_name, state in asf_json['States'].items():
         if 'End' in state and state['End']:
-            final_states.append(state)
+            final_states.append(state_name)
+        else:
+            upstream_relatives[state['Next']] = state_name
 
-    last = None, None
-    for state_name, state in asf_json['States'].values():
-        last = state_name, state
+    upstream_relatives[asf_json['StartAt']] = '$init'
+
+    for state_name, state in asf_json['States'].items():
         context = {'subject': state_name, 'iterator': iterator}
         if state['Type'] == 'Pass':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
@@ -64,42 +61,52 @@ def process_states(asf_json, iterator=False):
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context)
         elif state['Type'] == 'Task':
-            context['resource'] = state['Resource']
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_TASK,
                            context=context)
         elif state['Type'] == 'Choice':
             for choice in state['Choices']:
-                context['Condition'] = choice.copy()
+                context['condition'] = choice.copy()
                 ep.add_trigger(CloudEvent(upstream_relatives[choice['Next']]),
                                condition=AwsAsfConditions.AWS_ASF_CONDITION,
                                action=AwsAsfActions.AWS_ASF_CHOICE,
                                context=context)
         elif state['Type'] == 'Parallel':
-            leaves = []
             for branch in state['Branches']:
-                leaf = process_states(branch, iterator)
-                leaves.append(leaf)
-            ep.add_trigger([CloudEvent(upstream_relatives[leaf[0]]) for leaf in leaves],
-                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                           action=AwsAsfActions.AWS_ASF_PASS,
-                           context=context)
+                state_machine(branch, iterator)
         elif state['Type'] == 'Wait':
             # TODO Ask Pedro about timeouts again
             pass
         elif state['Type'] == 'Map':
             # This won't work
-            leaf = process_states(state['Iterator'], True)
-            context['iterator'] = True
-            ep.add_trigger(CloudEvent(upstream_relatives[leaf[0]]),
-                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                           action=AwsAsfActions.AWS_ASF_PASS,
-                           context=context)
+            state_machine(state['Iterator'], True)
         elif state['Type'] == 'Succeed':
-
             pass
         elif state['Type'] == 'Fail':
             pass
 
-    return last
+    ep.add_trigger([CloudEvent(final_state) for final_state in final_states],
+                   condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                   action=AwsAsfActions.TERMINATE)
+
+
+puta = """{
+  "Comment": "A Hello World example of the Amazon States Language using Pass states",
+  "StartAt": "Hello",
+  "States": {
+    "Hello": {
+      "Type": "Pass",
+      "Result": "Hello",
+      "Next": "World"
+    },
+    "World": {
+      "Type": "Pass",
+      "Result": "World",
+      "End": true
+    }
+  }
+}"""
+
+import json
+asf2triggers(json.loads(puta))

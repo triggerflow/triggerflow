@@ -115,7 +115,7 @@ def main():
     with open('config.yaml', 'r') as config_file:
         private_credentials = yaml.safe_load(config_file)
 
-    db = CloudantClient(private_credentials['cloudant']['username'], private_credentials['cloudant']['apikey'])
+    db = CloudantClient(**private_credentials['cloudant'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())

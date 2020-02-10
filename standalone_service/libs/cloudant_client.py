@@ -1,7 +1,7 @@
 import time
 import random
 from requests.exceptions import HTTPError
-from cloudant import Cloudant
+from cloudant.client import Cloudant
 from cloudant.database import CloudantDatabase
 from cloudant.document import Document
 from cloudant.error import CloudantException
@@ -10,8 +10,8 @@ from cloudant.error import CloudantException
 class CloudantClient:
     max_retries = 15
 
-    def __init__(self, username: str, apikey: str):
-        self.client = Cloudant.iam(username, apikey)
+    def __init__(self, cloudant_user: str, auth_token: str, url: str):
+        self.client = Cloudant(cloudant_user=cloudant_user, auth_token=auth_token, url=url)
         self.client.connect()
 
     def get_conn(self):
