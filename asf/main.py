@@ -38,23 +38,28 @@ def asf2triggers(asf_json):
     state_machine(asf_json)
 
 
-
-
 def state_machine(asf_json, iterator=False):
     global ep
     upstream_relatives = {}
     final_states = []
+    choices = {}
 
     for state_name, state in asf_json['States'].items():
         if 'End' in state and state['End']:
             final_states.append(state_name)
-        else:
+        elif 'Next' in state:
             upstream_relatives[state['Next']] = state_name
+        elif state['Type'] == 'Choice':
+            for choice in state['Choices']:
+                upstream_relatives[choice['Next']] = state_name
 
     upstream_relatives[asf_json['StartAt']] = '$init'
 
     for state_name, state in asf_json['States'].items():
         context = {'subject': state_name, 'iterator': iterator}
+        context.update(state)
+        if state_name in choices:
+            context['Condition'] = choices[state_name].copy()
         if state['Type'] == 'Pass':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
@@ -66,12 +71,13 @@ def state_machine(asf_json, iterator=False):
                            action=AwsAsfActions.AWS_ASF_TASK,
                            context=context)
         elif state['Type'] == 'Choice':
+            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
+                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                           action=AwsAsfActions.AWS_ASF_PASS,
+                           context=context)
+            choices = {}
             for choice in state['Choices']:
-                context['condition'] = choice.copy()
-                ep.add_trigger(CloudEvent(upstream_relatives[choice['Next']]),
-                               condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                               action=AwsAsfActions.AWS_ASF_CHOICE,
-                               context=context)
+                choices[choice['Next']] = choice.copy()
         elif state['Type'] == 'Parallel':
             for branch in state['Branches']:
                 state_machine(branch, iterator)
@@ -88,25 +94,47 @@ def state_machine(asf_json, iterator=False):
 
     ep.add_trigger([CloudEvent(final_state) for final_state in final_states],
                    condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                   action=AwsAsfActions.TERMINATE)
+                   action=AwsAsfActions.AWS_ASF_END_STATEMACHINE)
 
 
-puta = """{
+my_statemachine = """
+{
   "Comment": "A Hello World example of the Amazon States Language using Pass states",
-  "StartAt": "Hello",
+  "StartAt": "SetParameters",
   "States": {
-    "Hello": {
+    "SetParameters": {
       "Type": "Pass",
-      "Result": "Hello",
-      "Next": "World"
+      "Result": 2,
+      "ResultPath": "$.my_number",
+      "Next": "Branching"
     },
-    "World": {
+    "Branching": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.my_number",
+          "NumericLessThan": 0,
+          "Next": "Negative"
+        },
+        {
+          "Variable": "$.my_number",
+          "NumericGreaterThanEquals": 0,
+          "Next": "Positive"
+        }
+      ]
+    },
+    "Positive": {
       "Type": "Pass",
-      "Result": "World",
+      "End": true
+    },
+    "Negative": {
+      "Type": "Pass",
       "End": true
     }
   }
-}"""
+}
+"""
 
 import json
-asf2triggers(json.loads(puta))
+
+asf2triggers(json.loads(my_statemachine))
