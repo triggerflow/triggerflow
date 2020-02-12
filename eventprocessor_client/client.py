@@ -1,3 +1,5 @@
+import uuid
+
 import requests
 import re
 from requests.auth import HTTPBasicAuth
@@ -17,7 +19,8 @@ class CloudEventProcessorClient:
                  user: str,
                  password: str,
                  namespace: Optional[str] = None,
-                 eventsource_name: Optional[str] = None):
+                 eventsource_name: Optional[str] = None,
+                 caching: Optional[bool] = False):
         """
         Initializes CloudEventProcessor client.
         :param api_endpoint: Endpoint of the Event Processor API.
@@ -25,10 +28,14 @@ class CloudEventProcessorClient:
         :param password: Password to authenticate this client towards the API REST.
         :param namespace: Namespace which this client targets by default when managing triggers.
         :param eventsource_name: Eventsource which this client targets by default when managing triggers.
+        :param caching: Add triggers to local cache, to then commit cached
+                        triggers in a single request using push_triggers().
         """
         self.namespace = namespace
         self.eventsource_name = eventsource_name
         self.api_endpoint = api_endpoint
+        self.caching = caching
+        self.trigger_cache = {}
 
         if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
             raise ValueError('Invalid Username')
@@ -135,7 +142,7 @@ class CloudEventProcessorClient:
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
                     transient: Optional[bool] = True,
-                    id: Optional[str] = None):
+                    trigger_id: Optional[str] = None):
         """
         Adds a trigger to the target namespace.
         :param event: Instance of CloudEvent, this CloudEvent's subject and type will fire this trigger.
@@ -145,12 +152,12 @@ class CloudEventProcessorClient:
         contract (context, event).
         :param context: Trigger key-value state, only visible for this specific trigger.
         :param transient: If true, this trigger is deleted after action is executed.
-        :param id: Custom ID for a persistent trigger.
+        :param trigger_id: Custom ID for a persistent trigger.
         """
         if self.namespace is None:
             raise eventprocessor_client.exceptions.NullNamespaceError()
 
-        if transient and id is not None:
+        if transient and trigger_id is not None:
             raise eventprocessor_client.exceptions.NamedTransientTriggerError()
 
         # Check for arguments types
@@ -167,12 +174,39 @@ class CloudEventProcessorClient:
             'context': context,
             'depends_on_events': events,
             'transient': transient,
-            'id': id}
+            'trigger_id': trigger_id}
+
+        if self.caching:
+            res = self.__add_trigger_cache(trigger)
+        else:
+            res = self.__add_trigger_remote(trigger)
+
+        return res
+
+    def commit_cached_triggers(self):
+        if not self.caching:
+            raise Exception('No trigger caching is being used')
+        if self.trigger_cache:
+            res = self.__add_trigger_remote(self.trigger_cache.values())
+            return res
+        else:
+            raise Exception('Trigger cache empty')
+
+    def __add_trigger_cache(self, trigger):
+        if trigger['trigger_id'] is None:
+            trigger['trigger_id'] = str(uuid.uuid4())
+        elif trigger['trigger_id'] in self.trigger_cache:
+            raise Exception('Trigger {} already exists'.format(trigger['trigger_id']))
+        else:
+            self.trigger_cache[trigger['trigger_id']] = trigger
+        return {'trigger'}
+
+    def __add_trigger_remote(self, trigger):
+        triggers = [trigger] if type(trigger) != list else trigger
 
         res = requests.post('/'.join([self.api_endpoint, 'namespace', self.namespace, 'trigger']),
                             auth=self.basic_auth,
-                            json={'events': events,
-                                  'trigger': trigger})
+                            json={'triggers': triggers})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:

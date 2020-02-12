@@ -31,11 +31,14 @@ def asf2triggers(asf_json):
                                    user=ep_config['event_processor']['user'],
                                    password=ep_config['event_processor']['password'],
                                    namespace=run_id,
-                                   eventsource_name=run_id)
+                                   eventsource_name=run_id,
+                                   caching=True)
 
     # ep.create_namespace(run_id, event_source=event_source)
 
     state_machine(asf_json, '$init')
+
+    ep.commit_cached_triggers()
 
 
 def state_machine(asf_json, init_event, iterator=False):

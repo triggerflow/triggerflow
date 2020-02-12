@@ -8,19 +8,22 @@ def add_trigger(db, path, params):
         return {"statusCode": 409, "body": {"error": "Namespace {} does not exists".format(path.namespace)}}
 
     namespace = path.namespace
-    trigger = params['trigger']
+    triggers = params['triggers']
+    committed_triggers = []
 
-    if trigger['id'] is not None:
-        if db.key_exists(database_name=path.namespace, document_id='.triggers', key=trigger['id']):
-            return {"statusCode": 409, "body": {"error": "Trigger {} already exists".format(trigger['id'])}}
+    for trigger in triggers:
+        # Check if trigger already exists
+        if trigger['trigger_id'] is not None:
+            if db.key_exists(database_name=path.namespace, document_id='.triggers', key=trigger['trigger_id']):
+                return {"statusCode": 409, "body": {"error": "Trigger {} already exists".format(trigger['trigger_id'])}}
 
+        # Add trigger to database
+        trigger['trigger_id'] = trigger['trigger_id'] if not trigger['transient'] else str(uuid4())
 
-    # Add trigger to database
-    trigger['id'] = trigger['id'] if not trigger['transient'] else str(uuid4())
+        db.set_key(database_name=namespace, document_id='.triggers', key=trigger['trigger_id'], value=trigger)
+        committed_triggers.append(trigger['trigger_id'])
 
-    db.set_key(database_name=namespace, document_id='.triggers', key=trigger['id'], value=trigger)
-
-    return {"statusCode": 201, "body": {"trigger_id": trigger['id']}}
+    return {"statusCode": 201, "body": {"triggers": committed_triggers}}
 
 
 def get_trigger(db, path, params):
