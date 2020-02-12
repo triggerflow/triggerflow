@@ -6,11 +6,11 @@ from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, 
 from asf.conditions_actions import AwsAsfActions, AwsAsfConditions
 
 ep = None
-sm = 0
+sm_count = 0
 
 
 def asf2triggers(asf_json):
-    global ep, sm
+    global ep, sm_count
     # run_id = '_'.join(['asf_state-machine', str(uuid4())])
     run_id = 'asf_test'
     ep_config = load_config_yaml('~/client_config.yaml')
@@ -39,9 +39,9 @@ def asf2triggers(asf_json):
 
 
 def state_machine(asf_json, init_event, iterator=False):
-    global ep, sm
-    this_sm = sm
-    sm += 1
+    global ep, sm_count
+    sm_id = 'StateMachine{}'.format(sm_count)
+    sm_count += 1
     upstream_relatives = {}
     final_states = []
     choices = {}
@@ -59,7 +59,7 @@ def state_machine(asf_json, init_event, iterator=False):
 
     for state_name, state in asf_json['States'].items():
         context = {'subject': state_name, 'iterator': iterator}
-        context.update(state)
+        # context.update(state)
         if state_name in choices:
             context['Condition'] = choices[state_name].copy()
         if state['Type'] == 'Pass':
@@ -67,29 +67,36 @@ def state_machine(asf_json, init_event, iterator=False):
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context,
-                           id=state_name)
+                           id=state_name,
+                           transient=False)
         elif state['Type'] == 'Task':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_TASK,
-                           context=context)
+                           context=context,
+                           id=state_name,
+                           transient=False)
         elif state['Type'] == 'Choice':
-            # ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
-            #                condition=AwsAsfConditions.AWS_ASF_CONDITION,
-            #                action=AwsAsfActions.AWS_ASF_PASS,
-            #                context=context)
+            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
+                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                           action=AwsAsfActions.AWS_ASF_PASS,
+                           context=context,
+                           id=state_name,
+                           transient=False)
             choices = {}
             for choice in state['Choices']:
                 choices[choice['Next']] = choice.copy()
         elif state['Type'] == 'Parallel':
             sub_state_machines = []
             for branch in state['Branches']:
-                sm_id = state_machine(branch, upstream_relatives[state_name], iterator)
-                sub_state_machines.append(sm_id)
+                sub_sm_id = state_machine(branch, upstream_relatives[state_name], iterator)
+                sub_state_machines.append(sub_sm_id)
             ep.add_trigger([CloudEvent(sub_state_machine_id) for sub_state_machine_id in sub_state_machines],
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_PASS,
-                           context=context)
+                           context=context,
+                           id=state_name,
+                           transient=False)
         elif state['Type'] == 'Wait':
             # TODO Ask Pedro about timeouts again
             pass
@@ -104,9 +111,11 @@ def state_machine(asf_json, init_event, iterator=False):
     ep.add_trigger([CloudEvent(final_state) for final_state in final_states],
                    condition=AwsAsfConditions.AWS_ASF_CONDITION,
                    action=AwsAsfActions.AWS_ASF_END_STATEMACHINE,
-                   context={'subject': 'StateMachine{}'.format(this_sm)})
+                   context={'subject': sm_id},
+                   id=sm_id,
+                   transient=False)
 
-    return this_sm
+    return sm_id
 
 
 my_statemachine = """
