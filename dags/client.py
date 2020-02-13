@@ -39,7 +39,7 @@ def deploy(dag_json):
     mod = import_module('eventprocessor_client.sources')
     evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
     event_source = evt_src(name=dagrun_id,
-                           topic=dagrun_id,
+                           topic='aitor_lambda_destination',
                            **evt_src_config)
 
     ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],

@@ -5,13 +5,13 @@ class SQSCloudEventSource(CloudEventSource):
     def __init__(self,
                  region: str,
                  account: str,
-                 queue_name: str,
+                 topic: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, queue_name)
+        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, topic)
 
     @property
-    def dict(self):
+    def json(self):
         d = super().json
         d['spec'] = vars(self)
         d['class'] = self.__class__.__name__

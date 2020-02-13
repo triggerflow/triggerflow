@@ -8,7 +8,7 @@ from multiprocessing import Queue
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Consumer, Producer, TopicPartition
 
-from .model import Hook
+from standalone_service.event_source_hooks.model import Hook
 
 
 class KafkaAuthMode(Enum):

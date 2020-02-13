@@ -24,7 +24,7 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 
-import standalone_service.event_source_hooks as hooks
+import standalone_service.event_source_hooks.hooks as hooks
 from standalone_service.libs.cloudant_client import CloudantClient
 from standalone_service.event_store import AsyncEventStore
 

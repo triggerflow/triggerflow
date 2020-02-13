@@ -8,7 +8,7 @@ class RabbitMQCloudEventSource(CloudEventSource):
         self.amqp_url = amqp_url
 
     @property
-    def dict(self):
+    def json(self):
         d = super().json
         d['spec'] = vars(self)
         d['class'] = self.__class__.__name__

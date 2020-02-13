@@ -3,10 +3,10 @@ from multiprocessing import Queue
 
 import pika
 
-from .model import Hook
+from standalone_service.event_source_hooks.model import Hook
 
 
-class RabbitMQBroker(Hook):
+class RabbitMQCloudEventSourceHook(Hook):
     def __init__(self,
                  event_queue: Queue,
                  amqp_url: str,
