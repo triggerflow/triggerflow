@@ -1,6 +1,6 @@
-from eventprocessor_client import CloudEventProcessorClient, CloudEvent, PythonCallable, DefaultActions
+from eventprocessor_client import CloudEventProcessorClient, CloudEvent, PythonCallable
 from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.sources.kafka import KafkaCloudEventSource
+from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource
 
 if __name__ == "__main__":
     client_config = load_config_yaml('~/client_config.yaml')

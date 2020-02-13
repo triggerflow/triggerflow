@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional, List
-from .model import CloudEventSource
+from eventprocessor_client.sources.model import CloudEventSource
 
 
 class KafkaAuthMode(Enum):
