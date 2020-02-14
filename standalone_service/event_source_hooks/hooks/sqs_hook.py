@@ -9,6 +9,8 @@ import boto3
 from multiprocessing import Queue
 from standalone_service.event_source_hooks.model import Hook
 
+logging.getLogger('botocore').setLevel(logging.INFO)
+
 
 class SQSCloudEventSourceHook(Hook):
     def __init__(self,
@@ -25,17 +27,20 @@ class SQSCloudEventSourceHook(Hook):
         queue = sqs.Queue(self.queue_url)
 
         while True:
-            for message in queue.receive_messages():
+            for message in queue.receive_messages(WaitTimeSeconds=10):
                 termination_event = json.loads(message.body)
+                payload_body = termination_event['responsePayload']['body']
+                subject = payload_body.get('subject') if type(payload_body) == dict else json.loads(payload_body).get(
+                    'subject')
                 termination_cloudevent = {'specversion': '1.0',
                                           'id': termination_event['requestContext']['requestId'],
                                           'source': termination_event['requestContext']['functionArn'],
                                           'type': 'termination.event.{}'.format(
                                               termination_event['requestContext']['condition'].lower()),
                                           'time': termination_event['timestamp'],
-                                          'subject': termination_event['requestContext']['functionArn'].split(':')[-2],
+                                          'subject': subject,
                                           'datacontenttype': 'application/json',
-                                          'data': json.loads(termination_event['responsePayload']['body'])}
+                                          'data': termination_event['responsePayload']['body']}
                 self.event_queue.put(termination_cloudevent)
                 # message.delete()
 
