@@ -37,11 +37,13 @@ def asf2triggers(asf_json):
     # ep.create_namespace(run_id, event_source=event_source)
 
     state_machine(asf_json, '$init')
+    with open('trg.json', 'w') as f:
+        f.write(json.dumps(ep.list_cached_triggers(), indent=2))
 
-    ep.commit_cached_triggers()
+    # ep.commit_cached_triggers()
 
 
-def state_machine(asf_json, init_event, iterator=False):
+def state_machine(asf_json, init_event):
     global ep, sm_count
     sm_id = 'StateMachine{}'.format(sm_count)
     sm_count += 1
@@ -61,8 +63,7 @@ def state_machine(asf_json, init_event, iterator=False):
     upstream_relatives[asf_json['StartAt']] = init_event
 
     for state_name, state in asf_json['States'].items():
-        context = {'subject': state_name, 'iterator': iterator}
-        # context.update(state)
+        context = {'subject': state_name, 'State': state.copy()}
         if state_name in choices:
             context['Condition'] = choices[state_name].copy()
         if state['Type'] == 'Pass':
@@ -80,19 +81,14 @@ def state_machine(asf_json, init_event, iterator=False):
                            trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Choice':
-            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
-                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                           action=AwsAsfActions.AWS_ASF_PASS,
-                           context=context,
-                           trigger_id=state_name,
-                           transient=False)
             choices = {}
             for choice in state['Choices']:
+                upstream_relatives[choice['Next']] = upstream_relatives[state_name]
                 choices[choice['Next']] = choice.copy()
         elif state['Type'] == 'Parallel':
             sub_state_machines = []
             for branch in state['Branches']:
-                sub_sm_id = state_machine(branch, upstream_relatives[state_name], iterator)
+                sub_sm_id = state_machine(branch, upstream_relatives[state_name])
                 sub_state_machines.append(sub_sm_id)
             ep.add_trigger([CloudEvent(sub_state_machine_id) for sub_state_machine_id in sub_state_machines],
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
@@ -101,15 +97,25 @@ def state_machine(asf_json, init_event, iterator=False):
                            trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Wait':
-            # TODO Ask Pedro about timeouts again
-            pass
+            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
+                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                           action=AwsAsfActions.AWS_ASF_TASK,
+                           context=context,
+                           trigger_id=state_name,
+                           transient=False)
         elif state['Type'] == 'Map':
-            # This won't work
-            state_machine(state['Iterator'], True)
+            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
+                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                           action=AwsAsfActions.AWS_ASF_TASK,
+                           context=context,
+                           trigger_id=state_name,
+                           transient=False)
+            iterator = state_machine(state['Iterator'], state_name)
+            upstream_relatives[state['Next']] = iterator
         elif state['Type'] == 'Succeed':
-            pass
+            raise NotImplementedError()
         elif state['Type'] == 'Fail':
-            pass
+            raise NotImplementedError()
 
     ep.add_trigger([CloudEvent(final_state) for final_state in final_states],
                    condition=AwsAsfConditions.AWS_ASF_CONDITION,
@@ -137,21 +143,54 @@ my_statemachine = """
       "End": true,
       "Branches": [
         {
-          "StartAt": "Parallel1",
+          "StartAt": "Map",
           "States": {
-            "Parallel1": {
+            "Map": {
+              "Type": "Map",
+              "Iterator": {
+                "StartAt": "MapBranch",
+                "States": {
+                  "MapBranch": {
+                    "Type": "Parallel",
+                    "Branches": [
+                      {
+                        "StartAt": "MapParallelBranch1-1",
+                        "States": {
+                          "MapParallelBranch1-1": {
+                            "Type": "Pass",
+                            "Next": "MapParallelBranch1-2"
+                          },
+                          "MapParallelBranch1-2": {
+                            "Type": "Pass",
+                            "End": true
+                          }
+                        }
+                      },
+                      {
+                        "StartAt": "MapParallelBranch2",
+                        "States": {
+                          "MapParallelBranch2": {
+                            "Type": "Pass",
+                            "End": true
+                          }
+                        }
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "Next": "Reduce"
+            },
+            "Reduce": {
               "Type": "Pass",
               "End": true
             }
           }
         },
         {
-          "StartAt": "Parallel2",
+          "StartAt": "Branching",
           "States": {
-            "Parallel2": {
-              "Type": "Pass",
-              "Next": "Branching"
-            },
             "Branching": {
               "Type": "Choice",
               "Choices": [
@@ -182,44 +221,6 @@ my_statemachine = """
   }
 }
 """
-
-# my_statemachine = """
-# {
-#   "Comment": "A Hello World example of the Amazon States Language using Pass states",
-#   "StartAt": "SetParameters",
-#   "States": {
-#     "SetParameters": {
-#       "Type": "Pass",
-#       "Result": 2,
-#       "ResultPath": "$.my_number",
-#       "Next": "Branching"
-#     },
-#     "Branching": {
-#       "Type": "Choice",
-#       "Choices": [
-#         {
-#           "Variable": "$.my_number",
-#           "NumericLessThan": 0,
-#           "Next": "Negative"
-#         },
-#         {
-#           "Variable": "$.my_number",
-#           "NumericGreaterThanEquals": 0,
-#           "Next": "Positive"
-#         }
-#       ]
-#     },
-#     "Positive": {
-#       "Type": "Pass",
-#       "End": true
-#     },
-#     "Negative": {
-#       "Type": "Pass",
-#       "End": true
-#     }
-#   }
-# }
-# """
 
 import json
 
