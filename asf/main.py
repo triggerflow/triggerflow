@@ -70,21 +70,21 @@ def state_machine(asf_json, init_event, iterator=False):
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context,
-                           id=state_name,
+                           trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Task':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_TASK,
                            context=context,
-                           id=state_name,
+                           trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Choice':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context,
-                           id=state_name,
+                           trigger_id=state_name,
                            transient=False)
             choices = {}
             for choice in state['Choices']:
@@ -98,7 +98,7 @@ def state_machine(asf_json, init_event, iterator=False):
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context,
-                           id=state_name,
+                           trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Wait':
             # TODO Ask Pedro about timeouts again
@@ -115,7 +115,7 @@ def state_machine(asf_json, init_event, iterator=False):
                    condition=AwsAsfConditions.AWS_ASF_CONDITION,
                    action=AwsAsfActions.AWS_ASF_END_STATEMACHINE,
                    context={'subject': sm_id},
-                   id=sm_id,
+                   trigger_id=sm_id,
                    transient=False)
 
     return sm_id
