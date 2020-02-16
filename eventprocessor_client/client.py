@@ -187,7 +187,7 @@ class CloudEventProcessorClient:
         if not self.caching:
             raise Exception('No trigger caching is being used')
         if self.trigger_cache:
-            res = self.__add_trigger_remote(self.trigger_cache.values())
+            res = self.__add_trigger_remote(list(self.trigger_cache.values()))
             return res
         else:
             raise Exception('Trigger cache empty')

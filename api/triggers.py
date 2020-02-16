@@ -9,7 +9,7 @@ def add_trigger(db, path, params):
 
     namespace = path.namespace
     triggers = params['triggers']
-    committed_triggers = []
+    committed_triggers = {}
     failed_trigger_commit = {}
 
     if not triggers:
@@ -27,7 +27,7 @@ def add_trigger(db, path, params):
             return {"statusCode": 400, "body": {"error": "Non-transient unnamed trigger".format(trigger['trigger_id'])}}
 
         db.set_key(database_name=namespace, document_id='.triggers', key=trigger['trigger_id'], value=trigger)
-        committed_triggers.append(trigger['trigger_id'])
+        committed_triggers = trigger['trigger_id']
     else:  # Commit multiple triggers
 
         db_triggers = db.get(database_name=path.namespace, document_id='.triggers')
@@ -41,6 +41,7 @@ def add_trigger(db, path, params):
             else:  # Unnamed non-transient trigger: illegal
                 failed_trigger_commit[i] = 'Non-transient unnamed trigger'
             db_triggers[trigger['trigger_id']] = trigger
+            committed_triggers[i] = trigger['trigger_id']
 
         db.put(database_name=namespace, document_id='.triggers', data=db_triggers)
 
