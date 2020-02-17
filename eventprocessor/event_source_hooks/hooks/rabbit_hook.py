@@ -3,7 +3,7 @@ from multiprocessing import Queue
 
 import pika
 
-from standalone_service.event_source_hooks.model import Hook
+from ..model import Hook
 
 
 class RabbitMQCloudEventSourceHook(Hook):

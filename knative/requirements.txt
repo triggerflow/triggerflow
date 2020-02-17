@@ -1,3 +1,4 @@
+gunicorn
 flask
 psutil
 gevent
@@ -7,3 +8,6 @@ PyYAML
 dill
 pika==0.13
 python-dateutil
+docker
+boto3
+kubernetes

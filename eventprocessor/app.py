@@ -1,23 +1,3 @@
-"""Flask application.
-
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-"""
-
 import logging
 import os
 import signal
@@ -26,10 +6,10 @@ import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from standalone_service.libs.cloudant_client import CloudantClient
-from standalone_service.health import generateHealthReport
-from standalone_service.worker import Worker
-from standalone_service.utils import authenticate_request
+from eventprocessor.libs.cloudant_client import CloudantClient
+from eventprocessor.health import generateHealthReport
+from eventprocessor.worker import Worker
+from eventprocessor.utils import authenticate_request
 
 app = Flask(__name__)
 app.debug = False
@@ -94,16 +74,16 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'event_trigger-0')
+    component = os.getenv('INSTANCE', 'event_processor-0')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][event-router] %(message)s',
+    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][triggerflow] %(message)s',
                                   datefmt="%Y-%m-%dT%H:%M:%S")
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting event_trigger standalone_service for IBM Composer')
+    logging.info('Starting Event Processor Service')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -115,11 +95,12 @@ def main():
     with open('config.yaml', 'r') as config_file:
         private_credentials = yaml.safe_load(config_file)
 
+    logging.info('Creating database client')
     db = CloudantClient(**private_credentials['cloudant'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
-    logging.info('HTTP server started')
+    logging.info('Event Processor service started')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
