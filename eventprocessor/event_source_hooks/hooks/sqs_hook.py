@@ -7,7 +7,7 @@ from typing import List
 import boto3
 
 from multiprocessing import Queue
-from standalone_service.event_source_hooks.model import Hook
+from ..model import Hook
 
 logging.getLogger('botocore').setLevel(logging.INFO)
 

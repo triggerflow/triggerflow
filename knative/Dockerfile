@@ -1,18 +1,20 @@
 FROM python:3.6
 
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y \
+        && rm -rf /var/lib/apt/lists/*
 
-COPY knative_service/requirements.txt requirements.txt
+COPY knative/requirements.txt requirements.txt
 
 RUN pip install --upgrade pip setuptools six && pip install --no-cache-dir -r requirements.txt
 
 ENV PORT 8080
+ENV PYTHONUNBUFFERED TRUE
 
-ENV APP_HOME /event-processor
+ENV APP_HOME /triggerflow
 WORKDIR $APP_HOME
 
-ADD knative_service/*.py ./
-ADD standalone_service .
+ADD eventprocessor eventprocessor
+ADD knative/app.py .
 ADD config.yaml .
 
-CMD exec gunicorn --bind :$PORT --workers 1 appproxy:proxy
+CMD exec gunicorn --bind :$PORT --workers 1 app:app 

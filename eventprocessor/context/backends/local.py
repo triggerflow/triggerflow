@@ -1,4 +1,4 @@
-from standalone_service.context.model import Context
+from ..model import Context
 
 
 class LocalContext(Context):
