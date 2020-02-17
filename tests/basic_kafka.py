@@ -1,6 +1,6 @@
-from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
+from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions
 from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.sources.kafka import KafkaCloudEventSource, KafkaAuthMode
+from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource
 
 if __name__ == "__main__":
     client_config = load_config_yaml('~/client_config.yaml')
@@ -24,39 +24,3 @@ if __name__ == "__main__":
                             'function_args': {'iter': 1},
                             'function_url': url,
                             'kind': 'callasync'})
-
-    # er.add_trigger(CloudEvent('ca1'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'map1',
-    #                         'function_args': [{'iter': x} for x in range(3)],
-    #                         'function_url': url,
-    #                         'kind': 'map'})
-    #
-    # er.add_trigger(CloudEvent('ca1'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'ca2',
-    #                         'function_args': {'iter': 1},
-    #                         'function_url': url,
-    #                         'kind': 'callasync'})
-    #
-    # er.add_trigger([CloudEvent('map1'), CloudEvent('ca2')],
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'map2',
-    #                         'function_args': [{'iter': x} for x in range(3)],
-    #                         'function_url': url,
-    #                         'kind': 'map'})
-    #
-    # er.add_trigger(CloudEvent('map2'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.IBM_CF_INVOKE_KAFKA,
-    #                context={'subject': 'ca3',
-    #                         'function_args': {'iter': 1},
-    #                         'function_url': url,
-    #                         'kind': 'callasync'})
-    #
-    # er.add_trigger(CloudEvent('ca3'),
-    #                condition=DefaultConditions.IBM_CF_JOIN,
-    #                action=DefaultActions.TERMINATE)

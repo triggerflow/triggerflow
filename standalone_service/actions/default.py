@@ -5,6 +5,7 @@ import json
 import tarfile
 import io
 import dill
+import boto3
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 
@@ -194,3 +195,92 @@ def action_ibm_cf_invoke_rabbitmq(context, event):
 
 def action_ibm_cf_invoke_kafka(context, event):
     dags_ibm_cf_invoke(context, event, build_kafka_payload)
+
+
+def action_aws_lambda_invoke(context, event):
+    class InvokeException(Exception):
+        pass
+
+    # Transform a callasync trigger to a map trigger of a single function
+    if context['kind'] == 'callasync':
+        invoke_args = [context['invoke_args']]
+    else:
+        invoke_args = context['invoke_args']
+    total_activations = len(invoke_args)
+
+    max_retries = 5
+
+    function_name = context['function_name']
+    subject = context['subject']
+    namespace = context['namespace']
+
+    lambda_client = boto3.client('lambda')
+
+    ################################################
+    def invoke(call_id, args):
+        act_id = None
+        retry = True
+        retry_count = 0
+        while retry:
+            try:
+                response = lambda_client.invoke_async(FunctionName=function_name, InvokeArgs=args)
+                status_code = response['ResponseMetadata']['HTTPStatusCode']
+                if status_code in range(200, 300):
+                    retry = False
+                    act_id = response['ResponseMetadata']['RequestId']
+                    logging.info('[{}][{}] Invocation success - Activation ID: {}'.format(namespace, call_id, act_id))
+                elif status_code in range(400, 500) and status_code not in [408, 409, 429]:
+                    logging.error('[{}][{}] Invocation failed - Activation status code: {}'.format(namespace, call_id,
+                                                                                                   status_code))
+            except Exception as e:
+                logging.error("[{}][{}] Exception - {}".format(namespace, call_id, e))
+            if retry:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    sleepy_time = pow(2, retry_count)
+                    logging.info("[{}][{}] Retrying in {} second(s)".format(namespace, call_id, sleepy_time))
+                    time.sleep(sleepy_time)
+                else:
+                    logging.error("[{}][{}] Retrying failed after {} attempts".format(namespace, call_id, max_retries))
+                    raise InvokeException('Invocation failed')
+
+        return call_id, act_id
+
+    ################################################
+
+    logging.info("[{}] Firing trigger {} - Activations: {} ".format(namespace, subject, total_activations))
+    futures = []
+    with ThreadPoolExecutor(max_workers=512) as executor:
+        for cid, args in enumerate(invoke_args):
+            res = executor.submit(invoke, cid, args)
+            futures.append(res)
+    responses = []
+    try:
+        responses = [fut.result() for fut in futures]
+    except InvokeException:
+        pass
+
+    activations_done = [call_id for call_id, _ in responses]
+    activations_not_done = [call_id for call_id in range(total_activations) if call_id not in activations_done]
+
+    if subject in context['trigger_events']:
+        downstream_triggers = context['trigger_events'][subject]['termination.event.success']
+        for downstream_trigger in downstream_triggers:
+            if 'total_activations' in context['triggers'][downstream_trigger]['context']:
+                context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
+            else:
+                context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
+
+    # All activations are unsuccessful
+    if not activations_done:
+        raise Exception('All invocations are unsuccessful')
+    # At least one activation is successful
+    else:
+        # All activations are successful
+        if len(activations_done) == total_activations:
+            logging.info('[{}][{}] All invocations successful'.format(namespace, subject))
+        # Only some activations are successful
+        else:
+            logging.info(
+                "[{}][{}] Could not be completely triggered - {} activations pending".format(namespace, subject,
+                                                                                             len(activations_not_done)))

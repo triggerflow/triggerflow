@@ -10,7 +10,7 @@ class ConditionActionModel:
 
 class DefaultConditions(ConditionActionModel, Enum):
     TRUE = {'name': 'TRUE'}
-    IBM_CF_JOIN = {'name': 'IBM_CF_JOIN'}
+    FUNCTION_JOIN = {'name': 'FUNCTION_JOIN'}
     COUNTER_THRESHOLD = {'name': 'COUNTER_THRESHOLD'}
 
 
@@ -19,6 +19,7 @@ class DefaultActions(ConditionActionModel, Enum):
     TERMINATE = {'name': 'TERMINATE'}
     IBM_CF_INVOKE_KAFKA = {'name': 'IBM_CF_INVOKE_KAFKA'}
     IBM_CF_INVOKE_RABBITMQ = {'name': 'IBM_CF_INVOKE_RABBITMQ'}
+    AWS_LAMBDA_INVOKE = {'name': 'AWS_LAMBDA_INVOKE'}
 
 
 class DockerImage(ConditionActionModel):

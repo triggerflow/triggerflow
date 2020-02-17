@@ -39,6 +39,9 @@ def ow_webaction_main(args):
                 res = namespaces.get_namespace(db, path, params)
             elif args['__ow_method'] == 'delete':
                 res = namespaces.delete_namespace(db, path, params)
+        elif re.fullmatch(r"/namespace/[^/]+/eventsource", path):
+            if args['__ow_method'] == 'get':
+                res = eventsources.list_eventsources(db, path, params)
         elif re.fullmatch(r"/namespace/[^/]+/eventsource/[^/]+", path):
             if args['__ow_method'] == 'put':
                 res = eventsources.add_eventsource(db, path, params)
