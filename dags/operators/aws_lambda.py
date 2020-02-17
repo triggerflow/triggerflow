@@ -11,6 +11,7 @@ class AWSLambdaOperator(BaseOperator):
         self.function_name = function_name
         self.invoke_args = {}
         self.kind = None
+        self.trigger_action = 'AWS_LAMBDA_INVOKE'
 
         self.client = AWSLambdaHook().get_conn()
 
@@ -22,6 +23,7 @@ class AWSLambdaOperator(BaseOperator):
         spec['kind'] = self.kind
         spec['function_name'] = self.function_name
         spec['invoke_args'] = self.invoke_args
+        spec['trigger_action'] = self.trigger_action
         baseop['operator'] = spec
         return baseop
 

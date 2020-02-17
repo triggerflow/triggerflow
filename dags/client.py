@@ -5,6 +5,7 @@ from importlib import import_module
 
 from eventprocessor_client.utils import load_config_yaml
 from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
+import eventprocessor_client.sources.interfaces as event_source_interfaces
 from dags.dag import DAG
 
 
@@ -39,7 +40,7 @@ def deploy(dag_json):
     mod = import_module('eventprocessor_client.sources')
     evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
     event_source = evt_src(name=dagrun_id,
-                           topic='lambda_destination_aitor',
+                           topic=dagrun_id,
                            **evt_src_config)
 
     ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
@@ -63,23 +64,37 @@ def deploy(dag_json):
                 condition = DefaultConditions.TRUE
                 task['upstream_relatives'].append('init__')
             else:
-                condition = DefaultConditions.AWS_LAMBDA_JOIN
+                condition = DefaultConditions.FUNCTION_JOIN
 
             context = {'subject': task_name}
             context.update(task['operator'])
             ep.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
-                           action=DefaultActions.AWS_LAMBDA_INVOKE,
+                           action=DefaultActions[task['operator']['trigger_action']],
                            condition=condition,
                            context=context)
 
     # Join final tasks
     ep.add_trigger([CloudEvent(end_task) for end_task in dag_json['final_tasks']],
                    action=DefaultActions.TERMINATE,
-                   condition=DefaultConditions.AWS_LAMBDA_JOIN,
+                   condition=DefaultConditions.FUNCTION_JOIN,
                    context={'subject': '__end'})
 
     return dagrun_id
 
 
-def run(dag_id):
-    pass
+def run(dagrun_id):
+    ep_config = load_config_yaml('~/client_config.yaml')
+
+    ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
+                                   user=ep_config['event_processor']['user'],
+                                   password=ep_config['event_processor']['password'],
+                                   namespace=dagrun_id)
+
+    event_sources = ep.list_eventsources()
+    event_source_name = event_sources['event_sources'].pop()
+
+    event_source = ep.get_eventsource(event_source_name)
+    event_source_class = getattr(event_source_interfaces, event_source[event_source_name]['class'])
+    event_source_if = event_source_class(**event_source[event_source_name]['spec'])
+    event_source_if.publish_cloudevent({'subject': 'init__', 'type': 'termination.event.success'})
+

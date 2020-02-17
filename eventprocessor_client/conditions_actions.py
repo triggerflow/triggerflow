@@ -10,9 +10,8 @@ class ConditionActionModel:
 
 class DefaultConditions(ConditionActionModel, Enum):
     TRUE = {'name': 'TRUE'}
-    IBM_CF_JOIN = {'name': 'IBM_CF_JOIN'}
+    FUNCTION_JOIN = {'name': 'FUNCTION_JOIN'}
     COUNTER_THRESHOLD = {'name': 'COUNTER_THRESHOLD'}
-    AWS_LAMBDA_JOIN = {'name': 'AWS_LAMBDA_JOIN'}
 
 
 class DefaultActions(ConditionActionModel, Enum):

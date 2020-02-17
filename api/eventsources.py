@@ -22,9 +22,34 @@ def add_eventsource(db, path, params):
     return res
 
 
+def list_eventsources(db, path, params):
+    path = parse_path(path)
+    if not db.database_exists(database_name=path.namespace):
+        return {"statusCode": 409, "body": {"error": "Namespace {} does not exists".format(path.namespace)}}
+
+    event_sources = db.get(database_name=path.namespace, document_id='.event_sources')
+
+    return {"statusCode": 200, "body": {"event_sources": list(event_sources.keys())}}
+
+
 def get_eventsource(db, path, params):
-    pass
+    path = parse_path(path)
+    if not db.database_exists(database_name=path.namespace):
+        return {"statusCode": 409, "body": {"error": "Namespace {} does not exists".format(path.namespace)}}
+
+    event_source = db.get_key(database_name=path.namespace, document_id='.event_sources', key=path.eventsource)
+
+    if event_source is None:
+        return {"statusCode": 404, "body": {"error": "Eventsource {} does not exist".format(path.eventsource)}}
+    else:
+        return {"statusCode": 200, "body": {path.eventsource: event_source}}
 
 
 def delete_eventsource(db, path, params):
-    pass
+    path = parse_path(path)
+    if not db.database_exists(database_name=path.namespace):
+        return {"statusCode": 409, "body": {"error": "Namespace {} does not exists".format(path.namespace)}}
+
+    db.set_key(database_name=path.namespace, document_id='.event_sources', key=path.eventsource, value=None)
+
+    return {"statusCode": 200, "body": {"deleted": path.eventsource}}

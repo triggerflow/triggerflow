@@ -179,3 +179,23 @@ class CloudEventProcessorClient:
             raise Exception(res.json())
         else:
             return res.json()
+
+    def list_eventsources(self):
+        res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource']),
+                           auth=self.basic_auth, json={})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()
+
+    def get_eventsource(self, event_soruce_name):
+        res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', event_soruce_name]),
+                           auth=self.basic_auth, json={})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()

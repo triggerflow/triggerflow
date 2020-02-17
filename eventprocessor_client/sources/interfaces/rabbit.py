@@ -7,6 +7,9 @@ class RabbitMQCloudEventSource(CloudEventSource):
         self.topic = topic
         self.amqp_url = amqp_url
 
+    def publish_cloudevent(self, cloudevent: dict):
+        pass
+
     @property
     def json(self):
         d = super().json
