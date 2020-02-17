@@ -2,18 +2,17 @@ FROM python:3.6
 
 RUN apt-get update && apt-get upgrade -y
 
-COPY requirements.txt requirements.txt
+COPY knative_service/requirements.txt requirements.txt
 
 RUN pip install --upgrade pip setuptools six && pip install --no-cache-dir -r requirements.txt
 
 ENV PORT 8080
 
-RUN mkdir -p /event-processor
-ADD *.py /event-processor/
-ADD actions /event-processor/actions
-ADD event_source_hooks /event-processor/event_source_hooks
-ADD conditions /event-processor/conditions
-ADD libs /event-processor/libs
-ADD config.yaml /event-processor
+ENV APP_HOME /event-processor
+WORKDIR $APP_HOME
 
-CMD ["/bin/bash", "-c", "cd event-processor && python -u app.py"]
+ADD knative_service/*.py ./
+ADD standalone_service .
+ADD config.yaml .
+
+CMD exec gunicorn --bind :$PORT --workers 1 appproxy:proxy
