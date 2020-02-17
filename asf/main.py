@@ -37,10 +37,11 @@ def asf2triggers(asf_json):
     # ep.create_namespace(run_id, event_source=event_source)
 
     state_machine(asf_json, '$init')
+
     with open('trg.json', 'w') as f:
         f.write(json.dumps(ep.list_cached_triggers(), indent=2))
 
-    # ep.commit_cached_triggers()
+    ep.commit_cached_triggers()
 
 
 def state_machine(asf_json, init_event):
@@ -97,16 +98,11 @@ def state_machine(asf_json, init_event):
                            trigger_id=state_name,
                            transient=False)
         elif state['Type'] == 'Wait':
-            ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
-                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                           action=AwsAsfActions.AWS_ASF_TASK,
-                           context=context,
-                           trigger_id=state_name,
-                           transient=False)
+            raise NotImplementedError()
         elif state['Type'] == 'Map':
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
-                           action=AwsAsfActions.AWS_ASF_TASK,
+                           action=AwsAsfActions.AWS_ASF_MAP,
                            context=context,
                            trigger_id=state_name,
                            transient=False)
@@ -134,8 +130,8 @@ my_statemachine = """
   "States": {
     "SetupParameters": {
       "Type": "Pass",
-      "Result": 2,
-      "ResultPath": "$.my_number",
+      "Result": [1,2,3,4,5],
+      "ResultPath": "$.my_array",
       "Next": "Parallel"
     },
     "Parallel": {

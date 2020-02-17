@@ -6,12 +6,12 @@ from datetime import datetime
 
 
 def action_aws_asf_pass(context, event):
-    if 'Result' in context and 'ResultPath' in context:
-        exp = parse(context['ResultPath'])
+    if 'Result' in context['State'] and 'ResultPath' in context['State']:
+        exp = parse(context['State']['ResultPath'])
         if not exp.find(context['global_context']):
             raise Exception('Result path not found in global context')
         else:
-            exp.update(context['global_context'], context['Result'])
+            exp.update(context['global_context'], context['State']['Result'])
 
     termination_cloudevent = {'specversion': '1.0',
                               'id': uuid.uuid4().hex,
@@ -24,7 +24,7 @@ def action_aws_asf_pass(context, event):
 
 
 def action_aws_asf_task(context, event):
-    if 'lambda' not in context['Resource']:
+    if 'lambda' not in context['State']['Resource']:
         raise NotImplementedError()
 
     # TODO ensure lambda funct has a sqs topic destination configured
@@ -33,10 +33,10 @@ def action_aws_asf_task(context, event):
                                 aws_secret_access_key=context['global_context']['aws']['secret_access_key'])
 
     invoke_args = {}
-    for parameter_key in context['Parameters']:
+    for parameter_key in context['State']['Parameters']:
         if parameter_key.endswith('.$'):
             key = parameter_key[:-2]
-            exp = parse(context['Parameters'][parameter_key])
+            exp = parse(context['State']['Parameters'][parameter_key])
             match = exp.find(context['global_context'])
             if len(match) == 1:
                 invoke_args[key] = match.pop().value
@@ -45,19 +45,33 @@ def action_aws_asf_task(context, event):
             else:
                 invoke_args[key] = None
 
-    boto3_client.invoke_async(FunctionName=context['Resource'], InvokeArgs=invoke_args)
+    boto3_client.invoke_async(FunctionName=context['State']['Resource'], InvokeArgs=invoke_args)
 
 
-def action_aws_asf_choice(context, event):
-    # TODO
-    pass
+def action_aws_asf_map(context, event):
+    exp = parse(context['State']['ItemsPath'])
+    match = exp.find(context['global_context'])
+    iterator = match.pop().value
 
+    for element in iterator:
+        termination_cloudevent = {'specversion': '1.0',
+                                  'id': uuid.uuid4().hex,
+                                  'source': '/'.join(['local', context['namespace'], context['trigger_id']]),
+                                  'type': 'termination.event.success',
+                                  'time': str(datetime.utcnow().isoformat()),
+                                  'subject': context['subject'],
+                                  'datacontenttype': 'application/json',
+                                  'data': element}
 
-def action_aws_asf_parallel(context, event):
-    # TODO
-    pass
+        context['local_event_queue'].put(termination_cloudevent)
 
 
 def action_aws_asf_end_statemachine(context, event):
-    # TODO
-    pass
+    termination_cloudevent = {'specversion': '1.0',
+                              'id': uuid.uuid4().hex,
+                              'source': '/'.join(['local', context['namespace'], context['trigger_id']]),
+                              'type': 'termination.event.success',
+                              'time': str(datetime.utcnow().isoformat()),
+                              'subject': context['subject']}
+
+    context['local_event_queue'].put(termination_cloudevent)
