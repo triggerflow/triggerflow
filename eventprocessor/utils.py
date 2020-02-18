@@ -27,5 +27,8 @@ def seconds_since(some_date_time):
 
 
 def authenticate_request(db, request):
+    if not request.authorization or 'username' not in request.authorization or 'password' not in request.authorization:
+        return False
+
     passwd = db.get_key(database_name='auth$', document_id='users', key=request.authorization['username'])
     return passwd == request.authorization['password']

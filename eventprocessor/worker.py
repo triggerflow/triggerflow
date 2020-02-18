@@ -92,7 +92,9 @@ class Worker(Process):
                     action_name = self.triggers[trigger_id]['action']['name']
                     context = self.triggers[trigger_id]['context']
 
-                    context.update(self.global_context)
+                    context['global_context'] = self.global_context
+                    context['namespace'] = self.namespace
+                    context['local_event_queue'] = self.event_queue
                     context['events'] = self.events
                     context['trigger_events'] = self.trigger_events
                     context['triggers'] = self.triggers
@@ -116,7 +118,8 @@ class Worker(Process):
                 if success:
                     logging.info('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
                     self.store_event_queue.put((subject, self.events[subject]))
-
+                    if subject in self.events:
+                        del self.events[subject]
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.namespace, subject))
                 self.__update_triggers()
