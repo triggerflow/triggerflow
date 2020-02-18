@@ -1,3 +1,5 @@
+import uuid
+
 import requests
 import re
 from requests.auth import HTTPBasicAuth
@@ -17,50 +19,55 @@ class CloudEventProcessorClient:
                  user: str,
                  password: str,
                  namespace: Optional[str] = None,
-                 eventsource_name: Optional[str] = None):
+                 eventsource_name: Optional[str] = None,
+                 caching: Optional[bool] = False):
         """
-        Initializes CloudEventProcessor client.
+        Initialize CloudEventProcessor client.
         :param api_endpoint: Endpoint of the Event Processor API.
         :param user: Username to authenticate this client towards the API REST.
         :param password: Password to authenticate this client towards the API REST.
         :param namespace: Namespace which this client targets by default when managing triggers.
         :param eventsource_name: Eventsource which this client targets by default when managing triggers.
+        :param caching: Add triggers to local cache, to then commit cached
+                        triggers in a single request using push_triggers().
         """
-        self.namespace = namespace
         self.eventsource_name = eventsource_name
         self.api_endpoint = api_endpoint
+        self.caching = caching
+        self.__namespace = namespace
+        self.__trigger_cache = {}
 
         if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
             raise ValueError('Invalid Username')
         if not re.fullmatch(r"^(?=.*[A-Za-z])[A-Za-z\d@$!%*#?&]+$", password):
             raise ValueError('Invalid Password')
 
-        self.basic_auth = HTTPBasicAuth(user, password)
+        self.__basic_auth = HTTPBasicAuth(user, password)
 
-    def set_namespace(self, namespace: str):
+    def target_namespace(self, namespace: str):
         """
-        Sets the target namespace of this client.
+        Set the target namespace of this client.
         :param namespace: Namespace name.
         """
-        self.namespace = namespace
+        self.__namespace = namespace
 
     def create_namespace(self, namespace: Optional[str] = None,
                          global_context: Optional[dict] = None,
                          event_source: Optional[CloudEventSource] = None):
         """
-        Creates a namespace.
+        Create a namespace.
         :param namespace: Namespace name.
         :param global_context: Read-only key-value state that is visible for all triggers in the namespace.
         :param event_source: Applies this event source to the new namespace.
         """
         default_context = {'namespace': namespace}
 
-        if namespace is None and self.namespace is None:
+        if namespace is None and self.__namespace is None:
             raise ValueError('Namespace cannot be None')
         elif namespace is None:
-            namespace = self.namespace
+            namespace = self.__namespace
 
-        self.namespace = namespace
+        self.__namespace = namespace
 
         if global_context is not None and type(global_context) is dict:
             global_context.update(default_context)
@@ -72,7 +79,7 @@ class CloudEventProcessorClient:
         evt_src = event_source.json if event_source is not None else None
 
         res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
-                           auth=self.basic_auth,
+                           auth=self.__basic_auth,
                            json={'global_context': global_context,
                                  'event_source': evt_src})
 
@@ -85,13 +92,18 @@ class CloudEventProcessorClient:
             raise Exception(res.json())
 
     def delete_namespace(self, namespace: str = None):
-        if namespace is None and self.namespace is None:
+        """
+        Delete a namespace.
+        :param namespace:
+        :return:
+        """
+        if namespace is None and self.__namespace is None:
             raise exceptions.NullNamespaceError()
         elif namespace is None:
-            namespace = self.namespace
+            namespace = self.__namespace
 
         res = requests.delete('/'.join([self.api_endpoint, 'namespace', namespace]),
-                              auth=self.basic_auth,
+                              auth=self.__basic_auth,
                               json={})
 
         print("{}: {}".format(res.status_code, res.json()))
@@ -104,21 +116,21 @@ class CloudEventProcessorClient:
 
     def set_event_source(self, eventsource_name: str):
         """
-        Sets the default event source for this client when managing triggers.
+        Set the default event source for this client when managing triggers.
         :param eventsource_name: Event source name.
         """
         self.eventsource_name = eventsource_name
 
     def add_event_source(self, eventsource: CloudEventSource, overwrite: Optional[bool] = False):
         """
-        Adds an event source to the target namespace.
+        Add an event source to the target namespace.
         :param eventsource: Instance of CloudEventSource containing the specifications of the event source.
         :param overwrite: True for overwriting the event source specification.
         """
 
-        res = requests.put('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', eventsource.name]),
+        res = requests.put('/'.join([self.api_endpoint, 'namespace', self.__namespace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
-                           auth=self.basic_auth,
+                           auth=self.__basic_auth,
                            json={'eventsource': eventsource.json})
 
         print("{}: {}".format(res.status_code, res.json()))
@@ -135,9 +147,9 @@ class CloudEventProcessorClient:
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
                     transient: Optional[bool] = True,
-                    id: Optional[str] = None):
+                    trigger_id: Optional[str] = None):
         """
-        Adds a trigger to the target namespace.
+        Add a trigger to the target namespace.
         :param event: Instance of CloudEvent, this CloudEvent's subject and type will fire this trigger.
         :param condition: Callable that is executed every time the event is received. If it returns true,
         then Action is executed. It has to satisfy signature contract (context, event).
@@ -145,12 +157,13 @@ class CloudEventProcessorClient:
         contract (context, event).
         :param context: Trigger key-value state, only visible for this specific trigger.
         :param transient: If true, this trigger is deleted after action is executed.
-        :param id: Custom ID for a persistent trigger.
+        :param trigger_id: Custom ID for a persistent trigger.
+        :return: Response
         """
-        if self.namespace is None:
+        if self.__namespace is None:
             raise exceptions.NullNamespaceError()
 
-        if transient and id is not None:
+        if transient and trigger_id is not None:
             raise exceptions.NamedTransientTriggerError()
 
         # Check for arguments types
@@ -167,20 +180,86 @@ class CloudEventProcessorClient:
             'context': context,
             'depends_on_events': events,
             'transient': transient,
-            'id': id}
+            'trigger_id': trigger_id}
 
-        res = requests.post('/'.join([self.api_endpoint, 'namespace', self.namespace, 'trigger']),
-                            auth=self.basic_auth,
-                            json={'events': events,
-                                  'trigger': trigger})
-
-        print('{}: {}'.format(res.status_code, res.json()))
-        if not res.ok:
-            raise Exception(res.json())
+        if self.caching:
+            res = self.__add_trigger_cache(trigger)
         else:
-            return res.json()
+            res = self.__add_trigger_remote(trigger)
+
+        return res
+
+    def delete_trigger(self, trigger_id: str):
+        """
+        Delete a trigger identified by its id.
+        :param trigger_id: Trigger id to be deleted.
+        :return: Response
+        """
+        if self.caching:
+            res = self.__delete_trigger_cache(trigger_id)
+        else:
+            res = self.__delete_trigger_remote(trigger_id)
+        return res
+
+    def get_trigger(self, trigger_id: str):
+        """
+        Retrieve a trigger and its metadata.
+        :param trigger_id: Trigger id
+        :return: Trigger json object
+        """
+        if self.caching:
+            res = self.__get_trigger_cache(trigger_id)
+        else:
+            res = self.__get_trigger_remote(trigger_id)
+        return res
+
+    def amend_trigger(self, trigger_id: str, trigger: dict):
+        """
+        Modify trigger.
+        :param trigger_id: Trigger id
+        :param trigger: New trigger json object, which will replace the current trigger configuration.
+        :return:
+        """
+        if self.caching:
+            res = self.__amend_trigger_cache(trigger_id)
+        else:
+            res = self.__amend_trigger_remote(trigger_id)
+        return res
+
+    def commit_cached_triggers(self):
+        """
+        Commit cached triggers to database.
+        :return:
+        """
+        if not self.caching:
+            raise Exception('No trigger caching is being used')
+        if self.__trigger_cache:
+            res = self.__add_trigger_remote(list(self.__trigger_cache.values()))
+            return res
+        else:
+            raise Exception('Trigger cache empty')
+
+    def list_cached_triggers(self):
+        """
+        List cached triggers.
+        :return: dict Trigger cache
+        """
+        if not self.caching:
+            raise Exception('No trigger caching is being used')
+
+        return self.__trigger_cache
+
+    def flush_cached_triggers(self):
+        """
+        Discard cached triggers.
+        """
+        self.__trigger_cache = {}
 
     def list_eventsources(self):
+        """
+        List eventsource names for this namespace.
+        :return:
+        """
         res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource']),
                            auth=self.basic_auth, json={})
 
@@ -191,6 +270,11 @@ class CloudEventProcessorClient:
             return res.json()
 
     def get_eventsource(self, event_soruce_name):
+        """
+        Retrieve event source json object by its name.
+        :param event_soruce_name: Event source name to retrieve.
+        :return:
+        """
         res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', event_soruce_name]),
                            auth=self.basic_auth, json={})
 
@@ -199,3 +283,54 @@ class CloudEventProcessorClient:
             raise Exception(res.json())
         else:
             return res.json()
+
+    def __add_trigger_cache(self, trigger):
+        if trigger['trigger_id'] is None:
+            trigger['trigger_id'] = str(uuid.uuid4())
+        elif trigger['trigger_id'] in self.__trigger_cache:
+            raise Exception('Trigger {} already exists'.format(trigger['trigger_id']))
+        else:
+            self.__trigger_cache[trigger['trigger_id']] = trigger
+
+        print({'trigger': trigger['trigger_id']})
+        return {'trigger': trigger['trigger_id']}
+
+    def __add_trigger_remote(self, trigger):
+        triggers = [trigger] if type(trigger) != list else trigger
+
+        res = requests.post('/'.join([self.api_endpoint, 'namespace', self.__namespace, 'trigger']),
+                            auth=self.__basic_auth,
+                            json={'triggers': triggers})
+
+        print('{}: {}'.format(res.status_code, res.json()))
+        if not res.ok:
+            raise Exception(res.json())
+        else:
+            return res.json()
+
+    def __delete_trigger_cache(self, trigger_id):
+        if trigger_id in self.__trigger_cache:
+            del self.__trigger_cache[trigger_id]
+        else:
+            raise TypeError('Trigger {} does not exist'.format(trigger_id))
+
+    def __delete_trigger_remote(self, trigger_id):
+        raise NotImplementedError()
+
+    def __get_trigger_cache(self, trigger_id):
+        if trigger_id in self.__trigger_cache:
+            return {'trigger': self.__trigger_cache[trigger_id].copy()}
+        else:
+            raise TypeError('Trigger {} does not exist'.format(trigger_id))
+
+    def __get_trigger_remote(self, trigger_id):
+        raise NotImplementedError()
+
+    def __amend_trigger_cache(self, trigger_id, trigger):
+        if trigger_id in self.__trigger_cache:
+            self.__trigger_cache[trigger_id] = trigger.copy()
+        else:
+            raise TypeError('Trigger {} does not exist'.format(trigger_id))
+
+    def __amend_trigger_remote(self, trigger_id, trigger):
+        pass

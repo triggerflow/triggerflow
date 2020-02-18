@@ -5,8 +5,7 @@ from dags import DAG
 dag = DAG(dag_id='sequence',
           event_source='kafka')
 
-sequence_length = 1
-
+sequence_length = 20
 
 tasks = []
 

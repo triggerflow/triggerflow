@@ -26,7 +26,7 @@ def add_namespace(db, path, params):
 
     try:
         res = requests.post('/'.join([params['private_credentials']['event-router-endpoint'],
-                            'namespace', path.namespace]), auth=auth, json={})
+                                      'namespace', path.namespace]), auth=auth, json={})
         if res.ok:
             return {"statusCode": 201, "body": {"created": path.namespace}}
         else:
@@ -34,7 +34,6 @@ def add_namespace(db, path, params):
 
     except requests.exceptions.HTTPError:
         return {"statusCode": 503, "body": {"error": "event processor service unavailable"}}
-
 
 
 def get_namespace(db, path, params):
@@ -53,7 +52,7 @@ def delete_namespace(db, path, params):
 
     try:
         res = requests.delete('/'.join([params['private_credentials']['event-router-endpoint'],
-                              'namespace', path.namespace]), auth=auth, json={})
+                                        'namespace', path.namespace]), auth=auth, json={})
         if res.ok:
             return {"statusCode": 201, "body": {"deleted": path.namespace}}
         else:

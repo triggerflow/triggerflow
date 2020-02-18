@@ -16,7 +16,7 @@ if __name__ == "__main__":
                         global_context=client_config['global_context'],
                         event_source=kafka)
 
-    er.set_namespace('python_callable_example')
+    er.target_namespace('python_callable_example')
 
     def my_condition(context, event):
         if 'data' in event:
