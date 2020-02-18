@@ -91,8 +91,6 @@ class Worker(Process):
         event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
         event_store.start()
 
-        self.event_queue.put({'subject': '$init', 'type': 'termination.event.success'})
-
         while self.__should_run():
             print('Waiting for events...')
             event = self.event_queue.get()
@@ -131,7 +129,8 @@ class Worker(Process):
                         if condition(context, event):
                             action(context, event)
                             # self.store_event_queue.put((subject, self.events[subject]))
-                            del self.events[subject]
+                            if subject in self.events:
+                                del self.events[subject]
                     except Exception as e:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions

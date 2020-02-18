@@ -11,21 +11,20 @@ sm_count = 0
 
 def asf2triggers(asf_json):
     global ep, sm_count
-    # run_id = '_'.join(['asf_state-machine', str(uuid4())])
-    run_id = 'asf_test'
+    run_id = '_'.join(['asf_state-machine', str(uuid4())])
     ep_config = load_config_yaml('~/client_config.yaml')
-    # asf_config = load_config_yaml('~/asf_config.yaml')
+    asf_config = load_config_yaml('~/asf_config.yaml')
 
-    # evt_src_type = asf_config['event_source']
-    # evt_src_config = asf_config['event_sources'][evt_src_type]
-    # evt_src_class = asf_config['event_sources'][evt_src_type]['class']
-    # del evt_src_config['class']
+    evt_src_type = asf_config['event_source']
+    evt_src_config = asf_config['event_sources'][evt_src_type]
+    evt_src_class = asf_config['event_sources'][evt_src_type]['class']
+    del evt_src_config['class']
 
-    # mod = import_module('eventprocessor_client.sources')
-    # evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
-    # event_source = evt_src(name=run_id,
-    #                        topic=run_id,
-    #                        **evt_src_config)
+    mod = import_module('eventprocessor_client.sources')
+    evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
+    event_source = evt_src(name=run_id,
+                           topic=run_id,
+                           **evt_src_config)
 
     ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
                                    user=ep_config['event_processor']['user'],
@@ -34,12 +33,15 @@ def asf2triggers(asf_json):
                                    eventsource_name=run_id,
                                    caching=True)
 
-    # ep.create_namespace(run_id, event_source=event_source)
+    ep.create_namespace(run_id, event_source=event_source)
 
-    state_machine(asf_json, '$init')
+    main_sm = state_machine(asf_json, '$init')
 
-    with open('trg.json', 'w') as f:
-        f.write(json.dumps(ep.list_cached_triggers(), indent=2))
+    ep.add_trigger(CloudEvent(main_sm),
+                   condition=AwsAsfConditions.AWS_ASF_JOIN_STATEMACHINE,
+                   action=DefaultActions.TERMINATE,
+                   trigger_id='$end',
+                   transient=False)
 
     ep.commit_cached_triggers()
 
@@ -91,8 +93,9 @@ def state_machine(asf_json, init_event):
             for branch in state['Branches']:
                 sub_sm_id = state_machine(branch, upstream_relatives[state_name])
                 sub_state_machines.append(sub_sm_id)
+            context['join_multiple'] = len(state['Branches'])
             ep.add_trigger([CloudEvent(sub_state_machine_id) for sub_state_machine_id in sub_state_machines],
-                           condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                           condition=AwsAsfConditions.AWS_ASF_JOIN_STATEMACHINE,
                            action=AwsAsfActions.AWS_ASF_PASS,
                            context=context,
                            trigger_id=state_name,
@@ -100,13 +103,14 @@ def state_machine(asf_json, init_event):
         elif state['Type'] == 'Wait':
             raise NotImplementedError()
         elif state['Type'] == 'Map':
+            iterator = state_machine(state['Iterator'], state_name)
+            context['join_state_machine'] = iterator
             ep.add_trigger(CloudEvent(upstream_relatives[state_name]),
                            condition=AwsAsfConditions.AWS_ASF_CONDITION,
                            action=AwsAsfActions.AWS_ASF_MAP,
                            context=context,
                            trigger_id=state_name,
                            transient=False)
-            iterator = state_machine(state['Iterator'], state_name)
             upstream_relatives[state['Next']] = iterator
         elif state['Type'] == 'Succeed':
             raise NotImplementedError()
@@ -114,110 +118,10 @@ def state_machine(asf_json, init_event):
             raise NotImplementedError()
 
     ep.add_trigger([CloudEvent(final_state) for final_state in final_states],
-                   condition=AwsAsfConditions.AWS_ASF_CONDITION,
+                   condition=AwsAsfConditions.AWS_ASF_JOIN_STATEMACHINE,
                    action=AwsAsfActions.AWS_ASF_END_STATEMACHINE,
                    context={'subject': sm_id},
                    trigger_id=sm_id,
                    transient=False)
 
     return sm_id
-
-
-my_statemachine = """
-{
-  "Comment": "Parallel Example.",
-  "StartAt": "SetupParameters",
-  "States": {
-    "SetupParameters": {
-      "Type": "Pass",
-      "Result": [1,2,3,4,5],
-      "ResultPath": "$.my_array",
-      "Next": "Parallel"
-    },
-    "Parallel": {
-      "Type": "Parallel",
-      "End": true,
-      "Branches": [
-        {
-          "StartAt": "Map",
-          "States": {
-            "Map": {
-              "Type": "Map",
-              "Iterator": {
-                "StartAt": "MapBranch",
-                "States": {
-                  "MapBranch": {
-                    "Type": "Parallel",
-                    "Branches": [
-                      {
-                        "StartAt": "MapParallelBranch1-1",
-                        "States": {
-                          "MapParallelBranch1-1": {
-                            "Type": "Pass",
-                            "Next": "MapParallelBranch1-2"
-                          },
-                          "MapParallelBranch1-2": {
-                            "Type": "Pass",
-                            "End": true
-                          }
-                        }
-                      },
-                      {
-                        "StartAt": "MapParallelBranch2",
-                        "States": {
-                          "MapParallelBranch2": {
-                            "Type": "Pass",
-                            "End": true
-                          }
-                        }
-                      }
-                    ],
-                    "End": true
-                  }
-                }
-              },
-              "Next": "Reduce"
-            },
-            "Reduce": {
-              "Type": "Pass",
-              "End": true
-            }
-          }
-        },
-        {
-          "StartAt": "Branching",
-          "States": {
-            "Branching": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.my_number",
-                  "NumericEquals": 1,
-                  "Next": "Result1"
-                },
-                {
-                  "Variable": "$.my_number",
-                  "NumericEquals": 2,
-                  "Next": "Result2"
-                }
-              ]
-            },
-            "Result1": {
-              "Type": "Pass",
-              "End": true
-            },
-            "Result2": {
-              "Type": "Pass",
-              "End": true
-            }
-          }
-        }
-      ]
-    }
-  }
-}
-"""
-
-import json
-
-asf2triggers(json.loads(my_statemachine))

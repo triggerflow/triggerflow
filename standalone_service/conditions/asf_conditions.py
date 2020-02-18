@@ -45,6 +45,18 @@ def condition_aws_asf_condition(context, event):
         return True
 
 
+def condition_aws_asf_join_statemachine(context, event):
+    if 'join_multiple' in context:
+        if 'counter' in context:
+            context['counter'] += 1
+        else:
+            context['counter'] = 1
+
+        return context['counter'] >= context['join_multiple']
+    else:
+        return True
+
+
 def __evaluate_condition(condition, global_context):
     exp = parse(condition['Variable'])
     matches = [match.value for match in exp.find(global_context)]

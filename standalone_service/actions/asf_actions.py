@@ -49,7 +49,7 @@ def action_aws_asf_task(context, event):
 
 
 def action_aws_asf_map(context, event):
-    exp = parse(context['State']['ItemsPath'])
+    exp = parse(context['State']['InputPath'])
     match = exp.find(context['global_context'])
     iterator = match.pop().value
 
@@ -64,6 +64,9 @@ def action_aws_asf_map(context, event):
                                   'data': element}
 
         context['local_event_queue'].put(termination_cloudevent)
+
+    join_sm = context['join_state_machine']
+    context['triggers'][join_sm]['context']['join_multiple'] = len(iterator)
 
 
 def action_aws_asf_end_statemachine(context, event):
