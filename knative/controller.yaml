@@ -7,15 +7,8 @@ spec:
   template:
     metadata:
       annotations:
-        # Target 1 in-flight-requests per pod.
-        #autoscaling.knative.dev/target: "1"
-        autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "1"
-        autoscaling.knative.dev/target: "5000"
-        #autoscaling.knative.dev/targetBurstCapacity: "10"
     spec:
-      #containerConcurrency: 1
-      #timeoutSeconds: 300
       containers:
         - image: jsampe/triggerflow-controller
           resources:
