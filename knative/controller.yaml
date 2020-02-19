@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: triggerflow-event-processor
+  name: triggerflow-controller
   #namespace: default
 spec:
   template:
@@ -17,11 +17,8 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-event-processor
-          env:
-          - name: KAFKA_TOPIC
-            value: 'knative-demo-topic'
+        - image: jsampe/triggerflow-controller
           resources:
             limits:
-              memory: 2Gi
-              cpu: 2
+              memory: 256Mi
+              cpu: 0.5
