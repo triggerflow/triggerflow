@@ -11,3 +11,4 @@ python-dateutil
 docker
 boto3
 kubernetes
+jsonpath_ng
