@@ -13,8 +13,8 @@ ENV PYTHONUNBUFFERED TRUE
 ENV APP_HOME /triggerflow
 WORKDIR $APP_HOME
 
-ADD knative/controller.py .
-ADD knative/cloudant_client.py .
+ADD knative/controllerproxy.py .
+ADD eventprocessor/libs/cloudant_client.py .
 ADD config.yaml .
 
-CMD exec gunicorn --bind :$PORT --workers 1 controller:app 
+CMD exec gunicorn --bind :$PORT --workers 1 controllerproxy:app 

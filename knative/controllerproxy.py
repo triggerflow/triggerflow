@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
 from cloudant_client import CloudantClient
 
-logger = logging.getLogger('triggerflow')
+logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
@@ -36,7 +36,7 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-controller
+        - image: jsampe/triggerflow-worker
           env:
           - name: NAMESPACE
             value: 'default'
