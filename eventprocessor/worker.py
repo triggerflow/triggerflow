@@ -24,12 +24,11 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    def __init__(self, namespace, event_queue, private_credentials):
+    def __init__(self, namespace, private_credentials):
         super().__init__()
 
         self.worker_status = {}
         self.namespace = namespace
-        self.event_queue = event_queue
         self.worker_id = str(uuid4())
         self.__private_credentials = private_credentials
 
@@ -37,6 +36,7 @@ class Worker(Process):
         self.trigger_events = {}
         self.global_context = {}
         self.events = {}
+        self.event_queue = None
         self.dead_letter_queue = None
         self.event_source_hooks = []
         self.store_event_queue = None
@@ -56,6 +56,7 @@ class Worker(Process):
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
 
+        self.event_queue = Queue()
         self.dead_letter_queue = Queue()
 
         # Instantiate broker client

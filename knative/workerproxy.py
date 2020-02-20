@@ -2,7 +2,7 @@ import logging
 import os
 from multiprocessing import Queue
 from flask import Flask, jsonify, request
-from eventprocessor.worker import Worker
+from worker import Worker
 
 logger = logging.getLogger('triggerflow-worker')
 
@@ -29,7 +29,9 @@ def run():
     if message and not isinstance(message, dict):
         return error()
 
+    print('Receiving message...')
     event_queue.put(message)
+    print('Message received')
 
     return jsonify('Message received'), 201
 

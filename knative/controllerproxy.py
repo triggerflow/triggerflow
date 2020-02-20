@@ -4,21 +4,28 @@ import yaml
 from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
 from cloudant_client import CloudantClient
+import requests as req
 
 logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
-workers = {}
-private_credentials = None
-db = None
+TOTAL_REQUESTS = 0
 
+print('Loading private credentials')
+with open('config.yaml', 'r') as config_file:
+    private_credentials = yaml.safe_load(config_file)
+
+print('Creating DB connection')
+#db = CloudantClient(**private_credentials['cloudant'])
+
+print('loading kubernetes config')
 config.load_incluster_config()
 k_co_api = client.CustomObjectsApi()
 k_v1_api = client.CoreV1Api()
 
 service_res = """
-apiVersion: serving.knative.dev/v1alpha1
+apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: triggerflow-worker
@@ -46,6 +53,22 @@ spec:
               cpu: 2
 """
 
+event_source_res = """
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: KafkaSource
+metadata:
+  name: kafka-source
+spec:
+  consumerGroup: triggerflow
+  bootstrapServers: IP:PORT
+  topics: topic-name
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: event-display
+"""
+
 
 def authenticate_request(db, request):
     if not request.authorization or 'username' not in request.authorization or 'password' not in request.authorization:
@@ -62,13 +85,13 @@ def start_worker(namespace):
     that will act as the event-processor for the the specific trigger namespace.
     It returns 400 error if the provided parameters are not correct.
     """
+    global db
 
     #if not authenticate_request(db, request):
     #    return jsonify('Unauthorized'), 401
 
-    logger.info('New request to start a worker for namespace {}'.format(namespace))
+    print('New request to start a worker for namespace {}'.format(namespace))
 
-    logger.debug("Creating PyWren runtime service resource in k8s")
     svc_res = yaml.safe_load(service_res)
 
     service_name = 'triggerflow-worker-{}'.format(namespace)
@@ -79,7 +102,7 @@ def start_worker(namespace):
         # create the service resource
         k_co_api.create_namespaced_custom_object(
                 group="serving.knative.dev",
-                version="v1alpha1",
+                version="v1",
                 namespace='default',
                 plural="services",
                 body=svc_res
@@ -88,7 +111,7 @@ def start_worker(namespace):
         w = watch.Watch()
         for event in w.stream(k_co_api.list_namespaced_custom_object,
                               namespace='default', group="serving.knative.dev",
-                              version="v1alpha1", plural="services",
+                              version="v1", plural="services",
                               field_selector="metadata.name={0}".format(service_name)):
             conditions = None
             if event['object'].get('status') is not None:
@@ -99,10 +122,59 @@ def start_worker(namespace):
                conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
                 w.stop()
 
-        logger.info('Runtime Service resource created - URL: {}'.format(service_url))
+        print('Trigger Service worker created - URL: {}'.format(service_url))
 
+        # Create event sources
+        #event_sources = db.get(database_name=namespace, document_id='.event_sources')
+        event_sources = {'pywren_event_source': {'class': 'KafkaCloudEventSource',
+                                                 'name': 'pywren-event-source',
+                                                 'spec': {'auth_mode': 'NONE',
+                                                          'broker_list': ['192.168.2.51:9092'],
+                                                          'name': 'pywren-event-source',
+                                                          'topic': 'pywren'}
+                                                 }
+                         }
+
+        print('Starting event sources...')
+        for evt_src in event_sources.values():
+            if evt_src['class'] == 'KafkaCloudEventSource':
+                print('Starting {}'.format(evt_src['name']))
+                es_res = yaml.safe_load(event_source_res)
+                es_res['metadata']['name'] = evt_src['name']
+                es_res['spec']['bootstrapServers'] = evt_src['spec']['broker_list'][0]
+                es_res['spec']['topics'] = evt_src['spec']['topic']
+                es_res['spec']['sink']['ref']['name'] = service_name
+
+                # create the service resource
+                k_co_api.create_namespaced_custom_object(
+                        group="sources.eventing.knative.dev",
+                        version="v1alpha1",
+                        namespace='default',
+                        plural="kafkasources",
+                        body=es_res
+                    )
+
+                w = watch.Watch()
+                for event in w.stream(k_co_api.list_namespaced_custom_object,
+                                      namespace='default', group="sources.eventing.knative.dev",
+                                      version="v1alpha1", plural="kafkasources",
+                                      field_selector="metadata.name={0}".format(evt_src['name'])):
+                    conditions = None
+                    if event['object'].get('status') is not None:
+                        conditions = event['object']['status']['conditions']
+                        if event['object']['status'].get('url') is not None:
+                            service_url = event['object']['status']['url']
+                    if conditions and conditions[0]['status'] == 'True' and \
+                       conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
+                        w.stop()
+
+            else:
+                return jsonify('Not supported event source: {}'.format(evt_src['class'])), 400
+        print('Event source started')
         return jsonify('Started worker for namespace {}'.format(namespace)), 201
-    except Exception:
+
+    except Exception as e:
+        raise e
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
 
 
@@ -111,19 +183,48 @@ def delete_worker(namespace):
     #if not authenticate_request(db, request):
     #    return jsonify('Unauthorized'), 401
 
-    service_name = 'triggerflow-worker-{}'.format(namespace)
+    print('Stoppnig workers for namespace: {}'.format(namespace))
     try:
         # delete the service resource if exists
+        service_name = 'triggerflow-worker-{}'.format(namespace)
         k_co_api.delete_namespaced_custom_object(
                 group="serving.knative.dev",
-                version="v1alpha1",
+                version="v1",
                 name=service_name,
                 namespace='default',
                 plural="services",
                 body=client.V1DeleteOptions()
             )
+        print('Workers stopped')
+
+        event_sources = {'pywren_event_source': {'class': 'KafkaCloudEventSource',
+                                                 'name': 'pywren-event-source',
+                                                 'spec': {'auth_mode': 'NONE',
+                                                          'broker_list': ['192.168.2.51:9092'],
+                                                          'name': 'pywren-event-source',
+                                                          'topic': 'pywren'}
+                                                 }
+                         }
+
+        # Stop event sources
+        #event_sources = db.get(database_name=namespace, document_id='.event_sources')
+        print('Stopping event sources for namespace {}'.format(namespace))
+        for evt_src in event_sources.values():
+            if evt_src['class'] == 'KafkaCloudEventSource':
+                k_co_api.delete_namespaced_custom_object(
+                        group="sources.eventing.knative.dev",
+                        version="v1alpha1",
+                        name=evt_src['name'],
+                        namespace='default',
+                        plural="kafkasources",
+                        body=client.V1DeleteOptions()
+                    )
+        print('Event sources stopped')
+
         return jsonify('Worker for namespcace {} stopped'.format(namespace)), 200
-    except Exception:
+    except Exception as e:
+        raise e
+        print('Worker for namespcace {} is not active'.format(namespace))
         return jsonify('Worker for namespcace {} is not active'.format(namespace)), 400
 
 
@@ -132,16 +233,29 @@ def test_route():
     return jsonify('Hi!')
 
 
+@app.route('/test', methods=['GET', 'POST'])
+def net_test():
+    global TOTAL_REQUESTS
+    TOTAL_REQUESTS = TOTAL_REQUESTS+1
+    logger.info('Checking Internet connection: {} Request'.format(request.method))
+    message = request.get_json(force=True, silent=True)
+
+    print(message, flush=True)
+
+    url = os.environ.get('URL', 'https://httpbin.org/get')
+    resp = req.get(url)
+    print(resp.status_code, flush=True)
+
+    if resp.status_code == 200:
+        return_statement = {'Internet Connection': "True", "Total Requests": TOTAL_REQUESTS}
+    else:
+        return_statement = {'Internet Connection': "False", "Total Requests": TOTAL_REQUESTS}
+
+    # return_statement = {"Total Requests": TOTAL_REQUESTS}
+    return jsonify(return_statement), 200
+
+
 def main():
-    global private_credentials, db
-
-    logger.info('Loading private credentials')
-    with open('config.yaml', 'r') as config_file:
-        private_credentials = yaml.safe_load(config_file)
-
-    logger.info('Creating database client')
-    db = CloudantClient(**private_credentials['cloudant'])
-
     port = int(os.getenv('PORT', 8080))
     app.run(debug=True, host='0.0.0.0', port=port)
 

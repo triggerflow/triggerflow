@@ -24,11 +24,12 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    def __init__(self, namespace, private_credentials):
+    def __init__(self, namespace, event_queue, private_credentials):
         super().__init__()
 
         self.worker_status = {}
         self.namespace = namespace
+        self.event_queue = event_queue
         self.worker_id = str(uuid4())
         self.__private_credentials = private_credentials
 
@@ -36,9 +37,7 @@ class Worker(Process):
         self.trigger_events = {}
         self.global_context = {}
         self.events = {}
-        self.event_queue = None
         self.dead_letter_queue = None
-        self.event_source_hooks = []
         self.store_event_queue = None
 
         # Instantiate DB client
@@ -51,31 +50,21 @@ class Worker(Process):
         self.current_state = Worker.State.INITIALIZED
 
     def run(self):
-        logging.info('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
+        print('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
         worker_start_time = datetime.now()
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
 
-        self.event_queue = Queue()
         self.dead_letter_queue = Queue()
-
-        # Instantiate broker client
-        event_sources = self.__cloudant_client.get(database_name=self.namespace, document_id='.event_sources')
-        for evt_src in event_sources.values():
-            hook_class = getattr(hooks, '{}Hook'.format(evt_src['class']))
-            hook = hook_class(event_queue=self.event_queue, **evt_src['spec'])
-            hook.start()
-            self.event_source_hooks.append(hook)
-
         # Instantiate async event store
         self.store_event_queue = Queue()
         event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
         event_store.start()
 
         while self.__should_run():
-            logging.info('[{}] Waiting for events...'.format(self.namespace))
+            print('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
-            logging.info('[{}] New Event: {}'.format(self.namespace, event))
+            print('[{}] New Event: {}'.format(self.namespace, event))
             subject = event['subject']
             event_type = event['type']
 
@@ -116,7 +105,7 @@ class Worker(Process):
                         # TODO Handle condition/action exceptions
                         raise e
                 if success:
-                    logging.info('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
+                    print('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
                     self.store_event_queue.put((subject, self.events[subject]))
                     if subject in self.events:
                         del self.events[subject]
@@ -129,17 +118,14 @@ class Worker(Process):
                     self.dead_letter_queue.put(event)
 
     def stop_worker(self):
-        for hook in self.event_source_hooks:
-            hook.stop()
-
-        logging.info("[{}] Worker {} stopped".format(self.namespace, self.worker_id))
+        print("[{}] Worker {} stopped".format(self.namespace, self.worker_id))
         self.terminate()
 
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
 
     def __update_triggers(self):
-        logging.info("[{}] Updating triggers cache".format(self.namespace))
+        print("[{}] Updating triggers cache".format(self.namespace))
         try:
             all_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
             new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
@@ -157,8 +143,8 @@ class Worker(Process):
                 if k not in self.triggers:
                     self.triggers[k] = v
         except KeyError:
-            logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
-        logging.info("[{}] Triggers updated".format(self.namespace))
+            print('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
+        print("[{}] Triggers updated".format(self.namespace))
 
     @staticmethod
     def __dump_request_response(trigger_name, response):
@@ -180,4 +166,4 @@ class Worker(Process):
             }
         }
 
-        logging.error('[{}] Dumping the content of the request and response:\n{}'.format(trigger_name, response_dump))
+        print('[{}] Dumping the content of the request and response:\n{}'.format(trigger_name, response_dump))
