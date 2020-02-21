@@ -1,11 +1,12 @@
 import logging
+import os
+import yaml
 import traceback
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 
-import eventprocessor.event_source_hooks.hooks as hooks
 from eventprocessor.libs.cloudant_client import CloudantClient
 from eventprocessor.event_store import AsyncEventStore
 
@@ -24,14 +25,14 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    def __init__(self, namespace, event_queue, private_credentials):
+    def __init__(self, event_queue):
         super().__init__()
+        self.namespace = os.environ.get('NAMESPACE')
+        print('Initializing worker for workspace: {}'.format(self.namespace))
 
         self.worker_status = {}
-        self.namespace = namespace
         self.event_queue = event_queue
         self.worker_id = str(uuid4())
-        self.__private_credentials = private_credentials
 
         self.triggers = {}
         self.trigger_events = {}
@@ -40,14 +41,20 @@ class Worker(Process):
         self.dead_letter_queue = None
         self.store_event_queue = None
 
+        print('Loading private credentials')
+        with open('config.yaml', 'r') as config_file:
+            self.__private_credentials = yaml.safe_load(config_file)
+
         # Instantiate DB client
         # TODO Make storage abstract
         self.__cloudant_client = CloudantClient(**self.__private_credentials['cloudant'])
 
         # Get global context
-        self.global_context = self.__cloudant_client.get(database_name=namespace, document_id='.global_context')
+        self.global_context = self.__cloudant_client.get(database_name=self.namespace,
+                                                         document_id='.global_context')
 
         self.current_state = Worker.State.INITIALIZED
+        print('Worker started for workspace: {}'.format(self.namespace))
 
     def run(self):
         print('[{}] Starting worker {}'.format(self.namespace, self.worker_id))

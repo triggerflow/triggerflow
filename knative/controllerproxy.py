@@ -17,7 +17,7 @@ with open('config.yaml', 'r') as config_file:
     private_credentials = yaml.safe_load(config_file)
 
 print('Creating DB connection')
-#db = CloudantClient(**private_credentials['cloudant'])
+db = CloudantClient(**private_credentials['cloudant'])
 
 print('loading kubernetes config')
 config.load_incluster_config()
@@ -125,17 +125,8 @@ def start_worker(namespace):
         print('Trigger Service worker created - URL: {}'.format(service_url))
 
         # Create event sources
-        #event_sources = db.get(database_name=namespace, document_id='.event_sources')
-        event_sources = {'pywren_event_source': {'class': 'KafkaCloudEventSource',
-                                                 'name': 'pywren-event-source',
-                                                 'spec': {'auth_mode': 'NONE',
-                                                          'broker_list': ['192.168.2.51:9092'],
-                                                          'name': 'pywren-event-source',
-                                                          'topic': 'pywren'}
-                                                 }
-                         }
-
         print('Starting event sources...')
+        event_sources = db.get(database_name=namespace, document_id='.event_sources')
         for evt_src in event_sources.values():
             if evt_src['class'] == 'KafkaCloudEventSource':
                 print('Starting {}'.format(evt_src['name']))
@@ -197,17 +188,8 @@ def delete_worker(namespace):
             )
         print('Workers stopped')
 
-        event_sources = {'pywren_event_source': {'class': 'KafkaCloudEventSource',
-                                                 'name': 'pywren-event-source',
-                                                 'spec': {'auth_mode': 'NONE',
-                                                          'broker_list': ['192.168.2.51:9092'],
-                                                          'name': 'pywren-event-source',
-                                                          'topic': 'pywren'}
-                                                 }
-                         }
-
         # Stop event sources
-        #event_sources = db.get(database_name=namespace, document_id='.event_sources')
+        event_sources = db.get(database_name=namespace, document_id='.event_sources')
         print('Stopping event sources for namespace {}'.format(namespace))
         for evt_src in event_sources.values():
             if evt_src['class'] == 'KafkaCloudEventSource':
