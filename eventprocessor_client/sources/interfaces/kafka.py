@@ -5,7 +5,7 @@ from typing import Optional, List
 from uuid import uuid1
 from confluent_kafka import Producer
 
-from eventprocessor_client.sources.model import CloudEventSource
+from ..model import CloudEventSource
 
 
 class KafkaAuthMode(Enum):

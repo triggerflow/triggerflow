@@ -1,1 +1,1 @@
-# TriggerFlow: Event Processor and Function Triggering service
+# TriggerFlow: Event-based Orchestration of Serverless Workflows

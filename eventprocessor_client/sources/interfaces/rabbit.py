@@ -1,4 +1,4 @@
-from eventprocessor_client.sources.model import CloudEventSource
+from ..model import CloudEventSource
 
 
 class RabbitMQCloudEventSource(CloudEventSource):
