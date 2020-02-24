@@ -2,6 +2,7 @@ import logging
 import os
 import yaml
 import traceback
+import time
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -71,6 +72,7 @@ class Worker(Process):
         while self.__should_run():
             print('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
+            print(time.time())
             print('[{}] New Event: {}'.format(self.namespace, event))
             subject = event['subject']
             event_type = event['type']
@@ -115,7 +117,7 @@ class Worker(Process):
                         raise e
                 if success:
                     print('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
-                    self.store_event_queue.put((subject, self.events[subject]))
+                    #self.store_event_queue.put((subject, self.events[subject]))
                     if subject in self.events:
                         del self.events[subject]
             else:

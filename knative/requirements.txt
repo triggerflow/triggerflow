@@ -1,4 +1,5 @@
 gunicorn
+eventlet>=0.24.1
 flask
 psutil
 gevent

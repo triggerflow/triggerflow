@@ -1,11 +1,16 @@
+import sys
 import json
+from confluent_kafka import Producer
+from concurrent.futures import ThreadPoolExecutor
+
 from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
 from eventprocessor_client.utils import load_config_yaml
 from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource
-from confluent_kafka import Producer
 
-N_MAPS = 25
-N_JOIN = 1000
+
+N_MAPS = 1
+N_JOIN = 10
+TOPIC = 'stress_kafka'
 
 
 def setup():
@@ -27,7 +32,10 @@ def setup():
                        context={'total_activations': N_JOIN})
 
 
-def publish_events():
+def publish_events(argv):
+    n_maps = int(argv[0]) if len(argv) == 2 else N_MAPS
+    n_join = int(argv[1]) if len(argv) == 2 else N_JOIN
+
     kafka_credentials = load_config_yaml('~/client_config.yaml')['event_sources']['kafka']
 
     config = {'bootstrap.servers': ','.join(kafka_credentials['broker_list'])}
@@ -38,17 +46,20 @@ def publish_events():
         else:
             print('Message delivered: {} {} {}'.format(msg.topic(), msg.partition(), msg.offset()))
 
-    kafka_producer = Producer(**config)
-    for _ in range(N_JOIN):
-        for i in range(N_MAPS):
+    def generate_events(i):
+        kafka_producer = Producer(**config)
+        for _ in range(n_join):
             termination_event = {'subject': 'map_{}'.format(i), 'type': 'termination.event.success'}
-            kafka_producer.produce(topic='stress_kafka',
+            kafka_producer.produce(topic=TOPIC,
                                    value=json.dumps(termination_event),
                                    callback=delivery_callback)
+            kafka_producer.flush()
 
-    kafka_producer.flush()
+    with ThreadPoolExecutor() as executor:
+        for i in range(n_maps):
+            executor.submit(generate_events, i)
 
 
 if __name__ == '__main__':
     setup()
-    # publish_events()
+    publish_events(sys.argv[1:])
