@@ -28,7 +28,7 @@ class Worker(Process):
     def __init__(self, event_queue):
         super().__init__()
         self.namespace = os.environ.get('NAMESPACE')
-        print('Initializing worker for workspace: {}'.format(self.namespace))
+        print('Initializing worker')
 
         self.worker_status = {}
         self.event_queue = event_queue
@@ -47,6 +47,7 @@ class Worker(Process):
 
         # Instantiate DB client
         # TODO Make storage abstract
+        print('Creating database connection')
         self.__cloudant_client = CloudantClient(**self.__private_credentials['cloudant'])
 
         # Get global context
@@ -54,10 +55,9 @@ class Worker(Process):
                                                          document_id='.global_context')
 
         self.current_state = Worker.State.INITIALIZED
-        print('Worker started for workspace: {}'.format(self.namespace))
 
     def run(self):
-        print('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
+        print('[{}] Worker started {}'.format(self.namespace, self.worker_id))
         worker_start_time = datetime.now()
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
@@ -105,6 +105,8 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
+                            if 'counter' in context:
+                                del context['counter']
                         else:
                             success = False
                     except Exception as e:

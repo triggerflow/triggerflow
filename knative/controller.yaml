@@ -9,6 +9,7 @@ spec:
       annotations:
         autoscaling.knative.dev/maxScale: "1"
     spec:
+      timeoutSeconds: 30
       containers:
         - image: jsampe/triggerflow-controller
           resources:
