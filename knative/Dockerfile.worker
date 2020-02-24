@@ -18,4 +18,4 @@ ADD knative/worker.py .
 ADD knative/workerproxy.py .
 ADD config.yaml .
 
-CMD exec gunicorn --bind :$PORT --workers 1 workerproxy:app 
+CMD exec gunicorn --workers 1 --worker-class eventlet --bind :$PORT workerproxy:app 

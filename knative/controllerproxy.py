@@ -34,11 +34,8 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/minScale: "0"
-        autoscaling.knative.dev/maxScale: "5"
-        autoscaling.knative.dev/metric: cpu
-        autoscaling.knative.dev/target: "85"
-        autoscaling.knative.dev/class: hpa.autoscaling.knative.dev
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
     spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
@@ -49,8 +46,8 @@ spec:
             value: 'default'
           resources:
             limits:
-              memory: 2Gi
-              cpu: 2
+              memory: 1Gi
+              cpu: 1
 """
 
 event_source_res = """
@@ -63,10 +60,19 @@ spec:
   bootstrapServers: IP:PORT
   topics: topic-name
   sink:
-    ref:
-      apiVersion: serving.knative.dev/v1
-      kind: Service
-      name: event-display
+    #apiVersion: serving.knative.dev/v1
+    #kind: Service
+    #name: event-display
+    #apiVersion: eventing.knative.dev/v1alpha1
+    #kind: Broker
+    #name: default
+    apiVersion: messaging.knative.dev/v1alpha1
+    kind: Channel
+    name: triggerflow-channel
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 1000m
 """
 
 
@@ -123,7 +129,12 @@ def start_worker(namespace):
                 w.stop()
 
         print('Trigger Service worker created - URL: {}'.format(service_url))
+        worker_created = True
+    except Exception as e:
+        print('Warning: {}'.format(str(e)))
+        worker_created = False
 
+    try:
         # Create event sources
         print('Starting event sources...')
         event_sources = db.get(database_name=namespace, document_id='.event_sources')
@@ -132,9 +143,9 @@ def start_worker(namespace):
                 print('Starting {}'.format(evt_src['name']))
                 es_res = yaml.safe_load(event_source_res)
                 es_res['metadata']['name'] = evt_src['name']
-                es_res['spec']['bootstrapServers'] = evt_src['spec']['broker_list'][0]
+                es_res['spec']['bootstrapServers'] = ','.join(evt_src['spec']['broker_list'])
                 es_res['spec']['topics'] = evt_src['spec']['topic']
-                es_res['spec']['sink']['ref']['name'] = service_name
+                #es_res['spec']['sink']['name'] = service_name
 
                 # create the service resource
                 k_co_api.create_namespaced_custom_object(
@@ -158,14 +169,15 @@ def start_worker(namespace):
                     if conditions and conditions[0]['status'] == 'True' and \
                        conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
                         w.stop()
-
             else:
                 return jsonify('Not supported event source: {}'.format(evt_src['class'])), 400
         print('Event source started')
-        return jsonify('Started worker for namespace {}'.format(namespace)), 201
-
     except Exception as e:
-        raise e
+        print('Warning: {}'.format(str(e)))
+
+    if worker_created:
+        return jsonify('Started worker for namespace {}'.format(namespace)), 201
+    else:
         return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
 
 
@@ -186,13 +198,20 @@ def delete_worker(namespace):
                 plural="services",
                 body=client.V1DeleteOptions()
             )
-        print('Workers stopped')
+        print('Workers for namespcace {} stopped'.format(namespace))
+        worker_deleted = True
+    except Exception:
+        # Most probable exception is the service does not exists
+        print('Worker for namespcace {} is not active'.format(namespace))
+        worker_deleted = False
 
-        # Stop event sources
-        event_sources = db.get(database_name=namespace, document_id='.event_sources')
-        print('Stopping event sources for namespace {}'.format(namespace))
-        for evt_src in event_sources.values():
-            if evt_src['class'] == 'KafkaCloudEventSource':
+    # Stop event sources
+    event_sources = db.get(database_name=namespace, document_id='.event_sources')
+    print('Stopping event sources for namespace {}'.format(namespace))
+    for evt_src in event_sources.values():
+        if evt_src['class'] == 'KafkaCloudEventSource':
+            print('Stopping {}'.format(evt_src['name']))
+            try:
                 k_co_api.delete_namespaced_custom_object(
                         group="sources.eventing.knative.dev",
                         version="v1alpha1",
@@ -201,12 +220,13 @@ def delete_worker(namespace):
                         plural="kafkasources",
                         body=client.V1DeleteOptions()
                     )
-        print('Event sources stopped')
+            except Exception:
+                pass
+    print('Event sources for namespace {} stopped'.format(namespace))
 
+    if worker_deleted:
         return jsonify('Worker for namespcace {} stopped'.format(namespace)), 200
-    except Exception as e:
-        raise e
-        print('Worker for namespcace {} is not active'.format(namespace))
+    else:
         return jsonify('Worker for namespcace {} is not active'.format(namespace)), 400
 
 

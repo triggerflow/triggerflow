@@ -109,6 +109,8 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
+                            if 'counter' in context:
+                                del context['counter']
                         else:
                             success = False
                     except Exception as e:
