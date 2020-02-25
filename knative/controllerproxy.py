@@ -63,12 +63,12 @@ spec:
     #apiVersion: serving.knative.dev/v1
     #kind: Service
     #name: event-display
-    #apiVersion: eventing.knative.dev/v1alpha1
-    #kind: Broker
-    #name: default
-    apiVersion: messaging.knative.dev/v1alpha1
-    kind: Channel
-    name: triggerflow-channel
+    apiVersion: eventing.knative.dev/v1alpha1
+    kind: Broker
+    name: default
+    #apiVersion: messaging.knative.dev/v1alpha1
+    #kind: Channel
+    #name: triggerflow-channel
   resources:
     requests:
       memory: 512Mi
