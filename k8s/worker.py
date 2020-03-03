@@ -1,9 +1,12 @@
+import os
+import yaml
 import logging
 import traceback
+import time
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 
 import eventprocessor.event_source_hooks.hooks as hooks
 from eventprocessor.libs.cloudant_client import CloudantClient
@@ -18,15 +21,14 @@ class AuthHandlerException(Exception):
         self.response = response
 
 
-class Worker(Process):
+class Worker:
+
     class State(Enum):
         INITIALIZED = 'Initialized'
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
     def __init__(self, namespace, private_credentials):
-        super().__init__()
-
         self.worker_status = {}
         self.namespace = namespace
         self.worker_id = str(uuid4())
@@ -51,7 +53,7 @@ class Worker(Process):
         self.current_state = Worker.State.INITIALIZED
 
     def run(self):
-        logging.info('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
+        print('[{}] Starting worker {}'.format(self.namespace, self.worker_id))
         worker_start_time = datetime.now()
         self.current_state = Worker.State.RUNNING
         self.__update_triggers()
@@ -73,9 +75,10 @@ class Worker(Process):
         event_store.start()
 
         while self.__should_run():
-            logging.info('[{}] Waiting for events...'.format(self.namespace))
+            print('[{}] Waiting for events...'.format(self.namespace))
             event = self.event_queue.get()
-            logging.info('[{}] New Event: {}'.format(self.namespace, event))
+            print(time.time())
+            print('[{}] New Event: {}'.format(self.namespace, event))
             subject = event['subject']
             event_type = event['type']
 
@@ -118,7 +121,7 @@ class Worker(Process):
                         # TODO Handle condition/action exceptions
                         raise e
                 if success:
-                    logging.info('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
+                    print('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
                     self.store_event_queue.put((subject, self.events[subject]))
                     if subject in self.events:
                         del self.events[subject]
@@ -134,14 +137,14 @@ class Worker(Process):
         for hook in self.event_source_hooks:
             hook.stop()
 
-        logging.info("[{}] Worker {} stopped".format(self.namespace, self.worker_id))
+        print("[{}] Worker {} stopped".format(self.namespace, self.worker_id))
         self.terminate()
 
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
 
     def __update_triggers(self):
-        logging.info("[{}] Updating triggers cache".format(self.namespace))
+        print("[{}] Updating triggers cache".format(self.namespace))
         try:
             all_triggers = self.__cloudant_client.get(database_name=self.namespace, document_id='.triggers')
             new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
@@ -159,8 +162,8 @@ class Worker(Process):
                 if k not in self.triggers:
                     self.triggers[k] = v
         except KeyError:
-            logging.error('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
-        logging.info("[{}] Triggers updated".format(self.namespace))
+            print('Could not retrieve triggers and/or source events for {}'.format(self.namespace))
+        print("[{}] Triggers updated".format(self.namespace))
 
     @staticmethod
     def __dump_request_response(trigger_name, response):
@@ -182,4 +185,18 @@ class Worker(Process):
             }
         }
 
-        logging.error('[{}] Dumping the content of the request and response:\n{}'.format(trigger_name, response_dump))
+        print('[{}] Dumping the content of the request and response:\n{}'.format(trigger_name, response_dump))
+
+
+def main():
+    namespace = os.environ.get('NAMESPACE')
+    print('Starting worker for namespoce: {}'.format(namespace))
+    print('Loading private credentials')
+    with open('config.yaml', 'r') as config_file:
+        credentials = yaml.safe_load(config_file)
+    worker = Worker(namespace, credentials)
+    worker.run()
+
+
+if __name__ == "__main__":
+    main()
