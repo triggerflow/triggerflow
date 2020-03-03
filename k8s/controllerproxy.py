@@ -40,7 +40,7 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-knative-worker
+        - image: jsampe/triggerflow-worker
           env:
           - name: NAMESPACE
             value: 'default'

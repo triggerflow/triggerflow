@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: triggerflow-controller
+  name: triggerflow-knative-controller
   #namespace: default
 spec:
   template:
@@ -12,7 +12,7 @@ spec:
     spec:
       timeoutSeconds: 30
       containers:
-        - image: jsampe/triggerflow-controller
+        - image: jsampe/triggerflow-knative-controller
           resources:
             limits:
               memory: 256Mi

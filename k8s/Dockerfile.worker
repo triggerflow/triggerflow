@@ -14,7 +14,7 @@ ENV APP_HOME /triggerflow
 WORKDIR $APP_HOME
 
 ADD eventprocessor eventprocessor
-ADD knative/app.py .
+ADD k8s/worker.py .
 ADD config.yaml .
 
-CMD exec gunicorn --bind :$PORT --workers 1 worker:app 
+CMD exec python worker.py 
