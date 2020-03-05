@@ -51,7 +51,7 @@ spec:
 """
 
 event_source_res = """
-apiVersion: sources.eventing.knative.dev/v1alpha1
+apiVersion: sources.knative.dev/v1alpha1
 kind: KafkaSource
 metadata:
   name: kafka-source
@@ -73,6 +73,20 @@ spec:
     requests:
       memory: 512Mi
       cpu: 1000m
+"""
+
+trigger_res = """
+apiVersion: eventing.knative.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: triggerflow-worker-trigger
+spec:
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      #name: event-display
+      name: triggerflow-worker-pywren
 """
 
 
@@ -120,7 +134,7 @@ def start_worker(namespace):
                               version="v1", plural="services",
                               field_selector="metadata.name={0}".format(service_name)):
             conditions = None
-            if event['object'].get('status') is not None:
+            if event['object'].get('status'):
                 conditions = event['object']['status']['conditions']
                 if event['object']['status'].get('url') is not None:
                     service_url = event['object']['status']['url']
@@ -149,7 +163,7 @@ def start_worker(namespace):
 
                 # create the service resource
                 k_co_api.create_namespaced_custom_object(
-                        group="sources.eventing.knative.dev",
+                        group="sources.knative.dev",
                         version="v1alpha1",
                         namespace='default',
                         plural="kafkasources",
@@ -158,11 +172,11 @@ def start_worker(namespace):
 
                 w = watch.Watch()
                 for event in w.stream(k_co_api.list_namespaced_custom_object,
-                                      namespace='default', group="sources.eventing.knative.dev",
+                                      namespace='default', group="sources.knative.dev",
                                       version="v1alpha1", plural="kafkasources",
                                       field_selector="metadata.name={0}".format(evt_src['name'])):
                     conditions = None
-                    if event['object'].get('status') is not None:
+                    if event['object'].get('status'):
                         conditions = event['object']['status']['conditions']
                         if event['object']['status'].get('url') is not None:
                             service_url = event['object']['status']['url']
@@ -213,7 +227,7 @@ def delete_worker(namespace):
             print('Stopping {}'.format(evt_src['name']))
             try:
                 k_co_api.delete_namespaced_custom_object(
-                        group="sources.eventing.knative.dev",
+                        group="sources.knative.dev",
                         version="v1alpha1",
                         name=evt_src['name'],
                         namespace='default',
