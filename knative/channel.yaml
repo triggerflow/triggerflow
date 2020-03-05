@@ -1,0 +1,17 @@
+apiVersion: messaging.knative.dev/v1alpha1
+kind: Channel
+metadata:
+  name: triggerflow-channel
+  namespace: default
+spec:
+  channelTemplate:
+    apiVersion: messaging.knative.dev/v1alpha1
+    kind: InMemoryChannel
+---
+apiVersion: messaging.knative.dev/v1alpha1
+kind: KafkaChannel
+metadata:
+  name: triggerflow-kafka-channel
+spec:
+  numPartitions: 3
+  replicationFactor: 1 

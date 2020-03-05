@@ -13,7 +13,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: sources-eventing-knative-writer
 rules:
-- apiGroups: ["sources.knative.dev"]
+- apiGroups: ["sources.eventing.knative.dev"]
   resources: ["kafkasources"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
