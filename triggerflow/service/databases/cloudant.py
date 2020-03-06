@@ -98,7 +98,10 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def database_exists(self, workspace):
+    def get_auth(self, username: str):
+        return self.get_key('$auth$', 'users', username)
+
+    def workspace_exists(self, workspace):
         db = CloudantDatabase(self.client, workspace)
         return db.exists()
 

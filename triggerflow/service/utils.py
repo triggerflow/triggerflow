@@ -30,5 +30,5 @@ def authenticate_request(db, request):
     if not request.authorization or 'username' not in request.authorization or 'password' not in request.authorization:
         return False
 
-    passwd = db.get_key(database_name='auth$', document_id='users', key=request.authorization['username'])
+    passwd = db.get_auth(username=request.authorization['username']).decode()
     return passwd == request.authorization['password']

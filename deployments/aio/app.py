@@ -6,8 +6,8 @@ import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from triggerflow.service.core.databases import RedisClient
-from triggerflow.service.core.utils import authenticate_request
+from triggerflow.service.databases import RedisClient
+from triggerflow.service.utils import authenticate_request
 
 from .worker import Worker
 
@@ -32,13 +32,17 @@ def start_worker(workspace):
 
     global workers
     if workspace in workers.keys():
-        return jsonify('Worker for namespace {} is already running'.format(workspace)), 400
-    logging.info('New request to run worker for namespace {}'.format(workspace))
+        return jsonify('Worksapce {} is already running'.format(workspace)), 400
+
+    if not db.workspace_exists(workspace):
+        return jsonify('Workspace does not exists in the database'.format(workspace)), 400
+
+    logging.info('New request to run workspace {}'.format(workspace))
     worker = Worker(workspace, private_credentials)
     worker.start()
     workers[workspace] = worker
 
-    return jsonify('Started worker for workspace {}'.format(workspace)), 201
+    return jsonify('Started workspace {}'.format(workspace)), 201
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -48,10 +52,10 @@ def delete_worker(workspace):
 
     global workers
     if workspace not in workers:
-        return jsonify('Worker for workspace {} is not active'.format(workspace)), 400
+        return jsonify('Workspace {} is not active'.format(workspace)), 400
     else:
         workers[workspace].stop_worker()
-        return jsonify('Worker for workspace {} stopped'.format(workspace)), 200
+        return jsonify('Workspace {} stopped'.format(workspace)), 200
 
 
 def main():
@@ -72,7 +76,7 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting Event Processor Service')
+    logging.info('Starting Triggerflow Service')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -89,7 +93,7 @@ def main():
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
-    logging.info('Event Processor service started')
+    logging.info('Triggerflow service started on port {}'.format(port))
     try:
         server.serve_forever()
     except KeyboardInterrupt:

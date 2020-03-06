@@ -5,10 +5,10 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 
-from triggerflow.service.core.databases import RedisClient
-import triggerflow.service.core.eventsources as hooks
-import triggerflow.service.core.conditions.default as default_conditions
-import triggerflow.service.core.actions.default as default_actions
+from triggerflow.service.databases import RedisClient
+import triggerflow.service.eventsources as hooks
+import triggerflow.service.conditions.default as default_conditions
+import triggerflow.service.actions.default as default_actions
 
 
 class AuthHandlerException(Exception):
@@ -40,13 +40,13 @@ class Worker(Process):
         self.current_state = Worker.State.INITIALIZED
 
     def __start_db(self):
-        logging.info('[{}] Creating database connection {}'.format(self.workspace, self.worker_id))
+        logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
         self.__db = RedisClient(**self.__private_credentials['redis'])
 
     def __get_global_context(self):
-        logging.info('[{}] Getting workspace global context {}'.format(self.workspace, self.worker_id))
+        logging.info('[{}] Getting workspace global context'.format(self.workspace))
         # Get global context
         self.global_context = self.__db.get(workspace=self.workspace, document_id='global_context')
 
