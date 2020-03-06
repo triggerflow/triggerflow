@@ -6,7 +6,7 @@ import pika
 from ..model import EventSourceHook
 
 
-class RabbitEventSource(EventSourceHook):
+class RedisEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
                  amqp_url: str,

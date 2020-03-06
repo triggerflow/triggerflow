@@ -1,18 +1,15 @@
 import json
 import logging
-from uuid import uuid1
-from enum import Enum
-from typing import List
 
 import boto3
 
 from multiprocessing import Queue
-from ..model import Hook
+from ..model import EventSourceHook
 
 logging.getLogger('botocore').setLevel(logging.INFO)
 
 
-class SQSCloudEventSourceHook(Hook):
+class SQSEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
                  queue_url: str,

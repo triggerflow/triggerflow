@@ -1,7 +1,7 @@
-from ..model import CloudEventSource
+from ..model import EventSource
 
 
-class RabbitMQCloudEventSource(CloudEventSource):
+class RabbitEventSource(EventSource):
     def __init__(self, amqp_url: str, topic: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.topic = topic

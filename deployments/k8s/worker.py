@@ -69,10 +69,6 @@ class Worker:
             hook.start()
             self.event_source_hooks.append(hook)
 
-        # Instantiate async event store
-        self.store_event_queue = Queue()
-        event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
-        event_store.start()
 
         while self.__should_run():
             print('[{}] Waiting for events...'.format(self.namespace))
@@ -122,7 +118,6 @@ class Worker:
                         raise e
                 if success:
                     print('[{}] Successfully processed "{}" subject'.format(self.namespace, subject))
-                    self.store_event_queue.put((subject, self.events[subject]))
                     if subject in self.events:
                         del self.events[subject]
             else:

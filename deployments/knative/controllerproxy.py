@@ -69,6 +69,8 @@ spec:
     #apiVersion: messaging.knative.dev/v1alpha1
     #kind: Channel
     #name: triggerflow-channel
+    #kind: KafkaChannel
+    #name: triggerflow-kafka-channel
   resources:
     requests:
       memory: 512Mi

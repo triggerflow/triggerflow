@@ -1,4 +1,4 @@
-class CloudEventSource:
+class EventSource:
     def __init__(self, name: str):
         self.name = name
 

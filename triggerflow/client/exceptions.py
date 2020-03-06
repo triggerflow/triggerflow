@@ -1,4 +1,4 @@
-class NullNamespaceError(Exception):
+class NullWorkspaceError(Exception):
     pass
 
 

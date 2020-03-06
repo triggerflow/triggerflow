@@ -1,3 +1,3 @@
-from .client import CloudEventProcessorClient
+from .client import TriggerflowClient
 from .conditions_actions import *
-from .sources.cloudevent import CloudEvent
+from .cloudevent import CloudEvent

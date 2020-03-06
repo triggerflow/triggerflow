@@ -11,9 +11,9 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: sources-eventing-knative-writer
+  name: sources-knative-writer
 rules:
-- apiGroups: ["sources.eventing.knative.dev"]
+- apiGroups: ["sources.knative.dev"]
   resources: ["kafkasources"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
@@ -40,5 +40,5 @@ subjects:
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: sources-eventing-knative-writer
+  name: sources-knative-writer
   apiGroup: rbac.authorization.k8s.io

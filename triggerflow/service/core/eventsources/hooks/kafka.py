@@ -8,7 +8,7 @@ from multiprocessing import Queue
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Consumer, TopicPartition
 
-from ..model import Hook
+from ..model import EventSourceHook
 
 
 class KafkaAuthMode(Enum):
@@ -16,7 +16,7 @@ class KafkaAuthMode(Enum):
     SASL_PLAINTEXT = 1
 
 
-class KafkaCloudEventSourceHook(Hook):
+class KafkaEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
                  broker_list: List[str],

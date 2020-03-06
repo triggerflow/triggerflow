@@ -1,14 +1,13 @@
 from ..model import EventSource
+from typing import Optional
 
 
-class SQSEventSource(EventSource):
-    def __init__(self,
-                 region: str,
-                 account: str,
-                 topic: str,
-                 *args, **kwargs):
+class RedisEventSource(EventSource):
+    def __init__(self, host: str, port: int, password: Optional[str] = None,  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, topic)
+        self.host = host
+        self.port = port
+        self.password = password
 
     def publish_cloudevent(self, cloudevent: dict):
         pass

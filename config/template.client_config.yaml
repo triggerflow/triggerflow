@@ -1,28 +1,25 @@
-event_processor:
-    api_endpoint: <API_ENDPOINT>
+triggerflow:
+    endpoint: <API_ENDPOINT>
     user: <USER>
     password: <PASSWORD>
 
+ibm_cf:
+    endpoint  : <ENDPOINT>
+    namespace : <NAMESPACE>
+    api_key   : <APIKEY>
 
-global_context:
-    ibm_cf:
-        endpoint  : <ENDPOINT>
-        namespace : <NAMESPACE>
-        api_key   : <APIKEY>
+# Event Sources config
+rabbitmq:
+    amqp_url: <AMQP_URL>
 
-    kafka:
-        broker_list: <BROKER_LIST>
-        user: <USER>
-        password: <PASSWORD>
-    
-    rabbitmq:
-        amqp_url: <AMQP_URL>
-
-
-event_sources:
-    kafka:
-        broker_list: <BROKER_LIST>
-        user: <USER>
-        password: <PASSWORD>
+kafka:
+    broker_list: <BROKER_LIST>
+    user: <USER>
+    password: <PASSWORD>
+  
+redis:
+    host: <HOST>
+    port: <PORT>
+    password: <PASSWORD>
 
 

@@ -65,9 +65,9 @@ class Worker(Process):
 
         self.dead_letter_queue = Queue()
         # Instantiate async event store
-        self.store_event_queue = Queue()
-        event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
-        event_store.start()
+        #self.store_event_queue = Queue()
+        #event_store = AsyncEventStore(self.store_event_queue, self.namespace, self.__cloudant_client)
+        #event_store.start()
 
         while self.__should_run():
             print('[{}] Waiting for events...'.format(self.namespace))

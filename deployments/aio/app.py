@@ -6,10 +6,11 @@ import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from eventprocessor.libs.cloudant_client import CloudantClient
-from eventprocessor.health import generateHealthReport
-from eventprocessor.worker import Worker
-from eventprocessor.utils import authenticate_request
+from triggerflow.service.core.databases import RedisClient
+from triggerflow.service.core.utils import authenticate_request
+
+from .worker import Worker
+
 
 app = Flask(__name__)
 app.debug = False
@@ -19,50 +20,38 @@ private_credentials = None
 db = None
 
 
-@app.route('/namespace/<namespace>', methods=['POST'])
-def start_worker(namespace):
+@app.route('/workspace/<workspace>', methods=['POST'])
+def start_worker(workspace):
     """
     This method gets the request parameters and starts a new thread worker
-    that will act as the event-processor for the the specific trigger namespace.
+    that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
     if not authenticate_request(db, request):
         return jsonify('Unauthorized'), 401
 
     global workers
-    if namespace in workers.keys():
-        return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
-    logging.info('New request to run worker for namespace {}'.format(namespace))
-    worker = Worker(namespace, private_credentials)
+    if workspace in workers.keys():
+        return jsonify('Worker for namespace {} is already running'.format(workspace)), 400
+    logging.info('New request to run worker for namespace {}'.format(workspace))
+    worker = Worker(workspace, private_credentials)
     worker.start()
-    workers[namespace] = worker
+    workers[workspace] = worker
 
-    return jsonify('Started worker for namespace {}'.format(namespace)), 201
+    return jsonify('Started worker for workspace {}'.format(workspace)), 201
 
 
-@app.route('/namespace/<namespace>', methods=['DELETE'])
-def delete_worker(namespace):
+@app.route('/workspace/<workspace>', methods=['DELETE'])
+def delete_worker(workspace):
     if not authenticate_request(db, request):
         return jsonify('Unauthorized'), 401
 
     global workers
-    if namespace not in workers:
-        return jsonify('Worker for namespcace {} is not active'.format(namespace)), 400
+    if workspace not in workers:
+        return jsonify('Worker for workspace {} is not active'.format(workspace)), 400
     else:
-        workers[namespace].stop_worker()
-        return jsonify('Worker for namespcace {} stopped'.format(namespace)), 200
-
-
-
-@app.route('/')
-def test_route():
-    return jsonify('Hi!')
-
-
-# TODO call TheDoctor.isAlive() and report on that
-@app.route('/health')
-def health_route():
-    return jsonify(generateHealthReport(workers))
+        workers[workspace].stop_worker()
+        return jsonify('Worker for workspace {} stopped'.format(workspace)), 200
 
 
 def main():
@@ -96,7 +85,7 @@ def main():
         private_credentials = yaml.safe_load(config_file)
 
     logging.info('Creating database client')
-    db = CloudantClient(**private_credentials['cloudant'])
+    db = RedisClient(**private_credentials['redis'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())

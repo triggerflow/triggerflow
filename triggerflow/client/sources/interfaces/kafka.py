@@ -5,7 +5,7 @@ from typing import Optional, List
 from uuid import uuid1
 from confluent_kafka import Producer
 
-from ..model import CloudEventSource
+from ..model import EventSource
 
 
 class KafkaAuthMode(Enum):
@@ -13,7 +13,7 @@ class KafkaAuthMode(Enum):
     SASL_PLAINTEXT = 1
 
 
-class KafkaCloudEventSource(CloudEventSource):
+class KafkaEventSource(EventSource):
     def __init__(self, broker_list: List[str], topic: str, auth_mode: Optional[KafkaAuthMode] = KafkaAuthMode.NONE,
                  username: Optional[str] = None, password: Optional[str] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -6,19 +6,19 @@ from requests.auth import HTTPBasicAuth
 from typing import Optional, Union, List
 
 from . import exceptions
-from .sources.model import CloudEventSource
-from .sources.cloudevent import CloudEvent
+from .sources.model import EventSource
+from .cloudevent import CloudEvent
 from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
 
 
 # TODO Replace prints with proper logging
 
-class CloudEventProcessorClient:
+class TriggerflowClient:
     def __init__(self,
-                 api_endpoint: str,
+                 endpoint: str,
                  user: str,
                  password: str,
-                 namespace: Optional[str] = None,
+                 workspace: Optional[str] = None,
                  eventsource_name: Optional[str] = None,
                  caching: Optional[bool] = False):
         """
@@ -26,15 +26,15 @@ class CloudEventProcessorClient:
         :param api_endpoint: Endpoint of the Event Processor API.
         :param user: Username to authenticate this client towards the API REST.
         :param password: Password to authenticate this client towards the API REST.
-        :param namespace: Namespace which this client targets by default when managing triggers.
+        :param workspace: workspace which this client targets by default when managing triggers.
         :param eventsource_name: Eventsource which this client targets by default when managing triggers.
         :param caching: Add triggers to local cache, to then commit cached
                         triggers in a single request using push_triggers().
         """
         self.eventsource_name = eventsource_name
-        self.api_endpoint = api_endpoint
+        self.api_endpoint = endpoint
         self.caching = caching
-        self.__namespace = namespace
+        self.__workspace = workspace
         self.__trigger_cache = {}
 
         if not re.fullmatch(r"[a-zA-Z0-9_]+", user):
@@ -44,30 +44,23 @@ class CloudEventProcessorClient:
 
         self.__basic_auth = HTTPBasicAuth(user, password)
 
-    def target_namespace(self, namespace: str):
+    def target_workspace(self, workspace: str):
         """
-        Set the target namespace of this client.
-        :param namespace: Namespace name.
+        Set the target workspace of this client.
+        :param workspace: workspace name.
         """
-        self.__namespace = namespace
+        self.__workspace = workspace
 
-    def create_namespace(self, namespace: Optional[str] = None,
+    def create_workspace(self, workspace: str,
                          global_context: Optional[dict] = None,
-                         event_source: Optional[CloudEventSource] = None):
+                         event_source: Optional[EventSource] = None):
         """
-        Create a namespace.
-        :param namespace: Namespace name.
-        :param global_context: Read-only key-value state that is visible for all triggers in the namespace.
-        :param event_source: Applies this event source to the new namespace.
+        Create a workspace.
+        :param workspace: workspace name.
+        :param global_context: Read-only key-value state that is visible for all triggers in the workspace.
+        :param event_source: Applies this event source to the new workspace.
         """
-        default_context = {'namespace': namespace}
-
-        if namespace is None and self.__namespace is None:
-            raise ValueError('Namespace cannot be None')
-        elif namespace is None:
-            namespace = self.__namespace
-
-        self.__namespace = namespace
+        default_context = {'workspace': workspace}
 
         if global_context is not None and type(global_context) is dict:
             global_context.update(default_context)
@@ -78,7 +71,7 @@ class CloudEventProcessorClient:
 
         evt_src = event_source.json if event_source is not None else None
 
-        res = requests.put('/'.join([self.api_endpoint, 'namespace', namespace]),
+        res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace]),
                            auth=self.__basic_auth,
                            json={'global_context': global_context,
                                  'event_source': evt_src})
@@ -91,18 +84,16 @@ class CloudEventProcessorClient:
         else:
             raise Exception(res.json())
 
-    def delete_namespace(self, namespace: str = None):
+    def delete_workspace(self, workspace: str):
         """
-        Delete a namespace.
-        :param namespace:
+        Delete a workspace.
+        :param workspace:
         :return:
         """
-        if namespace is None and self.__namespace is None:
-            raise exceptions.NullNamespaceError()
-        elif namespace is None:
-            namespace = self.__namespace
+        if workspace is None:
+            workspace = self.__workspace
 
-        res = requests.delete('/'.join([self.api_endpoint, 'namespace', namespace]),
+        res = requests.delete('/'.join([self.api_endpoint, 'workspace', workspace]),
                               auth=self.__basic_auth,
                               json={})
 
@@ -114,21 +105,14 @@ class CloudEventProcessorClient:
         else:
             raise Exception(res.json())
 
-    def set_event_source(self, eventsource_name: str):
+    def add_event_source(self, workspace: str, eventsource: EventSource, overwrite: Optional[bool] = False):
         """
-        Set the default event source for this client when managing triggers.
-        :param eventsource_name: Event source name.
-        """
-        self.eventsource_name = eventsource_name
-
-    def add_event_source(self, eventsource: CloudEventSource, overwrite: Optional[bool] = False):
-        """
-        Add an event source to the target namespace.
+        Add an event source to the target workspace.
         :param eventsource: Instance of CloudEventSource containing the specifications of the event source.
         :param overwrite: True for overwriting the event source specification.
         """
 
-        res = requests.put('/'.join([self.api_endpoint, 'namespace', self.__namespace, 'eventsource', eventsource.name]),
+        res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
                            auth=self.__basic_auth,
                            json={'eventsource': eventsource.json})
@@ -149,7 +133,7 @@ class CloudEventProcessorClient:
                     transient: Optional[bool] = True,
                     trigger_id: Optional[str] = None):
         """
-        Add a trigger to the target namespace.
+        Add a trigger to the target workspace.
         :param event: Instance of CloudEvent, this CloudEvent's subject and type will fire this trigger.
         :param condition: Callable that is executed every time the event is received. If it returns true,
         then Action is executed. It has to satisfy signature contract (context, event).
@@ -160,8 +144,8 @@ class CloudEventProcessorClient:
         :param trigger_id: Custom ID for a persistent trigger.
         :return: Response
         """
-        if self.__namespace is None:
-            raise exceptions.NullNamespaceError()
+        if self.__workspace is None:
+            raise exceptions.NullWorkspaceError()
 
         if transient and trigger_id is not None:
             raise exceptions.NamedTransientTriggerError()
@@ -257,10 +241,10 @@ class CloudEventProcessorClient:
 
     def list_eventsources(self):
         """
-        List eventsource names for this namespace.
+        List eventsource names for this workspace.
         :return:
         """
-        res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource']),
+        res = requests.get('/'.join([self.api_endpoint, 'workspace', self.workspace, 'eventsource']),
                            auth=self.basic_auth, json={})
 
         print('{}: {}'.format(res.status_code, res.json()))
@@ -275,7 +259,7 @@ class CloudEventProcessorClient:
         :param event_soruce_name: Event source name to retrieve.
         :return:
         """
-        res = requests.get('/'.join([self.api_endpoint, 'namespace', self.namespace, 'eventsource', event_soruce_name]),
+        res = requests.get('/'.join([self.api_endpoint, 'workspace', self.workspace, 'eventsource', event_soruce_name]),
                            auth=self.basic_auth, json={})
 
         print('{}: {}'.format(res.status_code, res.json()))
@@ -298,7 +282,7 @@ class CloudEventProcessorClient:
     def __add_trigger_remote(self, trigger):
         triggers = [trigger] if type(trigger) != list else trigger
 
-        res = requests.post('/'.join([self.api_endpoint, 'namespace', self.__namespace, 'trigger']),
+        res = requests.post('/'.join([self.api_endpoint, 'workspace', self.__workspace, 'trigger']),
                             auth=self.__basic_auth,
                             json={'triggers': triggers})
 

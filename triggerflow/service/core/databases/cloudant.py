@@ -17,8 +17,8 @@ class CloudantClient:
     def get_conn(self):
         return self.client
 
-    def put(self, database_name: str, document_id: str, data: dict):
-        db = CloudantDatabase(self.client, database_name)
+    def put(self, workspace: str, document_id: str, data: dict):
+        db = CloudantDatabase(self.client, workspace)
         data = data.copy()
         data['_id'] = document_id
         retry = self.max_retries
@@ -39,8 +39,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def get(self, database_name: str, document_id: str = None):
-        db = CloudantDatabase(self.client, database_name)
+    def get(self, workspace: str, document_id: str = None):
+        db = CloudantDatabase(self.client, workspace)
 
         retry = self.max_retries
         while retry > 0:
@@ -79,8 +79,8 @@ class CloudantClient:
                     raise e
         return dict(doc)
 
-    def delete(self, database_name: str, document_id: str = None):
-        db = CloudantDatabase(self.client, database_name)
+    def delete(self, workspace: str, document_id: str = None):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -98,12 +98,12 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def database_exists(self, database_name):
-        db = CloudantDatabase(self.client, database_name)
+    def database_exists(self, workspace):
+        db = CloudantDatabase(self.client, workspace)
         return db.exists()
 
-    def document_exists(self, database_name, document_id):
-        db = CloudantDatabase(self.client, database_name)
+    def document_exists(self, workspace, document_id):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -116,8 +116,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def key_exists(self, database_name, document_id, key):
-        db = CloudantDatabase(self.client, database_name)
+    def key_exists(self, workspace, document_id, key):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -130,10 +130,10 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def set_key(self, database_name, document_id, key, value):
+    def set_key(self, workspace, document_id, key, value):
         retry = self.max_retries
         while retry > 0:
-            db = CloudantDatabase(self.client, database_name)
+            db = CloudantDatabase(self.client, workspace)
             try:
                 doc = Document(db, document_id=document_id)
                 doc.update_field(
@@ -149,8 +149,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def get_key(self, database_name, document_id, key):
-        db = CloudantDatabase(self.client, database_name)
+    def get_key(self, workspace, document_id, key):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:

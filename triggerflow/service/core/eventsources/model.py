@@ -1,7 +1,7 @@
 from multiprocessing import Process
 
 
-class Hook(Process):
+class EventSourceHook(Process):
     def __init__(self, name: str, *args, **kwargs):
         super().__init__()
         self.name = name
@@ -20,4 +20,3 @@ class Hook(Process):
 
     def stop(self):
         raise NotImplementedError()
-
