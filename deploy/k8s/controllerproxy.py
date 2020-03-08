@@ -3,8 +3,9 @@ import os
 import yaml
 from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
-from cloudant_client import CloudantClient
 import requests as req
+
+from .redis import RedisClient
 
 logger = logging.getLogger('triggerflow-controller')
 
@@ -17,7 +18,7 @@ with open('config.yaml', 'r') as config_file:
     private_credentials = yaml.safe_load(config_file)
 
 print('Creating DB connection')
-db = CloudantClient(**private_credentials['cloudant'])
+db = RedisClient(**private_credentials['redis'])
 
 print('loading kubernetes config')
 config.load_incluster_config()
@@ -29,7 +30,7 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: triggerflow-worker
-  #namespace: default
+  #workspace: default
 spec:
   template:
     metadata:
@@ -40,9 +41,9 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-knative-worker
+        - image: jsampe/triggerflow-worker
           env:
-          - name: NAMESPACE
+          - name: workspace
             value: 'default'
           resources:
             limits:
@@ -51,7 +52,7 @@ spec:
 """
 
 event_source_res = """
-apiVersion: sources.knative.dev/v1alpha1
+apiVersion: sources.eventing.knative.dev/v1alpha1
 kind: KafkaSource
 metadata:
   name: kafka-source
@@ -69,42 +70,28 @@ spec:
     #apiVersion: messaging.knative.dev/v1alpha1
     #kind: Channel
     #name: triggerflow-channel
-    #kind: KafkaChannel
-    #name: triggerflow-kafka-channel
   resources:
     requests:
       memory: 512Mi
       cpu: 1000m
 """
 
-trigger_res = """
-apiVersion: eventing.knative.dev/v1alpha1
-kind: Trigger
-metadata:
-  name: triggerflow-worker-trigger
-spec:
-  subscriber:
-    ref:
-      apiVersion: serving.knative.dev/v1
-      kind: Service
-      #name: event-display
-      name: triggerflow-worker-pywren
-"""
-
 
 def authenticate_request(db, request):
-    if not request.authorization or 'username' not in request.authorization or 'password' not in request.authorization:
+    if not request.authorization or \
+       'username' not in request.authorization \
+       or 'password' not in request.authorization:
         return False
 
-    passwd = db.get_key(database_name='auth$', document_id='users', key=request.authorization['username'])
+    passwd = db.get_auth(username=request.authorization['username']).decode()
     return passwd == request.authorization['password']
 
 
-@app.route('/namespace/<namespace>', methods=['POST'])
-def start_worker(namespace):
+@app.route('/workspace/<workspace>', methods=['POST'])
+def start_worker(workspace):
     """
     This method gets the request parameters and starts a new thread worker
-    that will act as the event-processor for the the specific trigger namespace.
+    that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
     global db
@@ -112,31 +99,31 @@ def start_worker(namespace):
     #if not authenticate_request(db, request):
     #    return jsonify('Unauthorized'), 401
 
-    print('New request to start a worker for namespace {}'.format(namespace))
+    print('New request to start a worker for workspace {}'.format(workspace))
 
     svc_res = yaml.safe_load(service_res)
 
-    service_name = 'triggerflow-worker-{}'.format(namespace)
+    service_name = 'triggerflow-worker-{}'.format(workspace)
     svc_res['metadata']['name'] = service_name
-    svc_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = namespace
+    svc_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
     try:
         # create the service resource
-        k_co_api.create_namespaced_custom_object(
+        k_co_api.create_workspaced_custom_object(
                 group="serving.knative.dev",
                 version="v1",
-                namespace='default',
+                workspace='default',
                 plural="services",
                 body=svc_res
             )
 
         w = watch.Watch()
-        for event in w.stream(k_co_api.list_namespaced_custom_object,
-                              namespace='default', group="serving.knative.dev",
+        for event in w.stream(k_co_api.list_workspaced_custom_object,
+                              workspace='default', group="serving.knative.dev",
                               version="v1", plural="services",
                               field_selector="metadata.name={0}".format(service_name)):
             conditions = None
-            if event['object'].get('status'):
+            if event['object'].get('status') is not None:
                 conditions = event['object']['status']['conditions']
                 if event['object']['status'].get('url') is not None:
                     service_url = event['object']['status']['url']
@@ -153,7 +140,7 @@ def start_worker(namespace):
     try:
         # Create event sources
         print('Starting event sources...')
-        event_sources = db.get(database_name=namespace, document_id='.event_sources')
+        event_sources = db.get(database_name=workspace, document_id='.event_sources')
         for evt_src in event_sources.values():
             if evt_src['class'] == 'KafkaCloudEventSource':
                 print('Starting {}'.format(evt_src['name']))
@@ -164,21 +151,21 @@ def start_worker(namespace):
                 #es_res['spec']['sink']['name'] = service_name
 
                 # create the service resource
-                k_co_api.create_namespaced_custom_object(
-                        group="sources.knative.dev",
+                k_co_api.create_workspaced_custom_object(
+                        group="sources.eventing.knative.dev",
                         version="v1alpha1",
-                        namespace='default',
+                        workspace='default',
                         plural="kafkasources",
                         body=es_res
                     )
 
                 w = watch.Watch()
-                for event in w.stream(k_co_api.list_namespaced_custom_object,
-                                      namespace='default', group="sources.knative.dev",
+                for event in w.stream(k_co_api.list_workspaced_custom_object,
+                                      workspace='default', group="sources.eventing.knative.dev",
                                       version="v1alpha1", plural="kafkasources",
                                       field_selector="metadata.name={0}".format(evt_src['name'])):
                     conditions = None
-                    if event['object'].get('status'):
+                    if event['object'].get('status') is not None:
                         conditions = event['object']['status']['conditions']
                         if event['object']['status'].get('url') is not None:
                             service_url = event['object']['status']['url']
@@ -192,58 +179,58 @@ def start_worker(namespace):
         print('Warning: {}'.format(str(e)))
 
     if worker_created:
-        return jsonify('Started worker for namespace {}'.format(namespace)), 201
+        return jsonify('Started worker for workspace {}'.format(workspace)), 201
     else:
-        return jsonify('Worker for namespace {} is already running'.format(namespace)), 400
+        return jsonify('Worker for workspace {} is already running'.format(workspace)), 400
 
 
-@app.route('/namespace/<namespace>', methods=['DELETE'])
-def delete_worker(namespace):
+@app.route('/workspace/<workspace>', methods=['DELETE'])
+def delete_worker(workspace):
     #if not authenticate_request(db, request):
     #    return jsonify('Unauthorized'), 401
 
-    print('Stoppnig workers for namespace: {}'.format(namespace))
+    print('Stoppnig workers for workspace: {}'.format(workspace))
     try:
         # delete the service resource if exists
-        service_name = 'triggerflow-worker-{}'.format(namespace)
-        k_co_api.delete_namespaced_custom_object(
+        service_name = 'triggerflow-worker-{}'.format(workspace)
+        k_co_api.delete_workspaced_custom_object(
                 group="serving.knative.dev",
                 version="v1",
                 name=service_name,
-                namespace='default',
+                workspace='default',
                 plural="services",
                 body=client.V1DeleteOptions()
             )
-        print('Workers for namespcace {} stopped'.format(namespace))
+        print('Workers for namespcace {} stopped'.format(workspace))
         worker_deleted = True
     except Exception:
         # Most probable exception is the service does not exists
-        print('Worker for namespcace {} is not active'.format(namespace))
+        print('Worker for namespcace {} is not active'.format(workspace))
         worker_deleted = False
 
     # Stop event sources
-    event_sources = db.get(database_name=namespace, document_id='.event_sources')
-    print('Stopping event sources for namespace {}'.format(namespace))
+    event_sources = db.get(database_name=workspace, document_id='.event_sources')
+    print('Stopping event sources for workspace {}'.format(workspace))
     for evt_src in event_sources.values():
         if evt_src['class'] == 'KafkaCloudEventSource':
             print('Stopping {}'.format(evt_src['name']))
             try:
-                k_co_api.delete_namespaced_custom_object(
-                        group="sources.knative.dev",
+                k_co_api.delete_workspaced_custom_object(
+                        group="sources.eventing.knative.dev",
                         version="v1alpha1",
                         name=evt_src['name'],
-                        namespace='default',
+                        workspace='default',
                         plural="kafkasources",
                         body=client.V1DeleteOptions()
                     )
             except Exception:
                 pass
-    print('Event sources for namespace {} stopped'.format(namespace))
+    print('Event sources for workspace {} stopped'.format(workspace))
 
     if worker_deleted:
-        return jsonify('Worker for namespcace {} stopped'.format(namespace)), 200
+        return jsonify('Worker for namespcace {} stopped'.format(workspace)), 200
     else:
-        return jsonify('Worker for namespcace {} is not active'.format(namespace)), 400
+        return jsonify('Worker for namespcace {} is not active'.format(workspace)), 400
 
 
 @app.route('/')

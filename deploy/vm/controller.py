@@ -7,8 +7,6 @@ from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
 from triggerflow.service.databases import RedisClient
-from triggerflow.service.utils import authenticate_request
-
 from .worker import Worker
 
 
@@ -18,6 +16,16 @@ app.debug = False
 workers = {}
 private_credentials = None
 db = None
+
+
+def authenticate_request(db, request):
+    if not request.authorization or \
+       'username' not in request.authorization \
+       or 'password' not in request.authorization:
+        return False
+
+    passwd = db.get_auth(username=request.authorization['username']).decode()
+    return passwd == request.authorization['password']
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
@@ -30,12 +38,13 @@ def start_worker(workspace):
     if not authenticate_request(db, request):
         return jsonify('Unauthorized'), 401
 
-    global workers
-    if workspace in workers.keys():
-        return jsonify('Worksapce {} is already running'.format(workspace)), 400
-
     if not db.workspace_exists(workspace):
         return jsonify('Workspace does not exists in the database'.format(workspace)), 400
+
+    global workers
+
+    if workspace in workers.keys():
+        return jsonify('Workspace {} is already running'.format(workspace)), 400
 
     logging.info('New request to run workspace {}'.format(workspace))
     worker = Worker(workspace, private_credentials)

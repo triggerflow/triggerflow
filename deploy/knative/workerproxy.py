@@ -2,7 +2,8 @@ import logging
 import os
 from multiprocessing import Queue
 from flask import Flask, jsonify, request
-from worker import Worker
+
+from .worker import Worker
 
 # TODO: Logger does not work with gunicorn
 logger = logging.getLogger('triggerflow-worker')
@@ -10,7 +11,7 @@ logger = logging.getLogger('triggerflow-worker')
 app = Flask(__name__)
 
 event_queue = Queue()
-namespace = os.environ.get('NAMESPACE')
+namespace = os.environ.get('WORKSPACE')
 worker = Worker(event_queue)
 worker.start()
 
