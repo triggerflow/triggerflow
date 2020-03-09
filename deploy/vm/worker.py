@@ -5,7 +5,7 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 
-from triggerflow.service.databases import RedisClient
+from triggerflow.service.databases import RedisDatabase
 import triggerflow.service.eventsources as hooks
 import triggerflow.service.conditions.default as default_conditions
 import triggerflow.service.actions.default as default_actions
@@ -22,11 +22,11 @@ class Worker(Process):
         RUNNING = 'Running'
         FINISHED = 'Finished'
 
-    def __init__(self, workspace, private_credentials):
+    def __init__(self, workspace, credentials):
         super().__init__()
         self.workspace = workspace
         self.worker_id = str(uuid4())[:6]
-        self.__private_credentials = private_credentials
+        self.__credentials = credentials
 
         self.tart_time = 0
         self.triggers = {}
@@ -39,11 +39,26 @@ class Worker(Process):
 
         self.current_state = Worker.State.INITIALIZED
 
+        self.__start_db()
+        self.__start_eventsources()
+
     def __start_db(self):
         logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
-        self.__db = RedisClient(**self.__private_credentials['redis'])
+        self.__db = RedisDatabase(**self.__credentials['redis'])
+
+    def __start_eventsources(self):
+        logging.info("[{}] Starting event sources ".format(self.workspace))
+        event_sources = self.__db.get(workspace=self.workspace, document_id='event_sources')
+        for evt_src in event_sources.values():
+            logging.info("[{}] Starting {}".format(self.workspace, evt_src['name']))
+            eventsource_class = getattr(hooks, '{}'.format(evt_src['class']))
+            self.eventsource = eventsource_class(event_queue=self.event_queue,
+                                                 credentials=self.__credentials,
+                                                 **evt_src)
+            self.eventsource.start()
+            self.eventsources.append(self.eventsource)
 
     def __get_global_context(self):
         logging.info('[{}] Getting workspace global context'.format(self.workspace))
@@ -72,14 +87,6 @@ class Worker(Process):
             logging.error('Could not retrieve triggers and/or source events for {}'.format(self.workspace))
         logging.info("[{}] Triggers updated".format(self.workspace))
 
-    def __start_eventsources(self):
-        event_sources = self.__db.get(workspace=self.workspace, document_id='event_sources')
-        for evt_src in event_sources.values():
-            eventsource_class = getattr(hooks, '{}'.format(evt_src['class']))
-            eventsource = eventsource_class(event_queue=self.event_queue, **evt_src['spec'])
-            eventsource.start()
-            self.eventsources.append(eventsource)
-
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
 
@@ -87,10 +94,10 @@ class Worker(Process):
         logging.info('[{}] Starting worker {}'.format(self.workspace, self.worker_id))
         self.tart_time = datetime.now()
 
-        self.__start_db()
+        #self.__start_db()
         self.__get_global_context()
         self.__update_triggers()
-        self.__start_eventsources()
+        #self.__start_eventsources()
 
         logging.info('[{}] Worker {} Started'.format(self.workspace, self.worker_id))
         self.current_state = Worker.State.RUNNING
@@ -98,7 +105,7 @@ class Worker(Process):
         while self.__should_run():
             logging.info('[{}] Waiting for events...'.format(self.workspace))
             event = self.event_queue.get()
-            logging.info('[{}] New Event: {}'.format(self.workspace, event))
+            logging.info('[{}] New event from {}'.format(self.workspace, event['source']))
             subject = event['subject']
             event_type = event['type']
 
@@ -116,6 +123,7 @@ class Worker(Process):
                     context = self.triggers[trigger_id]['context']
 
                     context['global_context'] = self.global_context
+                    context['event_source'] = self.eventsource.config
                     context['workspace'] = self.workspace
                     context['local_event_queue'] = self.event_queue
                     context['events'] = self.events
@@ -132,8 +140,6 @@ class Worker(Process):
                     try:
                         if condition(context, event):
                             action(context, event)
-                            if 'counter' in context:
-                                del context['counter']
                         else:
                             success = False
                     except Exception as e:

@@ -1,21 +1,22 @@
+from typing import Optional
 from ..model import EventSource
 
 
 class SQSEventSource(EventSource):
     def __init__(self,
-                 region: str,
-                 account: str,
-                 topic: str,
-                 *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, topic)
+                 region: Optional[str] = None,
+                 account: Optional[str] = None,
+                 topic: Optional[str] = None,):
 
-    def publish_cloudevent(self, cloudevent: dict):
-        pass
+        self.region = region
+        self.account = account
+        self.topic = topic
+
+    def _set_name(self, prefix):
+        self.name = '{}-sqs-eventsource'.format(prefix)
 
     @property
     def json(self):
-        d = super().json
-        d['spec'] = vars(self)
+        d = vars(self)
         d['class'] = self.__class__.__name__
         return d

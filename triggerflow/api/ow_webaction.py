@@ -1,9 +1,10 @@
 import re
 
 import triggers
-import namespaces
+import workspaces
 import eventsources
-from cloudant_client import CloudantClient
+from redis_db import RedisClient
+from cloudant_db import CloudantClient
 from utils import authenticate_request
 
 import traceback  # debug
@@ -23,36 +24,40 @@ def ow_webaction_main(args):
     print(params)
 
     try:
-
         # Instantiate database client
-        db = CloudantClient(**params['private_credentials']['cloudant'])
+        #db = CloudantClient(**params['credentials']['cloudant'])
+        db = RedisClient(**params['credentials']['redis'])
 
         # Authorize request
         ok, res = authenticate_request(db, params)
         if not ok:
-            return res
+            return {'statusCode': 401, 'body': {'error': "Unauthorized"}}
 
-        if re.fullmatch(r"/namespace/[^/]+", path):
+        if re.fullmatch(r"/workspace/[^/]+", path):
             if args['__ow_method'] == 'put':
-                res = namespaces.add_namespace(db, path, params)
+                res = workspaces.add_workspace(db, path, params)
             elif args['__ow_method'] == 'get':
-                res = namespaces.get_namespace(db, path, params)
+                res = workspaces.get_workspace(db, path, params)
             elif args['__ow_method'] == 'delete':
-                res = namespaces.delete_namespace(db, path, params)
-        elif re.fullmatch(r"/namespace/[^/]+/eventsource", path):
+                res = workspaces.delete_workspace(db, path, params)
+
+        elif re.fullmatch(r"/workspace/[^/]+/eventsource", path):
             if args['__ow_method'] == 'get':
                 res = eventsources.list_eventsources(db, path, params)
-        elif re.fullmatch(r"/namespace/[^/]+/eventsource/[^/]+", path):
+
+        elif re.fullmatch(r"/workspace/[^/]+/eventsource/[^/]+", path):
             if args['__ow_method'] == 'put':
                 res = eventsources.add_eventsource(db, path, params)
             elif args['__ow_method'] == 'get':
                 res = eventsources.get_eventsource(db, path, params)
             elif args['__ow_method'] == 'delete':
                 res = eventsources.delete_eventsource(db, path, params)
-        elif re.fullmatch(r"/namespace/[^/]+/trigger", path):
+
+        elif re.fullmatch(r"/workspace/[^/]+/trigger", path):
             if args['__ow_method'] == 'post':
                 res = triggers.add_trigger(db, path, params)
-        elif re.fullmatch(r"/namespace/[^/]+/trigger/[^/]+", path):
+
+        elif re.fullmatch(r"/workspace/[^/]+/trigger/[^/]+", path):
             if args['__ow_method'] == 'get':
                 res = triggers.get_trigger(db, path, params)
             elif args['__ow_method'] == 'delete':

@@ -7,7 +7,7 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 
-from triggerflow.service.databases import RedisClient
+from triggerflow.service.databases import RedisDatabase
 import triggerflow.service.eventsources as hooks
 import triggerflow.service.conditions.default as default_conditions
 import triggerflow.service.actions.default as default_actions
@@ -40,7 +40,7 @@ class Worker(Process):
         logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
-        self.__db = RedisClient(**self.__private_credentials['redis'])
+        self.__db = RedisDatabase(**self.__private_credentials['redis'])
 
     def __get_global_context(self):
         logging.info('[{}] Getting workspace global context'.format(self.workspace))

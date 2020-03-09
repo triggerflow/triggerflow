@@ -1,18 +1,20 @@
 from ..model import EventSource
+from typing import Optional
 
 
 class RabbitEventSource(EventSource):
-    def __init__(self, amqp_url: str, topic: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.topic = topic
+    def __init__(self,
+                 amqp_url: Optional[str] = None,
+                 queue: Optional[str] = None):
+
+        self.queue = queue
         self.amqp_url = amqp_url
 
-    def publish_cloudevent(self, cloudevent: dict):
-        pass
+    def _set_name(self, prefix):
+        self.name = '{}-rabbit-eventsource'.format(prefix)
 
     @property
     def json(self):
-        d = super().json
-        d['spec'] = vars(self)
+        d = vars(self)
         d['class'] = self.__class__.__name__
         return d

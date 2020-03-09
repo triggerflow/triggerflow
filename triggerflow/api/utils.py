@@ -1,18 +1,13 @@
-import secrets
-import dateutil.parser
 import types
 import re
 from base64 import b64decode
-from datetime import datetime
-
-TOKEN_LEN = 32
 
 
 def parse_path(path):
     path = path.split('/')
     ppath = types.SimpleNamespace()
-    if 'namespace' in path:
-        ppath.namespace = path[path.index('namespace') + 1] if path.index('namespace') + 1 < len(path) else None
+    if 'workspace' in path:
+        ppath.namespace = path[path.index('workspace') + 1] if path.index('workspace') + 1 < len(path) else None
     if 'eventsource' in path:
         ppath.eventsource = path[path.index('eventsource') + 1] if path.index('eventsource') + 1 < len(path) else None
     if 'trigger' in path:
@@ -31,10 +26,9 @@ def authenticate_request(db, params):
                                                                         password):
             return False, {'statusCode': 401, 'body': {'error': "Invalid user:password"}}
 
-        users = db.get(database_name='auth$', document_id='users')
+        passw = db.get_auth(user)
 
-        ok = user in users and password == users[user]
-        return ok, None
+        return passw and passw == password, None
 
     except KeyError or ValueError or IndexError as e:
         return False, {'statusCode': 400, 'body': {'error': str(e)}}
