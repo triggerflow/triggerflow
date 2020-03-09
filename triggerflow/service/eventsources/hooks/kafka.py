@@ -1,9 +1,8 @@
 import json
 import logging
-from uuid import uuid1
 from enum import Enum
 from typing import List
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Consumer, TopicPartition
@@ -26,79 +25,66 @@ class KafkaEventSource(EventSourceHook):
                  password: str = None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.group_id = str(uuid1())
+
         self.event_queue = event_queue
 
-        self.config = {'bootstrap.servers': ','.join(broker_list),
-                       'group.id': self.group_id,
-                       #'default.topic.config': {'auto.offset.reset': 'earliest'},
-                       #'enable.auto.commit': False
-                       }
+        self.broker_list = broker_list
+        self.username = username
+        self.password = password
+        self.auth_mode = auth_mode
 
-        if auth_mode == 'SASL_PLAINTEXT':
+        self.__config = {'bootstrap.servers': ','.join(self.broker_list),
+                         'group.id': self.name,
+                         'default.topic.config': {'auto.offset.reset': 'earliest'},
+                         #'enable.auto.commit': False
+                         }
+
+        if self.auth_mode == 'SASL_PLAINTEXT':
             # append Event streams specific config
-            self.config.update({'ssl.ca.location': '/etc/ssl/certs/',
-                                'sasl.mechanisms': 'PLAIN',
-                                'sasl.username': username,
-                                'sasl.password': password,
-                                'security.protocol': 'sasl_ssl'
-                                })
+            self.__config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                                  'sasl.mechanisms': 'PLAIN',
+                                  'sasl.username': self.username,
+                                  'sasl.password': self.password,
+                                  'security.protocol': 'sasl_ssl'
+                                  })
 
         self.consumer = None
-        self.topic = topic
-        self.records = list()
-        self.created_topic = False
+        self.topic = topic or self.name
+        self.records = []
+        self.created_topic = Value('i', 0)
 
     def run(self):
-        self.consumer = Consumer(self.config)
+        self.consumer = Consumer(self.__config)
 
         # Create topic if it does not exist
         topics = self.consumer.list_topics().topics
         if self.topic not in topics:
             self.__create_topic(self.topic)
-            self.created_topic = True
+            self.created_topic.value = 1
 
-        logging.info("[{}] Started consuming from topic {}".format(self.name, self.topic))
         self.consumer.subscribe([self.topic])
+        logging.info("[{}] Started consuming from topic {}".format(self.name, self.topic))
         payload = None
         while True:
             try:
                 message = self.consumer.poll()
-                logging.info("[{}] Received event".format(self.topic))
+                logging.info("[{}] Received event".format(self.name))
                 payload = message.value().decode('utf-8')
                 event = json.loads(payload)
+                event['data'] = json.loads(event['data'])
                 self.event_queue.put(event)
                 self.records.append(message)
             except TypeError:
                 logging.error("[{}] Received event did not contain "
                               "JSON payload, got {} instead".format(self.name, type(payload)))
 
-    def poll(self):
-        return self.consumer.poll(timeout=1.0)
-
-    def body(self, record):
-        return json.loads(record.value())
-
     def commit(self, records):
         self.consumer.commit(offsets=self.__get_offset_list(self.records), async=False)
 
-    def stop(self):
-        self.consumer.close()
-        logging.info('[{}] Consumer closed for topic {}'.format(self.name, self.topic))
-
-        if self.created_topic:
-            try:
-                admin_client = AdminClient(self.config)
-                admin_client.delete_topics([self.topic])
-                logging.info('[{}] Topic {} deleted'.format(self.name, self.topic))
-            except Exception as e:
-                logging.info("[{}] Failed to delete topic {}: {}".format(self.name, self.topic, e))
-        self.terminate()
-
     def __create_topic(self, topic):
-        admin_client = AdminClient(self.config)
+        admin_client = AdminClient(self.__config)
 
-        new_topic = [NewTopic(topic, num_partitions=3, replication_factor=3)]
+        new_topic = [NewTopic(topic, num_partitions=1, replication_factor=1)]
         # Call create_topics to asynchronously create topics, a dict of <topic,future> is returned.
         fs = admin_client.create_topics(new_topic)
 
@@ -115,6 +101,25 @@ class KafkaEventSource(EventSourceHook):
                 logging.info("[{}] Failed to create topic {}: {}".format(self.name, topic, e))
                 return False
 
+    def __delete_topic(self, topic):
+        admin_client = AdminClient(self.__config)
+
+        # Call delete_topics to asynchronously delete topics, a dict of <topic,future> is returned.
+        fs = admin_client.delete_topics([self.topic])
+
+        # Wait for operation to finish.
+        # Timeouts are preferably controlled by passing request_timeout=15.0
+        # to the delete_topics() call.
+        # All futures will finish at the same time.
+        for topic, f in fs.items():
+            try:
+                f.result()  # The result itself is None
+                logging.info("[{}] Topic {} deleted".format(self.name, topic))
+                return True
+            except Exception as e:
+                logging.info("[{}] Failed to deleted topic {}: {}".format(self.name, topic, e))
+                return False
+
     @staticmethod
     def __get_offset_list(events):
         offsets = []
@@ -124,3 +129,16 @@ class KafkaEventSource(EventSourceHook):
             offsets.append(TopicPartition(message.topic(), message.partition(), message.offset() + 1))
 
         return offsets
+
+    @property
+    def config(self):
+        d = self.__config.copy()
+        d['type'] = 'kafka'
+        d['topic'] = self.topic
+        return d
+
+    def stop(self):
+        logging.info("[{}] Stopping event source".format(self.name))
+        if self.created_topic.value:
+            self.__delete_topic(self.topic)
+        self.terminate()

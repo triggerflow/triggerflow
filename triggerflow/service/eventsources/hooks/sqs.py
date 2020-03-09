@@ -1,8 +1,6 @@
 import json
 import logging
-
 import boto3
-
 from multiprocessing import Queue
 from ..model import EventSourceHook
 
@@ -12,11 +10,18 @@ logging.getLogger('botocore').setLevel(logging.INFO)
 class SQSEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
-                 queue_url: str,
+                 region: str,
+                 account: str,
+                 topic: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queue_url = queue_url
+
         self.event_queue = event_queue
+        self.region = region
+        self.account = account
+        self.topic = topic or self.name
+
+        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, topic)
         self.client = None
 
     def run(self):
@@ -40,12 +45,6 @@ class SQSEventSource(EventSourceHook):
                                           'data': termination_event['responsePayload']['body']}
                 self.event_queue.put(termination_cloudevent)
                 # message.delete()
-
-    def poll(self):
-        raise NotImplementedError()
-
-    def body(self, record):
-        raise NotImplementedError()
 
     def commit(self, records):
         raise NotImplementedError()

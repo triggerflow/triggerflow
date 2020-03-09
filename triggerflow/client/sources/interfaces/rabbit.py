@@ -4,8 +4,11 @@ from typing import Optional
 
 class RabbitEventSource(EventSource):
     def __init__(self,
-                 amqp_url: Optional[str] = None,
-                 queue: Optional[str] = None):
+                 amqp_url: str,
+                 queue: Optional[str] = None,
+                 *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
 
         self.queue = queue
         self.amqp_url = amqp_url

@@ -126,14 +126,14 @@ def start_worker(workspace):
         k_co_api.create_workspaced_custom_object(
                 group="serving.knative.dev",
                 version="v1",
-                workspace='default',
+                namespace='default',
                 plural="services",
                 body=svc_res
             )
 
         w = watch.Watch()
         for event in w.stream(k_co_api.list_workspaced_custom_object,
-                              workspace='default', group="serving.knative.dev",
+                              namespace='default', group="serving.knative.dev",
                               version="v1", plural="services",
                               field_selector="metadata.name={0}".format(service_name)):
             conditions = None
@@ -168,14 +168,14 @@ def start_worker(workspace):
                 k_co_api.create_workspaced_custom_object(
                         group="sources.knative.dev",
                         version="v1alpha1",
-                        workspace='default',
+                        namespace='default',
                         plural="kafkasources",
                         body=es_res
                     )
 
                 w = watch.Watch()
                 for event in w.stream(k_co_api.list_workspaced_custom_object,
-                                      workspace='default', group="sources.knative.dev",
+                                      namespace='default', group="sources.knative.dev",
                                       version="v1alpha1", plural="kafkasources",
                                       field_selector="metadata.name={0}".format(evt_src['name'])):
                     conditions = None
@@ -211,7 +211,7 @@ def delete_worker(workspace):
                 group="serving.knative.dev",
                 version="v1",
                 name=service_name,
-                workspace='default',
+                namespace='default',
                 plural="services",
                 body=client.V1DeleteOptions()
             )
@@ -233,7 +233,7 @@ def delete_worker(workspace):
                         group="sources.knative.dev",
                         version="v1alpha1",
                         name=evt_src['name'],
-                        workspace='default',
+                        namespace='default',
                         plural="kafkasources",
                         body=client.V1DeleteOptions()
                     )

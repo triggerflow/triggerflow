@@ -16,11 +16,14 @@ class KafkaAuthMode(Enum):
 class KafkaEventSource(EventSource):
 
     def __init__(self,
-                 broker_list:  Optional[List[str]] = None,
+                 broker_list:  List[str],
                  topic: Optional[str] = None,
                  auth_mode: Optional[KafkaAuthMode] = KafkaAuthMode.NONE,
                  username: Optional[str] = None,
-                 password: Optional[str] = None):
+                 password: Optional[str] = None,
+                 *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
 
         self.broker_list = broker_list
         self.topic = topic

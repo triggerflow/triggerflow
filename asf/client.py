@@ -12,7 +12,7 @@ sm_count = 0
 def asf2triggers(asf_json):
     global ep, sm_count
     run_id = '_'.join(['asf_state-machine', str(uuid4())])
-    ep_config = load_config_yaml('~/client_config.yaml')
+    tf_config = load_config_yaml('~/client_config.yaml')
     asf_config = load_config_yaml('~/asf_config.yaml')
 
     evt_src_type = asf_config['event_source']
@@ -24,7 +24,7 @@ def asf2triggers(asf_json):
     evt_src = getattr(mod, '{}EventSource'.format(evt_src_class))
     event_source = evt_src(**evt_src_config)
 
-    ep = TriggerflowClient(**ep_config['triggerflow'],
+    ep = TriggerflowClient(**tf_config['triggerflow'],
                            workspace=run_id,
                            caching=True)
 

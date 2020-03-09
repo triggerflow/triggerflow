@@ -4,9 +4,12 @@ from typing import Optional
 
 class RedisEventSource(EventSource):
     def __init__(self,
-                 host: Optional[str] = None,
-                 port: Optional[int] = None,
-                 password: Optional[str] = None):
+                 host: str,
+                 port: int,
+                 password: Optional[str] = None,
+                 *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
 
         self.host = host
         self.port = port

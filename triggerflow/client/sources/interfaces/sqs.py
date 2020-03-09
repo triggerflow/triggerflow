@@ -4,9 +4,12 @@ from ..model import EventSource
 
 class SQSEventSource(EventSource):
     def __init__(self,
-                 region: Optional[str] = None,
-                 account: Optional[str] = None,
-                 topic: Optional[str] = None,):
+                 region: str,
+                 account: str,
+                 topic: Optional[str] = None,
+                 *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
 
         self.region = region
         self.account = account

@@ -1,7 +1,7 @@
 import json
-from multiprocessing import Queue
-
 import pika
+import logging
+from multiprocessing import Queue
 
 from ..model import EventSourceHook
 
@@ -10,34 +10,26 @@ class RabbitEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
                  amqp_url: str,
-                 topic: str,
+                 queue: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.event_queue = event_queue
-        self.topic = topic
-        self.params = pika.URLParameters(amqp_url)
-        self.channel = None
+        self.queue = queue or self.name
+        self.amqp_url = amqp_url
 
-    def run(self):
+        self.params = pika.URLParameters(self.amqp_url)
         connection = pika.BlockingConnection(self.params)
         self.channel = connection.channel()
-        self.channel.queue_declare(queue=self.topic)
+        self.channel.queue_declare(queue=self.queue)
 
+    def run(self):
         def callback(ch, method, properties, body):
-            self.event_queue.put(json.loads(body))
+            logging.info("[{}] Received event".format(self.name))
+            event = json.loads(body)
+            event['data'] = json.loads(event['data'])
+            self.event_queue.put(event)
 
-        self.channel.basic_consume(self.topic, callback, auto_ack=False)
-
-    def poll(self):
-        method_frame, header_frame, body = self.channel.basic_get(queue=self.topic)
-        if method_frame is None:
-            return None
-        else:
-            return method_frame, header_frame, body
-
-    def body(self, record):
-        method_frame, header_frame, body = record
-        return json.loads(body)
+        self.channel.basic_consume(self.queue, callback, auto_ack=False)
 
     def commit(self, records):
         for record in records:
@@ -46,3 +38,10 @@ class RabbitEventSource(EventSourceHook):
 
     def stop(self):
         self.channel.stop_consuming()
+        self.channel.queue_delete(queue=self.queue)
+        self.terminate()
+
+    @property
+    def config(self):
+        d = {'type': 'rabbit', 'amqp_url': self.amqp_url, 'queue': self.queue}
+        return d

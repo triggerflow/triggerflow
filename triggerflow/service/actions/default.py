@@ -96,9 +96,17 @@ def action_ibm_cf_invoke(context, event):
         function_args = context['function_args']
     total_activations = len(function_args)
 
-    max_retries = 5
+    if 'max_retries' not in context:
+        max_retries = 5
+    else:
+        max_retries = context['max_retries']
 
-    tf_data = {'event_source': context['event_source']}
+    if 'sink' not in context:
+        sink = list(context['global_context']['event_sources'].values())[0]
+    else:
+        sink = context['global_context']['event_sources']['sink']
+
+    tf_data = {'event_source': sink}
     tf_data['extra_meta'] = {'workspace': workspace,
                              'trigger_id': trigger_id,
                              'subject': subject}

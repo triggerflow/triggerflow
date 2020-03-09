@@ -9,12 +9,6 @@ class EventSourceHook(Process):
     def run(self):
         raise NotImplementedError()
 
-    def poll(self):
-        raise NotImplementedError()
-
-    def body(self, record):
-        raise NotImplementedError()
-
     def commit(self, records):
         raise NotImplementedError()
 

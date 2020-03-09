@@ -53,10 +53,16 @@ def put_workspace(workspace):
         else:
             event_sources = {}
 
+        if 'global_context' in params:
+            global_context = params['global_context']
+        else:
+            global_context = {}
+        global_context['event_sources'] = event_sources
+
         db.create_workspace(workspace)
         db.put(workspace=workspace, document_id='event_sources', data=event_sources)
         db.put(workspace=workspace, document_id='triggers', data={})
-        db.put(workspace=workspace, document_id='global_context', data=params['global_context'])
+        db.put(workspace=workspace, document_id='global_context', data=global_context)
 
     user = request.authorization['username']
     password = request.authorization['password']

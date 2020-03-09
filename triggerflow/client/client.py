@@ -52,7 +52,7 @@ class TriggerflowClient:
         self.__workspace = workspace
 
     def create_workspace(self, workspace: str,
-                         event_source: EventSource = RedisEventSource,
+                         event_source: EventSource,
                          global_context: Optional[dict] = {}):
         """
         Create a workspace.
@@ -62,13 +62,13 @@ class TriggerflowClient:
         """
         global_context['workspace'] = workspace
 
-        evt_src = event_source() if type(event_source) is type else event_source
-        evt_src._set_name(workspace)
+        if not event_source.name:
+            event_source._set_name(workspace)
 
         res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace]),
                            auth=self.__basic_auth,
                            json={'global_context': global_context,
-                                 'event_source': evt_src.json})
+                                 'event_source': event_source.json})
 
         print("{}: {}".format(res.status_code, res.json()))
 
@@ -89,9 +89,7 @@ class TriggerflowClient:
         Add an event source to the target workspace.
         :param eventsource: Instance of CloudEventSource containing the specifications of the event source.
         :param overwrite: True for overwriting the event source specification.
-        """
-        raise NotImplementedError
-
+        """ 
         res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
                            auth=self.__basic_auth,

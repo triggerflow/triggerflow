@@ -33,39 +33,38 @@ class Worker(Process):
         self.trigger_events = {}
         self.global_context = {}
         self.events = {}
-        self.eventsources = []
+        self.eventsources = {}
         self.event_queue = Queue()
         self.dead_letter_queue = Queue()
 
         self.current_state = Worker.State.INITIALIZED
 
-        self.__start_db()
-        self.__start_eventsources()
+        self._start_db()
+        self._start_eventsources()
 
-    def __start_db(self):
+    def _start_db(self):
         logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
         self.__db = RedisDatabase(**self.__credentials['redis'])
 
-    def __start_eventsources(self):
+    def _start_eventsources(self):
         logging.info("[{}] Starting event sources ".format(self.workspace))
         event_sources = self.__db.get(workspace=self.workspace, document_id='event_sources')
         for evt_src in event_sources.values():
+            if evt_src['name'] in self.eventsources:
+                continue
             logging.info("[{}] Starting {}".format(self.workspace, evt_src['name']))
             eventsource_class = getattr(hooks, '{}'.format(evt_src['class']))
-            self.eventsource = eventsource_class(event_queue=self.event_queue,
-                                                 credentials=self.__credentials,
-                                                 **evt_src)
-            self.eventsource.start()
-            self.eventsources.append(self.eventsource)
+            eventsource = eventsource_class(event_queue=self.event_queue, **evt_src)
+            eventsource.start()
+            self.eventsources[evt_src['name']] = eventsource
 
     def __get_global_context(self):
         logging.info('[{}] Getting workspace global context'.format(self.workspace))
-        # Get global context
         self.global_context = self.__db.get(workspace=self.workspace, document_id='global_context')
 
-    def __update_triggers(self):
+    def __get_triggers(self):
         logging.info("[{}] Updating triggers cache".format(self.workspace))
         try:
             all_triggers = self.__db.get(workspace=self.workspace, document_id='triggers')
@@ -94,10 +93,8 @@ class Worker(Process):
         logging.info('[{}] Starting worker {}'.format(self.workspace, self.worker_id))
         self.tart_time = datetime.now()
 
-        #self.__start_db()
         self.__get_global_context()
-        self.__update_triggers()
-        #self.__start_eventsources()
+        self.__get_triggers()
 
         logging.info('[{}] Worker {} Started'.format(self.workspace, self.worker_id))
         self.current_state = Worker.State.RUNNING
@@ -123,7 +120,6 @@ class Worker(Process):
                     context = self.triggers[trigger_id]['context']
 
                     context['global_context'] = self.global_context
-                    context['event_source'] = self.eventsource.config
                     context['workspace'] = self.workspace
                     context['local_event_queue'] = self.event_queue
                     context['events'] = self.events
@@ -152,14 +148,14 @@ class Worker(Process):
                         del self.events[subject]
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
-                self.__update_triggers()
+                self.__get_triggers()
                 if subject in self.trigger_events:
                     self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
                     self.dead_letter_queue.put(event)
 
     def stop_worker(self):
-        for eventosurce in self.eventsources:
+        for eventosurce in self.eventsources.values():
             eventosurce.stop()
 
         logging.info("[{}] Worker {} stopped".format(self.workspace, self.worker_id))

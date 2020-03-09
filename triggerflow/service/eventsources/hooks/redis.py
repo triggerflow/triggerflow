@@ -1,48 +1,46 @@
+import redis
 import json
+import logging
 from multiprocessing import Queue
-
-import pika
-
 from ..model import EventSourceHook
 
 
 class RedisEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
-                 amqp_url: str,
-                 topic: str,
+                 host: str,
+                 port: int,
+                 password: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.event_queue = event_queue
-        self.topic = topic
-        self.params = pika.URLParameters(amqp_url)
-        self.channel = None
+        self.host = host
+        self.port = port
+        self.password = password
+        self.stream = self.name
+        self.__should_run = True
+
+        self.redis = redis.StrictRedis(host=self.host, port=self.port, password=self.password,
+                                       charset="utf-8", decode_responses=True)
 
     def run(self):
-        connection = pika.BlockingConnection(self.params)
-        self.channel = connection.channel()
-        self.channel.queue_declare(queue=self.topic)
-
-        def callback(ch, method, properties, body):
-            self.event_queue.put(json.loads(body))
-
-        self.channel.basic_consume(self.topic, callback, auto_ack=False)
-
-    def poll(self):
-        method_frame, header_frame, body = self.channel.basic_get(queue=self.topic)
-        if method_frame is None:
-            return None
-        else:
-            return method_frame, header_frame, body
-
-    def body(self, record):
-        method_frame, header_frame, body = record
-        return json.loads(body)
-
-    def commit(self, records):
-        for record in records:
-            method_frame, header_frame, body = record
-            self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+        last_id = '$'
+        while self.__should_run:
+            records = self.redis.xread({self.stream: last_id}, block=0)[0][1]
+            for last_id, event in records:
+                event['data'] = json.loads(event['data'])
+                logging.info("[{}] Received event".format(self.name))
+                self.event_queue.put(event)
 
     def stop(self):
-        self.channel.stop_consuming()
+        logging.info("[{}] Stopping event source".format(self.name))
+        self.redis.delete(self.stream)
+        self.__should_run = False
+        self.terminate()
+
+    @property
+    def config(self):
+        d = {'type': 'redis', 'host': self.host, 'port': self.port,
+             'password': self.password, 'stream': self.stream}
+        return d
