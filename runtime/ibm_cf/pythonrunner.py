@@ -87,6 +87,9 @@ class PythonRunner(ActionRunner):
             exec(self.fn, self.global_context)
             exec('fun = %s(param)' % self.mainFn, self.global_context)
             result = self.global_context['fun']
+        except SystemExit:
+            sys.stderr.write('Exiting function...')
+            result = {'status': 'exited'}
         except Exception:
             traceback.print_exc(file=sys.stderr)
 
@@ -94,6 +97,7 @@ class PythonRunner(ActionRunner):
             return (200, result)
         else:
             return (502, {'error': 'The action did not return a dictionary.'})
+
 
 if __name__ == '__main__':
     setRunner(PythonRunner())

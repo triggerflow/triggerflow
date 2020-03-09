@@ -7,7 +7,7 @@ from cloudant.document import Document
 from cloudant.error import CloudantException
 
 
-class CloudantClient:
+class CloudantDatabase:
     max_retries = 15
 
     def __init__(self, cloudant_user: str, auth_token: str, url: str):
@@ -17,8 +17,8 @@ class CloudantClient:
     def get_conn(self):
         return self.client
 
-    def put(self, database_name: str, document_id: str, data: dict):
-        db = CloudantDatabase(self.client, database_name)
+    def put(self, workspace: str, document_id: str, data: dict):
+        db = CloudantDatabase(self.client, workspace)
         data = data.copy()
         data['_id'] = document_id
         retry = self.max_retries
@@ -39,8 +39,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def get(self, database_name: str, document_id: str = None):
-        db = CloudantDatabase(self.client, database_name)
+    def get(self, workspace: str, document_id: str = None):
+        db = CloudantDatabase(self.client, workspace)
 
         retry = self.max_retries
         while retry > 0:
@@ -79,18 +79,15 @@ class CloudantClient:
                     raise e
         return dict(doc)
 
-    def delete(self, database_name: str, document_id: str = None):
-        db = CloudantDatabase(self.client, database_name)
+    def delete(self, workspace: str, document_id: str):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
-                if document_id is None and db.exists():
-                    db.delete()
-                else:
-                    doc = Document(db, document_id=document_id)
-                    doc.fetch()
-                    if doc.exists():
-                        doc.delete()
+                doc = Document(db, document_id=document_id)
+                doc.fetch()
+                if doc.exists():
+                    doc.delete()
                 break
             except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
@@ -98,12 +95,49 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def database_exists(self, database_name):
-        db = CloudantDatabase(self.client, database_name)
-        return db.exists()
+    def get_auth(self, username: str):
+        return self.get_key('$auth$', 'users', username)
 
-    def document_exists(self, database_name, document_id):
-        db = CloudantDatabase(self.client, database_name)
+    def create_workspace(self, workspace):
+        db = CloudantDatabase(self.client, workspace)
+        retry = self.max_retries
+        while retry > 0:
+            try:
+                return db.create()
+            except (CloudantException, HTTPError) as e:
+                time.sleep(random.random())
+                retry -= 1
+                if retry == 0:
+                    raise e
+
+    def workspace_exists(self, workspace):
+        db = CloudantDatabase(self.client, workspace)
+        retry = self.max_retries
+        while retry > 0:
+            try:
+                return db.exists()
+            except (CloudantException, HTTPError) as e:
+                time.sleep(random.random())
+                retry -= 1
+                if retry == 0:
+                    raise e
+
+    def delete_workspace(self, workspace):
+        db = CloudantDatabase(self.client, workspace)
+        retry = self.max_retries
+        while retry > 0:
+            try:
+                if db.exists():
+                    db.delete()
+                break
+            except (CloudantException, HTTPError) as e:
+                time.sleep(random.random())
+                retry -= 1
+                if retry == 0:
+                    raise e
+
+    def document_exists(self, workspace, document_id):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -116,8 +150,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def key_exists(self, database_name, document_id, key):
-        db = CloudantDatabase(self.client, database_name)
+    def key_exists(self, workspace, document_id, key):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -130,10 +164,10 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def set_key(self, database_name, document_id, key, value):
+    def set_key(self, workspace, document_id, key, value):
         retry = self.max_retries
         while retry > 0:
-            db = CloudantDatabase(self.client, database_name)
+            db = CloudantDatabase(self.client, workspace)
             try:
                 doc = Document(db, document_id=document_id)
                 doc.update_field(
@@ -149,8 +183,8 @@ class CloudantClient:
                 if retry == 0:
                     raise e
 
-    def get_key(self, database_name, document_id, key):
-        db = CloudantDatabase(self.client, database_name)
+    def get_key(self, workspace, document_id, key):
+        db = CloudantDatabase(self.client, workspace)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -158,6 +192,25 @@ class CloudantClient:
                 doc.fetch()
                 value = doc[key] if key in doc else None
                 return value
+            except (CloudantException, HTTPError) as e:
+                time.sleep(random.random())
+                retry -= 1
+                if retry == 0:
+                    raise e
+
+    def delete_key(self, workspace, document_id, key):
+        retry = self.max_retries
+        while retry > 0:
+            db = CloudantDatabase(self.client, workspace)
+            try:
+                doc = Document(db, document_id=document_id)
+                doc.update_field(
+                    doc.field_set,
+                    field=key,
+                    value=None
+                )
+                #doc.save()
+                break
             except (CloudantException, HTTPError) as e:
                 time.sleep(random.random())
                 retry -= 1

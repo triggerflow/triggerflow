@@ -30,9 +30,12 @@ code when required.
 import io
 import sys
 import os
+import time
 import json
+import pika
 import codecs
 import flask
+import redis
 import zipfile
 import base64
 import subprocess
@@ -268,35 +271,12 @@ def run():
 
     if runner.verify():
         try:
-            kafka_config = args.pop('__OW_EVENTS_KAFKA_CONFIG', None)
-            extra_meta = args.pop('__OW_EVENTS_EXTRAMETA', {})
-
+            tf_data = args.pop('__OW_TRIGGERFLOW', None)
             env = runner.env(message or {})
-            env['__OW_EVENTS_EXTRAMETA'] = json.dumps(extra_meta)
             code, result = runner.run(args, env)
             response = flask.jsonify(result)
             response.status_code = code
-
-            if kafka_config:
-                # Send a termination event to kafka
-                try:
-                    kafka_producer = Producer(kafka_config)
-                    termination_cloudevent = {'specversion': '1.0',
-                                              'id': env.get('__OW_ACTIVATION_ID'),
-                                              'source': env.get('__OW_ACTION_NAME'),  # FIXME source MUST be URI-reference
-                                              'type': 'termination.event.success',
-                                              'time': str(datetime.utcnow().isoformat()),
-                                              'subject': extra_meta['subject'],
-                                              'datacontenttype': 'application/json',
-                                              'data': result}
-                    kakfa_topic = extra_meta['namespace']
-                    print('Sending termination event to kafka topic: {}'.format(kakfa_topic))
-                    kafka_producer.produce(topic=kakfa_topic, value=json.dumps(termination_cloudevent),
-                                           callback=delivery_callback)
-                    kafka_producer.flush()
-                except Exception as e:
-                    print(e)
-
+            produce_termination_event(tf_data, env, result)
         except Exception as e:
             response = flask.jsonify({'error': 'Internal error. {}'.format(e)})
             response.status_code = 500
@@ -306,12 +286,85 @@ def run():
     return complete(response)
 
 
-def delivery_callback(err, msg):
-    if err:
-        print('Message failed delivery: %s' % err)
-    else:
-        print('Message delivered to %s partition [%d] @ offset %d' %
-              (msg.topic(), msg.partition(), msg.offset()))
+def produce_termination_event(tf_data, env, result):
+    if tf_data is None:
+        return
+
+    event_source = tf_data['event_source']
+    es_type = event_source.pop('type')
+    extra_meta = tf_data['extra_meta']
+    subject = extra_meta['subject']
+
+    if not subject:
+        return
+
+    event = {'specversion': '1.0',
+             'id': env.get('__OW_ACTIVATION_ID'),
+             'source': env.get('__OW_ACTION_NAME'),  # FIXME source MUST be URI-reference
+             'type': 'termination.event.success',
+             'time': str(datetime.utcnow().isoformat()),
+             'subject': subject,
+             'datacontenttype': 'application/json',
+             'data': json.dumps(result)}
+
+    if es_type == 'kafka':
+        kakfa_topic = event_source.pop('topic')
+
+        def delivery_callback(err, msg):
+            if err:
+                print('Message failed delivery: %s' % err)
+            else:
+                print('Message delivered to %s partition [%d] @ offset %d' %
+                      (msg.topic(), msg.partition(), msg.offset()))
+
+        try:
+            kafka_producer = Producer(**event_source)
+            print('Sending termination event to kafka topic: {}'.format(kakfa_topic))
+            kafka_producer.produce(topic=kakfa_topic, value=json.dumps(event),
+                                   callback=delivery_callback)
+            kafka_producer.flush()
+        except Exception as e:
+            print(e)
+
+    elif es_type == 'rabbit':
+        event_sent = False
+        output_query_count = 0
+        params = pika.URLParameters(**event_source)
+        rabbit_queue = event_source.pop('queue')
+
+        while not event_sent and output_query_count < 5:
+            output_query_count = output_query_count + 1
+            try:
+                connection = pika.BlockingConnection(params)
+                channel = connection.channel()
+                channel.queue_declare(queue=rabbit_queue)
+                channel.basic_publish(exchange='', routing_key=rabbit_queue,
+                                      body=json.dumps(event))
+                connection.close()
+                print("Termination event sent to rabbitmq event queue")
+                event_sent = True
+            except Exception as e:
+                print("Unable to send the termination event to rabbitmq")
+                print(str(e))
+                print('Retrying to send the termination event to rabbitmq...')
+                time.sleep(0.2)
+
+    elif es_type == 'redis':
+        event_sent = False
+        output_query_count = 0
+        redis_stream = event_source.pop('stream')
+        while not event_sent and output_query_count < 5:
+            output_query_count = output_query_count + 1
+            try:
+                r = redis.StrictRedis(**event_source)
+                r.xadd(redis_stream, event)
+                print("Termination event sent to redis stream")
+                event_sent = True
+            except Exception as e:
+                print("Unable to send the termination event to redis stream")
+                print(str(e))
+                print('Retrying to send the termination event to redis...')
+                time.sleep(0.2)
 
 
 def complete(response):

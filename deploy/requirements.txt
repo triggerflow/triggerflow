@@ -10,3 +10,4 @@ python-dateutil
 docker
 boto3
 jsonpath_ng
+redis

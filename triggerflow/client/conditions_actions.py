@@ -17,8 +17,7 @@ class DefaultConditions(ConditionActionModel, Enum):
 class DefaultActions(ConditionActionModel, Enum):
     PASS = {'name': 'PASS'}
     TERMINATE = {'name': 'TERMINATE'}
-    IBM_CF_INVOKE_KAFKA = {'name': 'IBM_CF_INVOKE_KAFKA'}
-    IBM_CF_INVOKE_RABBITMQ = {'name': 'IBM_CF_INVOKE_RABBITMQ'}
+    IBM_CF_INVOKE = {'name': 'IBM_CF_INVOKE'}
     AWS_LAMBDA_INVOKE = {'name': 'AWS_LAMBDA_INVOKE'}
 
 
