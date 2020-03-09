@@ -1,4 +1,4 @@
-from deploy.aio import app
+from deploy.vm import controller
 
 if __name__ == '__main__':
-    app.main()
+    controller.main()

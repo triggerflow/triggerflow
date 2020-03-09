@@ -5,7 +5,7 @@ build/
 dist/
 *.egg-info
 config.yaml
-deploy.py
+deploy*.py
 
 # Linux
 *~

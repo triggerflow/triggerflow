@@ -20,18 +20,15 @@ def asf2triggers(asf_json):
     evt_src_class = asf_config['event_sources'][evt_src_type]['class']
     del evt_src_config['class']
 
-    mod = import_module('eventprocessor_client.sources')
-    evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
-    event_source = evt_src(name=run_id,
-                           topic=run_id,
-                           **evt_src_config)
+    mod = import_module('triggerflow.client.sources')
+    evt_src = getattr(mod, '{}EventSource'.format(evt_src_class))
+    event_source = evt_src(**evt_src_config)
 
     ep = TriggerflowClient(**ep_config['triggerflow'],
                            workspace=run_id,
-                           eventsource_name=run_id,
                            caching=True)
 
-    ep.create_workspace(run_id, event_source=event_source)
+    ep.create_workspace(workspace=run_id, event_source=event_source)
 
     main_sm = state_machine(asf_json, '$init')
 

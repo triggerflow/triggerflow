@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
 import requests as req
 
-from .redis import RedistClient
+from redis_db import RedisDatabase
 
 logger = logging.getLogger('triggerflow-controller')
 
@@ -18,7 +18,7 @@ with open('config.yaml', 'r') as config_file:
     private_credentials = yaml.safe_load(config_file)
 
 print('Creating DB connection')
-db = RedistClient(**private_credentials['redis'])
+db = RedisDatabase(**private_credentials['redis'])
 
 print('loading kubernetes config')
 config.load_incluster_config()
@@ -99,8 +99,8 @@ def authenticate_request(db, request):
        or 'password' not in request.authorization:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username']).decode()
-    return passwd == request.authorization['password']
+    passwd = db.get_auth(username=request.authorization['username'])
+    return passwd and passwd == request.authorization['password']
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
@@ -110,10 +110,8 @@ def start_worker(workspace):
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    global db
-
-    #if not authenticate_request(db, request):
-    #    return jsonify('Unauthorized'), 401
+    if not authenticate_request(db, request):
+        return jsonify('Unauthorized'), 401
 
     print('New request to start a worker for workspace {}'.format(workspace))
 

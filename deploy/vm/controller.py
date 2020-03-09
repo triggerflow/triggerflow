@@ -6,8 +6,8 @@ import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from triggerflow.service.databases import RedisClient
-from .worker import Worker
+from triggerflow.service.databases import RedisDatabase
+from worker import Worker
 
 
 app = Flask(__name__)
@@ -24,8 +24,14 @@ def authenticate_request(db, request):
        or 'password' not in request.authorization:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username']).decode()
-    return passwd == request.authorization['password']
+    passwd = db.get_auth(username=request.authorization['username'])
+    return passwd and passwd == request.authorization['password']
+
+
+@app.before_request
+def before_request_func():
+    if not authenticate_request(db, request):
+        return jsonify('Unauthorized'), 401
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
@@ -35,9 +41,6 @@ def start_worker(workspace):
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    if not authenticate_request(db, request):
-        return jsonify('Unauthorized'), 401
-
     if not db.workspace_exists(workspace):
         return jsonify('Workspace does not exists in the database'.format(workspace)), 400
 
@@ -56,15 +59,14 @@ def start_worker(workspace):
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
 def delete_worker(workspace):
-    if not authenticate_request(db, request):
-        return jsonify('Unauthorized'), 401
-
+    logging.info('New request to delete workspace {}'.format(workspace))
     global workers
     if workspace not in workers:
         return jsonify('Workspace {} is not active'.format(workspace)), 400
     else:
         workers[workspace].stop_worker()
-        return jsonify('Workspace {} stopped'.format(workspace)), 200
+        del workers[workspace]
+        return jsonify('Workspace {} deleted'.format(workspace)), 200
 
 
 def main():
@@ -76,7 +78,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'event_processor-0')
+    component = os.getenv('INSTANCE', 'triggerflow-service-0')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
@@ -98,7 +100,7 @@ def main():
         private_credentials = yaml.safe_load(config_file)
 
     logging.info('Creating database client')
-    db = RedisClient(**private_credentials['redis'])
+    db = RedisDatabase(**private_credentials['redis'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())

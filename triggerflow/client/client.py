@@ -7,6 +7,7 @@ from typing import Optional, Union, List
 
 from . import exceptions
 from .sources.model import EventSource
+from .sources import RedisEventSource
 from .cloudevent import CloudEvent
 from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
 
@@ -19,7 +20,6 @@ class TriggerflowClient:
                  user: str,
                  password: str,
                  workspace: Optional[str] = None,
-                 eventsource_name: Optional[str] = None,
                  caching: Optional[bool] = False):
         """
         Initialize CloudEventProcessor client.
@@ -31,7 +31,7 @@ class TriggerflowClient:
         :param caching: Add triggers to local cache, to then commit cached
                         triggers in a single request using push_triggers().
         """
-        self.eventsource_name = eventsource_name
+
         self.api_endpoint = endpoint
         self.caching = caching
         self.__workspace = workspace
@@ -52,37 +52,25 @@ class TriggerflowClient:
         self.__workspace = workspace
 
     def create_workspace(self, workspace: str,
-                         global_context: Optional[dict] = None,
-                         event_source: Optional[EventSource] = None):
+                         event_source: EventSource = RedisEventSource,
+                         global_context: Optional[dict] = {}):
         """
         Create a workspace.
         :param workspace: workspace name.
         :param global_context: Read-only key-value state that is visible for all triggers in the workspace.
         :param event_source: Applies this event source to the new workspace.
         """
-        default_context = {'workspace': workspace}
+        global_context['workspace'] = workspace
 
-        if global_context is not None and type(global_context) is dict:
-            global_context.update(default_context)
-        elif global_context is not None and type(global_context) is not dict:
-            raise Exception('Global context must be json-serializable dict')
-        else:
-            global_context = {}
-
-        evt_src = event_source.json if event_source is not None else None
+        evt_src = event_source() if type(event_source) is type else event_source
+        evt_src._set_name(workspace)
 
         res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace]),
                            auth=self.__basic_auth,
                            json={'global_context': global_context,
-                                 'event_source': evt_src})
+                                 'event_source': evt_src.json})
 
         print("{}: {}".format(res.status_code, res.json()))
-        if res.ok:
-            return res.json()
-        elif res.status_code == 409:
-            raise exceptions.ResourceAlreadyExistsError(res.json())
-        else:
-            raise Exception(res.json())
 
     def delete_workspace(self, workspace: str):
         """
@@ -90,20 +78,11 @@ class TriggerflowClient:
         :param workspace:
         :return:
         """
-        if workspace is None:
-            workspace = self.__workspace
-
         res = requests.delete('/'.join([self.api_endpoint, 'workspace', workspace]),
                               auth=self.__basic_auth,
                               json={})
 
         print("{}: {}".format(res.status_code, res.json()))
-        if res.ok:
-            return res.json()
-        elif res.status_code == 409:
-            raise exceptions.ResourceDoesNotExist(res.json())
-        else:
-            raise Exception(res.json())
 
     def add_event_source(self, workspace: str, eventsource: EventSource, overwrite: Optional[bool] = False):
         """
@@ -111,6 +90,7 @@ class TriggerflowClient:
         :param eventsource: Instance of CloudEventSource containing the specifications of the event source.
         :param overwrite: True for overwriting the event source specification.
         """
+        raise NotImplementedError
 
         res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace, 'eventsource', eventsource.name]),
                            params={'overwrite': overwrite},
@@ -118,12 +98,6 @@ class TriggerflowClient:
                            json={'eventsource': eventsource.json})
 
         print("{}: {}".format(res.status_code, res.json()))
-        if res.ok:
-            return res.json()
-        elif res.status_code == 409:
-            raise exceptions.ResourceAlreadyExistsError(res.json())
-        else:
-            raise Exception(res.json())
 
     def add_trigger(self,
                     event: Union[CloudEvent, List[CloudEvent]],
