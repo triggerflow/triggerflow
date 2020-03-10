@@ -1,0 +1,9 @@
+cloudant:
+    cloudant_user: <USERNAME>
+    auth_token: <PASSWORD>
+    url: <SERVICE_URL>
+
+redis:
+    host: <HOST>
+    port: <PORT>
+    password: <PASSWORD>

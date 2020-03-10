@@ -1,24 +1,21 @@
-from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions
-from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource
+from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.sources import KafkaEventSource
 
 if __name__ == "__main__":
     client_config = load_config_yaml('~/client_config.yaml')
-    kafka_config = client_config['event_sources']['kafka']
 
-    er = CloudEventProcessorClient(**client_config['event_processor'])
+    tf = TriggerflowClient(**client_config['triggerflow'])
 
-    kafka = KafkaCloudEventSource(name='my_kafka_eventsource',
-                                  broker_list=kafka_config['broker_list'],
-                                  topic='hello')
+    kafka = KafkaEventSource(broker_list=client_config['kafka']['broker_list'])
 
-    er.create_namespace(namespace='basic_kafka', global_context=client_config['global_context'], event_source=kafka)
+    tf.create_workspace(workspace='basic_kafka', global_context={'ibm_cf': client_config['ibm_cf']}, event_source=kafka)
 
     # init__ >> ca1 >> [map1, ca2] >> map2 >> ca3 >> end__
 
     url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/kafka_test'
 
-    er.add_trigger(CloudEvent('init__'),
+    tf.add_trigger(event=CloudEvent('init__'),
                    action=DefaultActions.IBM_CF_INVOKE_KAFKA,
                    context={'subject': 'ca1',
                             'function_args': {'iter': 1},

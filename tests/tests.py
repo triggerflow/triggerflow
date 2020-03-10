@@ -1,20 +1,20 @@
-from eventprocessor_client import CloudEventProcessorClient
-from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource, KafkaAuthMode
+from triggerflow.client import TriggerflowClient
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.sources import KafkaEventSource, KafkaAuthMode
 
 if __name__ == "__main__":
     client_config = load_config_yaml('~/client_config.yaml')
-    kafka_config = client_config['event_sources']['kafka']
+    kafka_config = client_config['kafka']
 
-    er = CloudEventProcessorClient(**client_config['event_processor'])
+    tf = TriggerflowClient(**client_config['triggerflow'])
 
-    kafka = KafkaCloudEventSource(name='my_kafka_eventsource',
-                                  broker_list=kafka_config['kafka_brokers_sasl'],
-                                  topic='hello',
-                                  auth_mode=KafkaAuthMode.SASL_PLAINTEXT,
-                                  username=kafka_config['user'],
-                                  password=kafka_config['password'])
+    kafka = KafkaEventSource(name='my_kafka_eventsource',
+                             broker_list=kafka_config['kafka_brokers_sasl'],
+                             topic='hello',
+                             auth_mode=KafkaAuthMode.SASL_PLAINTEXT,
+                             username=kafka_config['user'],
+                             password=kafka_config['password'])
 
-    er.create_namespace(namespace='test', global_context=client_config['global_context'], event_source=kafka)
+    tf.create_workspace(workspace='test', global_context=client_config['ibm_cf'], event_source=kafka)
 
-    # er.delete_namespace('test')
+    # er.delete_workspace('test')

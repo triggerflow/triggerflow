@@ -1,0 +1,13 @@
+flask
+psutil
+gevent
+cloudant
+confluent_kafka
+PyYAML
+dill
+pika==0.13
+python-dateutil
+docker
+boto3
+jsonpath_ng
+redis

@@ -49,7 +49,7 @@ def publish_events(argv):
     def generate_events(i):
         kafka_producer = Producer(**config)
         for _ in range(n_join):
-            termination_event = {'subject': 'map_{}'.format(i), 'type': 'termination.event.success'}
+            termination_event = {'source': 'test', 'subject': 'map_{}'.format(i), 'type': 'termination.event.success'}
             kafka_producer.produce(topic=TOPIC,
                                    value=json.dumps(termination_event),
                                    callback=delivery_callback)

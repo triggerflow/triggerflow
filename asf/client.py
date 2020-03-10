@@ -1,8 +1,8 @@
 from uuid import uuid4
 from importlib import import_module
 
-from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.client import TriggerflowClient, CloudEvent, DefaultActions
 from asf.conditions_actions import AwsAsfActions, AwsAsfConditions
 
 ep = None
@@ -12,7 +12,7 @@ sm_count = 0
 def asf2triggers(asf_json):
     global ep, sm_count
     run_id = '_'.join(['asf_state-machine', str(uuid4())])
-    ep_config = load_config_yaml('~/client_config.yaml')
+    tf_config = load_config_yaml('~/client_config.yaml')
     asf_config = load_config_yaml('~/asf_config.yaml')
 
     evt_src_type = asf_config['event_source']
@@ -20,20 +20,15 @@ def asf2triggers(asf_json):
     evt_src_class = asf_config['event_sources'][evt_src_type]['class']
     del evt_src_config['class']
 
-    mod = import_module('eventprocessor_client.sources')
-    evt_src = getattr(mod, '{}CloudEventSource'.format(evt_src_class))
-    event_source = evt_src(name=run_id,
-                           topic=run_id,
-                           **evt_src_config)
+    mod = import_module('triggerflow.client.sources')
+    evt_src = getattr(mod, '{}EventSource'.format(evt_src_class))
+    event_source = evt_src(**evt_src_config)
 
-    ep = CloudEventProcessorClient(api_endpoint=ep_config['event_processor']['api_endpoint'],
-                                   user=ep_config['event_processor']['user'],
-                                   password=ep_config['event_processor']['password'],
-                                   namespace=run_id,
-                                   eventsource_name=run_id,
-                                   caching=True)
+    ep = TriggerflowClient(**tf_config['triggerflow'],
+                           workspace=run_id,
+                           caching=True)
 
-    ep.create_namespace(run_id, event_source=event_source)
+    ep.create_workspace(workspace=run_id, event_source=event_source)
 
     main_sm = state_machine(asf_json, '$init')
 
