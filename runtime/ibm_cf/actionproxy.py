@@ -287,16 +287,15 @@ def run():
 
 
 def produce_termination_event(tf_data, env, result):
-    if tf_data is None:
+    if tf_data is None or not tf_data['subject']:
         return
 
-    event_source = tf_data['event_source']
-    es_type = event_source.pop('type')
-    extra_meta = tf_data['extra_meta']
-    subject = extra_meta['subject']
+    sink = tf_data['sink']
+    sink_class = sink.pop('class')
+    sink_name = sink.pop('name')
+    subject = tf_data['subject']
 
-    if not subject:
-        return
+    print('Sending termination event to: {}'.format(sink_name))
 
     event = {'specversion': '1.0',
              'id': env.get('__OW_ACTIVATION_ID'),
@@ -307,30 +306,29 @@ def produce_termination_event(tf_data, env, result):
              'datacontenttype': 'application/json',
              'data': json.dumps(result)}
 
-    if es_type == 'kafka':
-        kakfa_topic = event_source.pop('topic')
+    if sink_class == 'KafkaEventSource':
+        kakfa_topic = sink.pop('topic')
 
         def delivery_callback(err, msg):
             if err:
-                print('Message failed delivery: %s' % err)
+                print('Event failed delivery: %s' % err)
             else:
-                print('Message delivered to %s partition [%d] @ offset %d' %
+                print('Event delivered to %s partition [%d] @ offset %d' %
                       (msg.topic(), msg.partition(), msg.offset()))
 
         try:
-            kafka_producer = Producer(**event_source)
-            print('Sending termination event to kafka topic: {}'.format(kakfa_topic))
+            kafka_producer = Producer(**sink)
             kafka_producer.produce(topic=kakfa_topic, value=json.dumps(event),
                                    callback=delivery_callback)
             kafka_producer.flush()
         except Exception as e:
             print(e)
 
-    elif es_type == 'rabbit':
+    elif sink_class == 'RabbitEventSource':
         event_sent = False
         output_query_count = 0
-        params = pika.URLParameters(**event_source)
-        rabbit_queue = event_source.pop('queue')
+        params = pika.URLParameters(**sink)
+        rabbit_queue = sink.pop('queue')
 
         while not event_sent and output_query_count < 5:
             output_query_count = output_query_count + 1
@@ -341,30 +339,28 @@ def produce_termination_event(tf_data, env, result):
                 channel.basic_publish(exchange='', routing_key=rabbit_queue,
                                       body=json.dumps(event))
                 connection.close()
-                print("Termination event sent to rabbitmq event queue")
+                print("Event delivered to rabbitmq queue: {}".format(rabbit_queue))
                 event_sent = True
             except Exception as e:
-                print("Unable to send the termination event to rabbitmq")
+                print("Unable to send the event to rabbitmq. Retrying...")
                 print(str(e))
-                print('Retrying to send the termination event to rabbitmq...')
                 time.sleep(0.2)
 
-    elif es_type == 'redis':
+    elif sink_class == 'RedisEventSource':
         event_sent = False
         output_query_count = 0
-        redis_stream = event_source.pop('stream')
+        redis_stream = sink.pop('stream')
         while not event_sent and output_query_count < 5:
             output_query_count = output_query_count + 1
             try:
-                r = redis.StrictRedis(**event_source)
+                r = redis.StrictRedis(**sink)
                 r.xadd(redis_stream, event)
-                print("Termination event sent to redis stream")
+                print("Event delivered to redis stream: {}".format(redis_stream))
                 event_sent = True
             except Exception as e:
-                print("Unable to send the termination event to redis stream")
+                print("Unable to send the event to redis stream. Retrying...")
                 print(str(e))
-                print('Retrying to send the termination event to redis...')
-                time.sleep(0.2)
+                time.sleep(0.1)
 
 
 def complete(response):

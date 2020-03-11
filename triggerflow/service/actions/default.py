@@ -104,12 +104,10 @@ def action_ibm_cf_invoke(context, event):
     if 'sink' not in context:
         sink = list(context['global_context']['event_sources'].values())[0]
     else:
-        sink = context['global_context']['event_sources']['sink']
+        sink = context['global_context']['event_sources'][sink]
 
-    tf_data = {'event_source': sink}
-    tf_data['extra_meta'] = {'workspace': workspace,
-                             'trigger_id': trigger_id,
-                             'subject': subject}
+    tf_data = {'sink': sink, 'workspace': workspace,
+               'trigger_id': trigger_id, 'subject': subject}
     payload = {'__OW_TRIGGERFLOW': tf_data}
 
     ################################################
