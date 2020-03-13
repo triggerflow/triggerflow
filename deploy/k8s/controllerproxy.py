@@ -22,58 +22,33 @@ db = RedisDatabase(**private_credentials['redis'])
 
 print('loading kubernetes config')
 config.load_incluster_config()
-k_co_api = client.CustomObjectsApi()
 k_v1_api = client.CoreV1Api()
 
 service_res = """
-apiVersion: serving.knative.dev/v1
-kind: Service
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: triggerflow-worker
-  #workspace: default
 spec:
+  selector:
+    matchLabels:
+      app: triggerflow-worker
+  replicas: 1
   template:
     metadata:
-      annotations:
-        autoscaling.knative.dev/minScale: "1"
-        autoscaling.knative.dev/maxScale: "1"
+      labels:
+        app: triggerflow-worker
     spec:
-      #containerConcurrency: 1
-      #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-worker
-          env:
-          - name: workspace
-            value: 'default'
-          resources:
-            limits:
-              memory: 1Gi
-              cpu: 1
-"""
-
-event_source_res = """
-apiVersion: sources.eventing.knative.dev/v1alpha1
-kind: KafkaSource
-metadata:
-  name: kafka-source
-spec:
-  consumerGroup: triggerflow
-  bootstrapServers: IP:PORT
-  topics: topic-name
-  sink:
-    #apiVersion: serving.knative.dev/v1
-    #kind: Service
-    #name: event-display
-    apiVersion: eventing.knative.dev/v1alpha1
-    kind: Broker
-    name: default
-    #apiVersion: messaging.knative.dev/v1alpha1
-    #kind: Channel
-    #name: triggerflow-channel
-  resources:
-    requests:
-      memory: 512Mi
-      cpu: 1000m
+      - name: triggerflow-worker
+        image: jsampe/triggerflow-worker
+        env:
+          - name: NAMESPACE
+            value: 'pywren'
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 1000m
 """
 
 
@@ -107,18 +82,14 @@ def start_worker(workspace):
 
     try:
         # create the service resource
-        k_co_api.create_workspaced_custom_object(
-                group="serving.knative.dev",
-                version="v1",
-                workspace='default',
-                plural="services",
+        k_v1_api.create_namespaced_deployment(
+                namespace='default',
                 body=svc_res
             )
 
         w = watch.Watch()
-        for event in w.stream(k_co_api.list_workspaced_custom_object,
-                              workspace='default', group="serving.knative.dev",
-                              version="v1", plural="services",
+        for event in w.stream(k_v1_api.list_namespaced_deployment,
+                              namespace='default',
                               field_selector="metadata.name={0}".format(service_name)):
             conditions = None
             if event['object'].get('status') is not None:
@@ -128,58 +99,15 @@ def start_worker(workspace):
             if conditions and conditions[0]['status'] == 'True' and \
                conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
                 w.stop()
-
-        print('Trigger Service worker created - URL: {}'.format(service_url))
         worker_created = True
     except Exception as e:
         print('Warning: {}'.format(str(e)))
         worker_created = False
 
-    try:
-        # Create event sources
-        print('Starting event sources...')
-        event_sources = db.get(database_name=workspace, document_id='.event_sources')
-        for evt_src in event_sources.values():
-            if evt_src['class'] == 'KafkaCloudEventSource':
-                print('Starting {}'.format(evt_src['name']))
-                es_res = yaml.safe_load(event_source_res)
-                es_res['metadata']['name'] = evt_src['name']
-                es_res['spec']['bootstrapServers'] = ','.join(evt_src['spec']['broker_list'])
-                es_res['spec']['topics'] = evt_src['spec']['topic']
-                #es_res['spec']['sink']['name'] = service_name
-
-                # create the service resource
-                k_co_api.create_workspaced_custom_object(
-                        group="sources.eventing.knative.dev",
-                        version="v1alpha1",
-                        workspace='default',
-                        plural="kafkasources",
-                        body=es_res
-                    )
-
-                w = watch.Watch()
-                for event in w.stream(k_co_api.list_workspaced_custom_object,
-                                      workspace='default', group="sources.eventing.knative.dev",
-                                      version="v1alpha1", plural="kafkasources",
-                                      field_selector="metadata.name={0}".format(evt_src['name'])):
-                    conditions = None
-                    if event['object'].get('status') is not None:
-                        conditions = event['object']['status']['conditions']
-                        if event['object']['status'].get('url') is not None:
-                            service_url = event['object']['status']['url']
-                    if conditions and conditions[0]['status'] == 'True' and \
-                       conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
-                        w.stop()
-            else:
-                return jsonify('Not supported event source: {}'.format(evt_src['class'])), 400
-        print('Event source started')
-    except Exception as e:
-        print('Warning: {}'.format(str(e)))
-
     if worker_created:
-        return jsonify('Started worker for workspace {}'.format(workspace)), 201
+        return jsonify('Started workspace {}'.format(workspace)), 201
     else:
-        return jsonify('Worker for workspace {} is already running'.format(workspace)), 400
+        return jsonify('Workspace {} is already running'.format(workspace)), 400
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -191,44 +119,22 @@ def delete_worker(workspace):
     try:
         # delete the service resource if exists
         service_name = 'triggerflow-worker-{}'.format(workspace)
-        k_co_api.delete_workspaced_custom_object(
-                group="serving.knative.dev",
-                version="v1",
+        k_v1_api.delete_namespaced_deployment(
                 name=service_name,
-                workspace='default',
-                plural="services",
+                namespace='default',
                 body=client.V1DeleteOptions()
             )
-        print('Workers for namespcace {} stopped'.format(workspace))
+        print('Workspace {} stopped'.format(workspace))
         worker_deleted = True
     except Exception:
         # Most probable exception is the service does not exists
-        print('Worker for namespcace {} is not active'.format(workspace))
+        print('Workspace {} is not active'.format(workspace))
         worker_deleted = False
 
-    # Stop event sources
-    event_sources = db.get(database_name=workspace, document_id='.event_sources')
-    print('Stopping event sources for workspace {}'.format(workspace))
-    for evt_src in event_sources.values():
-        if evt_src['class'] == 'KafkaCloudEventSource':
-            print('Stopping {}'.format(evt_src['name']))
-            try:
-                k_co_api.delete_workspaced_custom_object(
-                        group="sources.eventing.knative.dev",
-                        version="v1alpha1",
-                        name=evt_src['name'],
-                        workspace='default',
-                        plural="kafkasources",
-                        body=client.V1DeleteOptions()
-                    )
-            except Exception:
-                pass
-    print('Event sources for workspace {} stopped'.format(workspace))
-
     if worker_deleted:
-        return jsonify('Worker for namespcace {} stopped'.format(workspace)), 200
+        return jsonify('Workspace {} stopped'.format(workspace)), 200
     else:
-        return jsonify('Worker for namespcace {} is not active'.format(workspace)), 400
+        return jsonify('Workspace {} is not active'.format(workspace)), 400
 
 
 @app.route('/')
