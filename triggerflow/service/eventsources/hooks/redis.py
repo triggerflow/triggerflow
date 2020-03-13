@@ -28,6 +28,7 @@ class RedisEventSource(EventSourceHook):
         last_id = '$'
         while self.__should_run:
             records = self.redis.xread({self.stream: last_id}, block=0)[0][1]
+            #logging.info('Total events downloaded:', len(records))
             for last_id, event in records:
                 event['data'] = json.loads(event['data'])
                 logging.info("[{}] Received event".format(self.name))

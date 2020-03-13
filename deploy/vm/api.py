@@ -88,13 +88,13 @@ def delete_workspace(workspace):
     else:
         db.delete_workspace(workspace)
 
-    user = request.authorization['username']
-    password = request.authorization['password']
-    auth = HTTPBasicAuth(username=user, password=password)
+        user = request.authorization['username']
+        password = request.authorization['password']
+        auth = HTTPBasicAuth(username=user, password=password)
 
-    resp = req.delete('/'.join([private_credentials['triggerflow_service']['endpoint'],
-                               'workspace', workspace]), auth=auth, json={})
-    return (resp.text, resp.status_code, resp.headers.items())
+        resp = req.delete('/'.join([private_credentials['triggerflow_service']['endpoint'],
+                                   'workspace', workspace]), auth=auth, json={})
+        return (resp.text, resp.status_code, resp.headers.items())
 
 
 #
