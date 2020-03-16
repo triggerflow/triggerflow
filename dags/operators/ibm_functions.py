@@ -25,7 +25,7 @@ class IBMCloudFunctionsOperator(BaseOperator):
         self.function_args = {}
         self.kind = None
 
-        self.trigger_action = 'IBM_CF_INVOKE_KAFKA'
+        self.trigger_action = 'IBM_CF_INVOKE'
 
         if bool(code) and bool(zipfile):
             raise Exception("Both 'code' and 'zipfile' arguments not permitted.")
