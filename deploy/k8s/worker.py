@@ -108,6 +108,10 @@ class Worker:
             total += 1
             if total == 1:
                 t0 = time.time()
+
+            if total == 200000:
+                print('TOTAL TIME:', time.time()-t0)
+
             #print('[{}] New event from {}'.format(self.workspace, event['source']))
             subject = event['subject']
             event_type = event['type']
@@ -148,9 +152,9 @@ class Worker:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
                         raise e
+
                 if success:
                     print('[{}] Successfully processed "{}" subject'.format(self.workspace, subject))
-                    print('TOTAL TIME:', time.time()-t0)
                     if subject in self.events:
                         context['counter'] = 0
                         del self.events[subject]

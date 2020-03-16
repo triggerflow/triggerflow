@@ -26,7 +26,10 @@ class RabbitEventSource(EventSourceHook):
         def callback(ch, method, properties, body):
             logging.info("[{}] Received event".format(self.name))
             event = json.loads(body)
-            event['data'] = json.loads(event['data'])
+            try:
+                event['data'] = json.loads(event['data'])
+            except:
+                pass
             self.event_queue.put(event)
 
         self.channel.basic_consume(self.queue, callback, auto_ack=False)
