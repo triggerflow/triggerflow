@@ -104,7 +104,7 @@ def action_ibm_cf_invoke(context, event):
     if 'sink' not in context:
         sink = list(context['global_context']['event_sources'].values())[0]
     else:
-        sink = context['global_context']['event_sources'][sink]
+        sink = context['global_context']['event_sources'][workspace]
 
     tf_data = {'sink': sink, 'workspace': workspace,
                'trigger_id': trigger_id, 'subject': subject}
@@ -119,7 +119,6 @@ def action_ibm_cf_invoke(context, event):
         while retry:
             try:
                 start_t = time.time()
-                #response = requests.post(url, json=payload, auth=cf_auth_handler, timeout=10.0, verify=True)
                 response = ibmcf_session.post(url, json=payload, auth=cf_auth_handler, verify=False)
                 status_code = response.status_code
                 res_json = response.json()
@@ -174,10 +173,10 @@ def action_ibm_cf_invoke(context, event):
     if subject in context['trigger_events']:
         downstream_triggers = context['trigger_events'][subject]['termination.event.success']
         for downstream_trigger in downstream_triggers:
-            if 'total_activations' in context['triggers'][downstream_trigger]['context']:
-                context['triggers'][downstream_trigger]['context']['total_activations'] += total_activations
+            if context['triggers'][downstream_trigger]['context']['dependencies'][subject]['join'] > 0:
+                context['triggers'][downstream_trigger]['context']['dependencies'][subject]['join'] += total_activations
             else:
-                context['triggers'][downstream_trigger]['context']['total_activations'] = total_activations
+                context['triggers'][downstream_trigger]['context']['dependencies'][subject]['join'] = total_activations
 
     # All activations are unsuccessful
     if not activations_done:

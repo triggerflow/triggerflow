@@ -54,7 +54,7 @@ class Worker(Process):
             new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
 
             for new_trigger_id, new_trigger in new_triggers.items():
-                for event in new_trigger['depends_on_events']:
+                for event in new_trigger['activation_events']:
                     if event['subject'] not in self.trigger_events:
                         self.trigger_events[event['subject']] = {}
                     if event['type'] not in self.trigger_events[event['subject']]:
@@ -119,7 +119,7 @@ class Worker(Process):
                     context['trigger_events'] = self.trigger_events
                     context['triggers'] = self.triggers
                     context['trigger_id'] = trigger_id
-                    context['depends_on_events'] = self.triggers[trigger_id]['depends_on_events']
+                    context['activation_events'] = self.triggers[trigger_id]['activation_events']
                     context['condition'] = self.triggers[trigger_id]['condition']
                     context['action'] = self.triggers[trigger_id]['action']
 
