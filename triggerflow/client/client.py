@@ -61,9 +61,7 @@ class TriggerflowClient:
         :param event_source: Applies this event source to the new workspace.
         """
         global_context['workspace'] = workspace
-
-        if not event_source.name:
-            event_source._set_name(workspace)
+        event_source._set_name(workspace)
 
         res = requests.put('/'.join([self.api_endpoint, 'workspace', workspace]),
                            auth=self.__basic_auth,
@@ -211,13 +209,14 @@ class TriggerflowClient:
         """
         self.__trigger_cache = {}
 
-    def list_eventsources(self):
+    def list_eventsources(self, workspace: str=None):
         """
         List eventsource names for this workspace.
         :return:
         """
-        res = requests.get('/'.join([self.api_endpoint, 'workspace', self.workspace, 'eventsource']),
-                           auth=self.basic_auth, json={})
+        wrksp = workspace or self.__workspace
+        res = requests.get('/'.join([self.api_endpoint, 'workspace', wrksp, 'eventsource']),
+                           auth=self.__basic_auth, json={})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:
@@ -225,14 +224,15 @@ class TriggerflowClient:
         else:
             return res.json()
 
-    def get_eventsource(self, event_soruce_name):
+    def get_eventsource(self, event_soruce_name, workspace: str=None):
         """
         Retrieve event source json object by its name.
         :param event_soruce_name: Event source name to retrieve.
         :return:
         """
-        res = requests.get('/'.join([self.api_endpoint, 'workspace', self.workspace, 'eventsource', event_soruce_name]),
-                           auth=self.basic_auth, json={})
+        wrksp = workspace or self.__workspace
+        res = requests.get('/'.join([self.api_endpoint, 'workspace', wrksp, 'eventsource', event_soruce_name]),
+                           auth=self.__basic_auth, json={})
 
         print('{}: {}'.format(res.status_code, res.json()))
         if not res.ok:

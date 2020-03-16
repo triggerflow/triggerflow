@@ -16,7 +16,8 @@ class SQSEventSource(EventSource):
         self.topic = topic
 
     def _set_name(self, prefix):
-        self.name = '{}-sqs-eventsource'.format(prefix)
+        self.name = self.name or '{}-sqs-eventsource'.format(prefix)
+        self.stream = self.stream or self.name
 
     @property
     def json(self):
