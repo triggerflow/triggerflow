@@ -33,7 +33,8 @@ class KafkaEventSource(EventSource):
             self.password = password
 
     def _set_name(self, prefix):
-        self.name = '{}-kafka-eventsource'.format(prefix)
+        self.name = self.name or '{}-kafka-eventsource'.format(prefix)
+        self.topic = self.topic or self.name
 
     def publish_cloudevent(self, cloudevent):
         config = {'bootstrap.servers': ','.join(self.broker_list),

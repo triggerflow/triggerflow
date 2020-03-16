@@ -71,7 +71,10 @@ class KafkaEventSource(EventSourceHook):
                 logging.info("[{}] Received event".format(self.name))
                 payload = message.value().decode('utf-8')
                 event = json.loads(payload)
-                event['data'] = json.loads(event['data'])
+                try:
+                    event['data'] = json.loads(event['data'])
+                except:
+                    pass
                 self.event_queue.put(event)
                 self.records.append(message)
             except TypeError:

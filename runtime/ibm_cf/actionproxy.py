@@ -309,6 +309,16 @@ def produce_termination_event(tf_data, env, result):
     if sink_class == 'KafkaEventSource':
         kakfa_topic = sink.pop('topic')
 
+        config = {'bootstrap.servers': ','.join(sink['broker_list'])}
+
+        if sink['auth_mode'] == 'SASL_PLAINTEXT':
+            config.update({'ssl.ca.location': '/etc/ssl/certs/',
+                           'sasl.mechanisms': 'PLAIN',
+                           'sasl.username': sink['username'],
+                           'sasl.password': sink['password'],
+                           'security.protocol': 'sasl_ssl'
+                           })
+
         def delivery_callback(err, msg):
             if err:
                 print('Event failed delivery: %s' % err)
@@ -317,7 +327,7 @@ def produce_termination_event(tf_data, env, result):
                       (msg.topic(), msg.partition(), msg.offset()))
 
         try:
-            kafka_producer = Producer(**sink)
+            kafka_producer = Producer(**config)
             kafka_producer.produce(topic=kakfa_topic, value=json.dumps(event),
                                    callback=delivery_callback)
             kafka_producer.flush()

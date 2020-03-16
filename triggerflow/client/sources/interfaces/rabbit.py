@@ -14,7 +14,8 @@ class RabbitEventSource(EventSource):
         self.amqp_url = amqp_url
 
     def _set_name(self, prefix):
-        self.name = '{}-rabbit-eventsource'.format(prefix)
+        self.name = self.name or '{}-rabbit-eventsource'.format(prefix)
+        self.stream = self.stream or self.name
 
     @property
     def json(self):
