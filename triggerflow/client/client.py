@@ -7,7 +7,6 @@ from typing import Optional, Union, List
 
 from . import exceptions
 from .sources.model import EventSource
-from .sources import RedisEventSource
 from .cloudevent import CloudEvent
 from .conditions_actions import ConditionActionModel, DefaultActions, DefaultConditions
 
@@ -23,7 +22,7 @@ class TriggerflowClient:
                  caching: Optional[bool] = False):
         """
         Initialize CloudEventProcessor client.
-        :param api_endpoint: Endpoint of the Event Processor API.
+        :param endpoint: Endpoint of the Event Processor API.
         :param user: Username to authenticate this client towards the API REST.
         :param password: Password to authenticate this client towards the API REST.
         :param workspace: workspace which this client targets by default when managing triggers.
@@ -132,7 +131,7 @@ class TriggerflowClient:
             'condition': condition.value,
             'action': action.value,
             'context': context,
-            'depends_on_events': events,
+            'activation_events': events,
             'transient': transient,
             'trigger_id': trigger_id}
 
@@ -243,10 +242,10 @@ class TriggerflowClient:
     def __add_trigger_cache(self, trigger):
         if trigger['trigger_id'] is None:
             trigger['trigger_id'] = str(uuid.uuid4())
-        elif trigger['trigger_id'] in self.__trigger_cache:
+        if trigger['trigger_id'] in self.__trigger_cache:
             raise Exception('Trigger {} already exists'.format(trigger['trigger_id']))
-        else:
-            self.__trigger_cache[trigger['trigger_id']] = trigger
+
+        self.__trigger_cache[trigger['trigger_id']] = trigger
 
         print({'trigger': trigger['trigger_id']})
         return {'trigger': trigger['trigger_id']}

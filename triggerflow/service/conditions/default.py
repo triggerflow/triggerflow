@@ -42,12 +42,9 @@ def condition_true(context, event):
 
 
 def condition_function_join(context, event):
-    if 'counter' not in context:
-        context['counter'] = 1
-    else:
-        context['counter'] += 1
+    context['dependencies'][event['subject']]['counter'] += 1
 
-    return context['counter'] == context['total_activations']
+    return all([dep['counter'] >= dep['join'] for dep in context['dependencies'].values()])
 
 
 def condition_counter_threshold(context, event):

@@ -1,6 +1,7 @@
 import redis
 from ..model import EventSource
 from typing import Optional
+from redis import StrictRedis
 
 
 class RedisEventSource(EventSource):
@@ -18,7 +19,7 @@ class RedisEventSource(EventSource):
         self.port = port
         self.db = db
         self.password = password
-        self.stream = stream
+        self.stream = stream if stream is not None else self.name
 
     def _set_name(self, prefix):
         self.name = self.name or '{}-redis-eventsource'.format(prefix)
@@ -34,3 +35,7 @@ class RedisEventSource(EventSource):
         d = vars(self)
         d['class'] = self.__class__.__name__
         return d
+
+    def publish_cloudevent(self, cloudevent: dict):
+        r = StrictRedis(host=self.host, port=self.port, password=self.password)
+        r.xadd(self.name, cloudevent)

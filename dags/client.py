@@ -5,7 +5,7 @@ from importlib import import_module
 
 from triggerflow.client.utils import load_config_yaml
 from triggerflow.client.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
-import triggerflow.client.sources.interfaces as event_source_interfaces
+import triggerflow.client.sources as event_sources_mod
 from dags.dag import DAG
 
 
@@ -16,7 +16,7 @@ def make(dag_path: str):
     mod = import_module(package)
     attributes = dir(mod)
 
-    dags = [attribute for attribute in attributes if type(getattr(mod, attribute)) is DAG]
+    dags = [attribute for attribute in attributes if type(getattr(mod, attribute)) == DAG]
 
     if len(dags) < 1:
         raise Exception("No DAGs found")
@@ -44,7 +44,8 @@ def deploy(dag_json):
                            **evt_src_config)
 
     tf = TriggerflowClient(**ep_config['triggerflow'],
-                           workspace=dagrun_id)
+                           workspace=dagrun_id,
+                           caching=True)
 
     gc = dags_config['operators'].copy()
     gc[evt_src_class.lower()] = evt_src_config
@@ -52,30 +53,33 @@ def deploy(dag_json):
 
     tasks = dag_json['tasks']
     for task_name, task in tasks.items():
+        context = {'subject': task_name, 'dependencies': {}}
+
         if not task['downstream_relatives']:
             task['downstream_relatives'].append('__end')
 
-        for _ in task['downstream_relatives']:
+        if task['upstream_relatives']:
+            condition = DefaultConditions.FUNCTION_JOIN
+            for upstream_relative in task['upstream_relatives']:
+                context['dependencies'][upstream_relative] = {'join': -1, 'counter': 0}
+        else:
+            condition = DefaultConditions.TRUE
+            task['upstream_relatives'].append('init__')
 
-            if not task['upstream_relatives']:
-                condition = DefaultConditions.TRUE
-                task['upstream_relatives'].append('init__')
-            else:
-                condition = DefaultConditions.FUNCTION_JOIN
-
-            context = {'subject': task_name}
-            context.update(task['operator'])
-            tf.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
-                           action=DefaultActions[task['operator']['trigger_action']],
-                           condition=condition,
-                           context=context)
+        context.update(task['operator'])
+        tf.add_trigger([CloudEvent(upstream_relative) for upstream_relative in task['upstream_relatives']],
+                       action=DefaultActions[task['operator']['trigger_action']],
+                       condition=condition,
+                       context=context)
 
     # Join final tasks
     tf.add_trigger([CloudEvent(end_task) for end_task in dag_json['final_tasks']],
                    action=DefaultActions.TERMINATE,
                    condition=DefaultConditions.FUNCTION_JOIN,
-                   context={'subject': '__end'})
+                   context={'subject': '__end', 'dependencies': {end_task: {'join': -1, 'counter': 0}
+                                                                 for end_task in dag_json['final_tasks']}})
 
+    tf.commit_cached_triggers()
     return dagrun_id
 
 
@@ -88,6 +92,7 @@ def run(dagrun_id):
     event_source_name = event_sources['event_sources'].pop()
 
     event_source = tf.get_eventsource(event_source_name)
-    event_source_class = getattr(event_source_interfaces, event_source[event_source_name]['class'])
+    event_source_class = getattr(event_sources_mod, event_source[event_source_name]['class'])
     event_source_if = event_source_class(**event_source[event_source_name])
     event_source_if.publish_cloudevent({'source': 'tf_client', 'subject': 'init__', 'type': 'termination.event.success'})
+    return 200, {'result': 'ok'}
