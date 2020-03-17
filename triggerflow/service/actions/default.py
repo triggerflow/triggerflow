@@ -119,7 +119,8 @@ def action_ibm_cf_invoke(context, event):
         while retry:
             try:
                 start_t = time.time()
-                response = ibmcf_session.post(url, json=payload, auth=cf_auth_handler, verify=False)
+                #response = requests.post(url, json=payload, auth=cf_auth_handler, timeout=10.0, verify=True)
+                response = ibmcf_session.post(url, json=payload, auth=cf_auth_handler, timeout=10.0, verify=True)
                 status_code = response.status_code
                 res_json = response.json()
                 et = round(time.time()-start_t, 3)

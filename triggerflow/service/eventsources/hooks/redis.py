@@ -2,6 +2,7 @@ import redis
 import json
 import logging
 from multiprocessing import Queue
+from typing import Optional
 from ..model import EventSourceHook
 
 
@@ -10,15 +11,19 @@ class RedisEventSource(EventSourceHook):
                  event_queue: Queue,
                  host: str,
                  port: int,
-                 password: str,
+                 db: Optional[int] = 0,
+                 password: Optional[str] = None,
+                 stream: Optional[str] = None,
                  *args, **kwargs):
+
         super().__init__(*args, **kwargs)
 
         self.event_queue = event_queue
         self.host = host
         self.port = port
+        self.db = db
         self.password = password
-        self.stream = self.name
+        self.stream = stream
         self.__should_run = True
 
         self.redis = redis.StrictRedis(host=self.host, port=self.port, password=self.password,
@@ -28,9 +33,12 @@ class RedisEventSource(EventSourceHook):
         last_id = '$'
         while self.__should_run:
             records = self.redis.xread({self.stream: last_id}, block=0)[0][1]
+            # logging.info('Total events downloaded:', len(records))
             for last_id, event in records:
-                if 'data' in event:
+                try:
                     event['data'] = json.loads(event['data'])
+                except KeyError:
+                    pass
                 logging.info("[{}] Received event".format(self.name))
                 self.event_queue.put(event)
 
