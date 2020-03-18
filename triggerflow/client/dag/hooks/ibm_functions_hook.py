@@ -1,6 +1,6 @@
-from dags.models.basehook import BaseHook
-from dags.libs.ibm_cloudfunctions_client import CloudFunctionsClient
-from dags.hooks.utils import load_conf
+from ..models.basehook import BaseHook
+from ..libs.ibm_cloudfunctions_client import CloudFunctionsClient
+from ..hooks.utils import load_conf
 
 MANDATORY_CREDENTIALS = ('endpoint', 'namespace', 'api_key')
 

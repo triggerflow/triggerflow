@@ -3,10 +3,10 @@ import os
 from uuid import uuid4
 from importlib import import_module
 
+from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
 from triggerflow.client.utils import load_config_yaml
-from triggerflow.client.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
 import triggerflow.client.sources as event_sources_mod
-from dags.dag import DAG
+from .dag import DAG
 
 
 def make(dag_path: str):
@@ -29,7 +29,7 @@ def make(dag_path: str):
 
 
 def deploy(dag_json):
-    dagrun_id = '_'.join([dag_json['dag_id'], str(uuid4())])
+    dagrun_id = '-'.join([dag_json['dag_id'], str(uuid4())])
     ep_config = load_config_yaml('~/client_config.yaml')
     dags_config = load_config_yaml('~/dags_config.yaml')
 
@@ -37,8 +37,7 @@ def deploy(dag_json):
     evt_src_class = dags_config['event_sources'][dag_json['eventsource']]['class']
     del evt_src_config['class']
 
-    mod = import_module('triggerflow.client.sources')
-    evt_src = getattr(mod, '{}EventSource'.format(evt_src_class))
+    evt_src = getattr(event_sources_mod, '{}EventSource'.format(evt_src_class))
     event_source = evt_src(name=dagrun_id,
                            topic=dagrun_id,
                            **evt_src_config)

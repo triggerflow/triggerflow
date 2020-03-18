@@ -1,1 +1,1 @@
-from dags.dag import DAG
+from .dag import DAG

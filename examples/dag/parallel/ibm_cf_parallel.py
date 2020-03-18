@@ -1,5 +1,5 @@
-from dags.operators import IBMCloudFunctionsMapOperator
-from dags import DAG
+from triggerflow.client.dag.operators import IBMCloudFunctionsMapOperator
+from triggerflow.client.dag import DAG
 
 dag = DAG(dag_id='parallel',
           event_source='redis')

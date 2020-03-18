@@ -100,21 +100,24 @@ class CloudFunctionsClient:
         Get an IBM Cloud Functions action
         """
         logger.debug("I am about to get a cloud function action: {}".format(action_name))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
-        res = self.session.get(url)
-        return res.json()
+        if package in [None, 'default', '_']:
+            url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', action_name])
+        else:
+            url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, action_name])
+
+        return self.session.get(url)
 
     def list_actions(self, package):
         """
         List all IBM Cloud Functions actions in a package
         """
         logger.debug("I am about to list all actions from: {}".format(package))
-        url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, ''])
-        res = self.session.get(url)
-        if res.status_code == 200:
-            return res.json()
+        if package in [None, 'default', '_']:
+            url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions'])
         else:
-            return []
+            url = '/'.join([self.endpoint, 'api', 'v1', 'namespaces', self.effective_namespace, 'actions', package, ''])
+
+        return self.session.get(url)
 
     def delete_action(self, package, action_name):
         """

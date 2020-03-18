@@ -1,5 +1,5 @@
-from dags.models.baseoperator import BaseOperator
-from dags.hooks import AWSLambdaHook
+from ..models.baseoperator import BaseOperator
+from ..hooks import AWSLambdaHook
 
 
 class AWSLambdaOperator(BaseOperator):

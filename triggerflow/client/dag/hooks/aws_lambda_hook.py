@@ -1,5 +1,5 @@
-from dags.models.basehook import BaseHook
-from dags.hooks.utils import load_conf
+from ..models.basehook import BaseHook
+from ..hooks.utils import load_conf
 
 import boto3
 
