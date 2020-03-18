@@ -1,13 +1,13 @@
 import textwrap
-from dags.models.baseoperator import BaseOperator
-from dags.hooks import IBMCloudFunctionsHook
+from ..models.baseoperator import BaseOperator
+from ..hooks import IBMCloudFunctionsHook
 
 
 class IBMCloudFunctionsOperator(BaseOperator):
     def __init__(
             self,
             function_name: str,
-            function_package: str,
+            function_package: str = None,
             function_memory: int = 256,
             function_timeout: int = 60000,
             function_image: str = 'aitorarjona/eventprocessor-kafka-runtime-v36:0.3',
@@ -37,10 +37,14 @@ class IBMCloudFunctionsOperator(BaseOperator):
 
         self.connection = IBMCloudFunctionsHook().get_conn()
 
-        self.url = '{}/api/v1/namespaces/{}/actions/{}/{}'.format(self.connection.endpoint,
-                                                                  self.connection.namespace,
-                                                                  self.function_package,
-                                                                  self.function_name)
+        if self.function_package in [None, 'default', '_']:
+            self.url = ('{}/api/v1/namespaces/{}/actions/{}'
+                        .format(self.connection.endpoint, self.connection.namespace,
+                                self.function_name))
+        else:
+            self.url = ('{}/api/v1/namespaces/{}/actions/{}/{}'
+                        .format(self.connection.endpoint, self.connection.namespace,
+                                self.function_package, self.function_name))
 
         if create_function:
             res = self.connection.create_package(
@@ -56,9 +60,12 @@ class IBMCloudFunctionsOperator(BaseOperator):
                 is_binary=is_binary
             )
         else:
+            #res = self.connection.list_actions(package=self.function_package)
             res = self.connection.get_action(
                 package=self.function_package,
                 action_name=self.function_name)
+            if res.status_code == 404:
+                raise Exception('Function not deployed')
             # TODO Check if action exists, and if does, update memory if necessary
 
     def to_dict(self):

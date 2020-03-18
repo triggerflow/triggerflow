@@ -1,5 +1,5 @@
 import re
-from dags.dag import DAG
+from ..dag import DAG
 
 
 class BaseOperator:

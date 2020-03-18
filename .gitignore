@@ -6,6 +6,7 @@ dist/
 *.egg-info
 config.yaml
 deploy*.py
+dag.json
 
 # Linux
 *~

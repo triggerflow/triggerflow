@@ -1,9 +1,9 @@
 from uuid import uuid4
 from importlib import import_module
 
+from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions
 from triggerflow.client.utils import load_config_yaml
-from triggerflow.client.client import TriggerflowClient, CloudEvent, DefaultActions
-from asf.conditions_actions import AwsAsfActions, AwsAsfConditions
+from .conditions_actions import AwsAsfActions, AwsAsfConditions
 
 ep = None
 sm_count = 0
@@ -11,7 +11,7 @@ sm_count = 0
 
 def asf2triggers(asf_json):
     global ep, sm_count
-    run_id = '_'.join(['asf_state-machine', str(uuid4())])
+    run_id = '-'.join(['asf-state-machine', str(uuid4())])
     tf_config = load_config_yaml('~/client_config.yaml')
     asf_config = load_config_yaml('~/asf_config.yaml')
 

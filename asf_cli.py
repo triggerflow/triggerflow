@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import click
 import json
-import asf.client as client
+import triggerflow.client.asf.client as asf_cli
 
 
 @click.group()
@@ -13,7 +13,7 @@ def cli(ctx):
 @cli.command('deploy')
 @click.argument('state_machine_json', type=click.File('r'))
 def cli_deploy(dag_json):
-    client.asf2triggers(json.loads(dag_json.read()))
+    asf_cli.asf2triggers(json.loads(dag_json.read()))
 
 
 @cli.command('run')

@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
 from triggerflow.service.databases import RedisDatabase
-from .worker import Worker
+from worker import Worker
 
 
 app = Flask(__name__)

@@ -1,6 +1,6 @@
-from dags.operators import AWSLambdaCallAsyncOperator
-from dags.utils.helpers import chain
-from dags import DAG
+from triggerflow.client.dag.operators import AWSLambdaCallAsyncOperator
+from triggerflow.client.dag.utils.helpers import chain
+from triggerflow.client.dag import DAG
 
 dag = DAG(dag_id='sequence',
           event_source='lambda_destination')
