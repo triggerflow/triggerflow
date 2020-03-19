@@ -77,6 +77,8 @@ class Worker(Process):
             new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
 
             for new_trigger_id, new_trigger in new_triggers.items():
+                if new_trigger_id == "0":
+                    continue
                 for event in new_trigger['activation_events']:
                     if event['subject'] not in self.trigger_events:
                         self.trigger_events[event['subject']] = {}

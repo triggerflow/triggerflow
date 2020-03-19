@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue
 from triggerflow.service.databases import RedisDatabase
 import triggerflow.service.eventsources as eventsources
 from .worker import Worker
-from threading import Thread
+import threading
 
 app = Flask(__name__)
 app.debug = False
@@ -58,19 +58,23 @@ def create_worker(workspace):
 
 def start_worker_monitor(workspace):
     """
-    Auxiliary method to monitor a worker
+    Auxiliary method to monitor a worker triggers
     """
     global monitors
     logging.info('Starting {} workspace monitor'.format(workspace))
 
     def monitor():
-        while True:
-            print('----')
-            if db.new_trigger(workspace):
-                print('----+++++')
-                start_worker(workspace)
 
-    monitors[workspace] = Thread(target=monitor, daemon=True)
+        if len(db.get(workspace, 'triggers')) > 1:
+            start_worker(workspace)
+
+        while True:
+            if db.new_trigger(workspace):
+                start_worker(workspace)
+            else:
+                break
+
+    monitors[workspace] = threading.Thread(target=monitor, daemon=True)
     monitors[workspace].start()
 
 

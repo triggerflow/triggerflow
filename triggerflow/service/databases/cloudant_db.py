@@ -108,19 +108,13 @@ class CloudantDatabase:
         document_id = 'workspaces'
         return self.get(database, document_id)
 
-    def create_workspace(self, workspace):
-        database = workspace
-        db = CloudantDatabase(self.client, database)
-        retry = self.max_retries
-        while retry > 0:
-            try:
-                return db.create()
-            except (CloudantException, HTTPError) as e:
-                time.sleep(random.random())
-                retry -= 1
-                if retry == 0:
-                    raise e
-        # TODO put workspace name ant time.time() in triggerflow/'$workspaces$
+    def create_workspace(self, workspace, event_sources, global_context):
+        database = 'triggerflow'
+        document_id = 'workspaces'
+        self.set_key(database, document_id, workspace, time.time())
+        self.put(workspace=workspace, document_id='event_sources', data=event_sources)
+        self.put(workspace=workspace, document_id='triggers', data={'0': 'dummy_trigger'})
+        self.put(workspace=workspace, document_id='global_context', data=global_context)
 
     def workspace_exists(self, workspace):
         database = workspace
@@ -238,4 +232,8 @@ class CloudantDatabase:
 
     def delete_keys(self, workspace: str, document_id: str, keys: list):
         #TODO:
+        pass
+
+    def new_trigger(self, workspace):
+        #TODO: Subscribe to triggers document
         pass
