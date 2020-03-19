@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
 from triggerflow.service.databases import RedisDatabase
-from worker import Worker
+from .worker import Worker
 
 
 app = Flask(__name__)
@@ -50,11 +50,18 @@ def start_worker(workspace):
         return jsonify('Workspace {} is already running'.format(workspace)), 400
 
     logging.info('New request to run workspace {}'.format(workspace))
+    _start_worker(workspace, private_credentials)
+
+    return jsonify('Started workspace {}'.format(workspace)), 201
+
+
+def _start_worker(workspace, private_credentials):
+    """
+    Auxiliary method to start a worker
+    """
     worker = Worker(workspace, private_credentials)
     worker.start()
     workers[workspace] = worker
-
-    return jsonify('Started workspace {}'.format(workspace)), 201
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -70,7 +77,7 @@ def delete_worker(workspace):
 
 
 def main():
-    global private_credentials, db
+    global private_credentials, db, workers
 
     # Create process group
     os.setpgrp()
@@ -78,7 +85,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-service-0')
+    component = os.getenv('INSTANCE', 'triggerflow-controller')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
@@ -87,7 +94,7 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting Triggerflow Service')
+    logging.info('Starting Triggerflow Controller')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -105,6 +112,13 @@ def main():
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
     logging.info('Triggerflow service started on port {}'.format(port))
+
+    workspaces = db.list_workspaces()
+    if workspaces:
+        for wsp in workspaces:
+            logging.info('Starting {} workspace...'.format(wsp))
+            _start_worker(wsp, private_credentials)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:

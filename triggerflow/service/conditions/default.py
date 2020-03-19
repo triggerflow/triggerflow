@@ -41,10 +41,19 @@ def condition_true(context, event):
     return True
 
 
-def condition_function_join(context, event):
+def condition_function_dag_join(context, event):
     context['dependencies'][event['subject']]['counter'] += 1
 
     return all([dep['counter'] >= dep['join'] for dep in context['dependencies'].values()])
+
+
+def condition_function_join(context, event):
+    if 'counter' not in context:
+        context['counter'] = 1
+    else:
+        context['counter'] += 1
+
+    return context['counter'] == context['total_activations']
 
 
 def condition_counter_threshold(context, event):
