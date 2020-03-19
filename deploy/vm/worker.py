@@ -6,7 +6,7 @@ from datetime import datetime
 from multiprocessing import Process, Queue
 from threading import Thread
 from triggerflow.service.databases import RedisDatabase
-import triggerflow.service.eventsources as hooks
+import triggerflow.service.eventsources as eventsources
 import triggerflow.service.conditions.default as default_conditions
 import triggerflow.service.actions.default as default_actions
 
@@ -55,10 +55,16 @@ class Worker(Process):
             if evt_src['name'] in self.eventsources:
                 continue
             logging.info("[{}] Starting {}".format(self.workspace, evt_src['name']))
-            eventsource_class = getattr(hooks, '{}'.format(evt_src['class']))
+            eventsource_class = getattr(eventsources, '{}'.format(evt_src['class']))
             eventsource = eventsource_class(event_queue=self.event_queue, **evt_src)
             eventsource.start()
             self.eventsources[evt_src['name']] = eventsource
+
+    def _stop_eventsources(self):
+        logging.info("[{}] Stopping event sources ".format(self.workspace))
+        for evt_src in list(self.eventsources):
+            self.eventsources[evt_src].stop()
+            del self.eventsources[evt_src]
 
     def __get_global_context(self):
         logging.info('[{}] Getting workspace global context'.format(self.workspace))
@@ -92,9 +98,13 @@ class Worker(Process):
             """
             Commit events and delete transient triggers
             """
-            while True:
+            logging.info('[{}] Starting committer thread'.format(self.workspace))
+
+            while self.__should_run():
                 ids = {}
-                events_to_commit, trigger_to_delete = commit_queue.get()
+                events_to_commit, triggers_to_delete = commit_queue.get()
+                logging.info('[{}] Committing {} events'
+                             .format(self.workspace, len(events_to_commit)))
 
                 for event in events_to_commit:
                     event_source = event['event_source']
@@ -106,10 +116,15 @@ class Worker(Process):
                     self.eventsources[event_source].commit(ids[event_source])
 
                 # Delete all transient triggers from DB
-                if trigger_to_delete:
-                    self.__db.delete_triggers(trigger_to_delete)
+                if triggers_to_delete:
+                    logging.info('[{}] Deleting {} transient triggers'
+                                 .format(self.workspace, len(triggers_to_delete)))
+                    self.__db.delete_keys(workspace=self.workspace,
+                                          document_id='triggers',
+                                          keys=triggers_to_delete)
 
-        Thread(target=commiter, args=(self.commit_queue, ), daemon=True).start()
+        self.__commiter = Thread(target=commiter, args=(self.commit_queue, ))
+        self.__commiter.start()
 
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
@@ -120,10 +135,11 @@ class Worker(Process):
 
         self.__get_global_context()
         self.__get_triggers()
-        self.__start_commiter()
 
         logging.info('[{}] Worker {} Started'.format(self.workspace, self.worker_id))
         self.current_state = Worker.State.RUNNING
+
+        self.__start_commiter()
 
         events = {}
         triggers_to_delete = []
@@ -183,11 +199,14 @@ class Worker(Process):
                 if success:
                     logging.info('[{}] Successfully processed "{}" subject'.format(self.workspace, subject))
                     processed_events = events[subject]
-                    logging.info('[{}] Committing {} events'.format(self.workspace, len(processed_events)))
                     self.commit_queue.put((processed_events, triggers_to_delete.copy()))
                     del events[subject]
                     del self.trigger_events[subject][event_type]
                     triggers_to_delete = []
+                    if not self.triggers:
+                        self.current_state = Worker.State.FINISHED
+                        self.__commiter.join()
+                        self._stop_eventsources()
 
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
@@ -197,9 +216,10 @@ class Worker(Process):
                 else:
                     self.dead_letter_queue.put(event)
 
-    def stop_worker(self):
-        for eventosurce in self.eventsources.values():
-            eventosurce.stop()
+        logging.info("[{}] Worker {} finished".format(self.workspace, self.worker_id))
 
-        logging.info("[{}] Worker {} stopped".format(self.workspace, self.worker_id))
+    def stop_worker(self):
+        logging.info("[{}] Stopping Worker {}".format(self.workspace, self.worker_id))
+        self._stop_eventsources()
         self.terminate()
+        logging.info("[{}] Worker {} stopped".format(self.workspace, self.worker_id))

@@ -76,3 +76,14 @@ class RedisDatabase:
     def delete_key(self, workspace, document_id, key):
         redis_key = '{}-{}'.format(workspace, document_id)
         self.client.hdel(redis_key, key)
+
+    def delete_keys(self, workspace: str, document_id: str, keys: list):
+        redis_key = '{}-{}'.format(workspace, document_id)
+        self.client.hdel(redis_key, *keys)
+
+    def new_trigger(self, workspace):
+        p = self.client.pubsub()
+        p.psubscribe('__keyspace@0__:{}-triggers'.format(workspace))
+        for message in p.listen():
+            if message and message['data'] == 'hset':
+                return True

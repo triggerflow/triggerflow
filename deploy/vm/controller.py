@@ -2,18 +2,20 @@ import logging
 import os
 import signal
 import yaml
-
+import queue
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-
+from multiprocessing import Process, Queue
 from triggerflow.service.databases import RedisDatabase
+import triggerflow.service.eventsources as eventsources
 from .worker import Worker
-
+from threading import Thread
 
 app = Flask(__name__)
 app.debug = False
 
 workers = {}
+monitors = {}
 private_credentials = None
 db = None
 
@@ -35,7 +37,7 @@ def before_request_func():
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
-def start_worker(workspace):
+def create_worker(workspace):
     """
     This method gets the request parameters and starts a new thread worker
     that will act as the event-processor for the the specific trigger workspace.
@@ -44,35 +46,59 @@ def start_worker(workspace):
     if not db.workspace_exists(workspace):
         return jsonify('Workspace does not exists in the database'.format(workspace)), 400
 
-    global workers
+    if workspace in monitors:
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
 
-    if workspace in workers.keys():
-        return jsonify('Workspace {} is already running'.format(workspace)), 400
+    logging.info('New request to create workspace {}'.format(workspace))
 
-    logging.info('New request to run workspace {}'.format(workspace))
-    _start_worker(workspace, private_credentials)
+    start_worker_monitor(workspace)
 
-    return jsonify('Started workspace {}'.format(workspace)), 201
+    return jsonify('Created workspace {}'.format(workspace)), 201
 
 
-def _start_worker(workspace, private_credentials):
+def start_worker_monitor(workspace):
+    """
+    Auxiliary method to monitor a worker
+    """
+    global monitors
+    logging.info('Starting {} workspace monitor'.format(workspace))
+
+    def monitor():
+        while True:
+            print('----')
+            if db.new_trigger(workspace):
+                print('----+++++')
+                start_worker(workspace)
+
+    monitors[workspace] = Thread(target=monitor, daemon=True)
+    monitors[workspace].start()
+
+
+def start_worker(workspace):
     """
     Auxiliary method to start a worker
     """
-    worker = Worker(workspace, private_credentials)
-    worker.start()
-    workers[workspace] = worker
+    global workers
+
+    if workspace not in workers or not workers[workspace].is_alive():
+        logging.info('Starting {} workspace'.format(workspace))
+        workers[workspace] = Worker(workspace, private_credentials)
+        workers[workspace].start()
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
 def delete_worker(workspace):
     logging.info('New request to delete workspace {}'.format(workspace))
-    global workers
-    if workspace not in workers:
+    global workers, monitors
+
+    if workspace not in monitors and workspace not in workers:
         return jsonify('Workspace {} is not active'.format(workspace)), 400
     else:
-        workers[workspace].stop_worker()
-        del workers[workspace]
+        if workspace in workers:
+            if workers[workspace].is_alive():
+                workers[workspace].stop_worker()
+            del workers[workspace]
+        del monitors[workspace]
         return jsonify('Workspace {} deleted'.format(workspace)), 200
 
 
@@ -114,10 +140,8 @@ def main():
     logging.info('Triggerflow service started on port {}'.format(port))
 
     workspaces = db.list_workspaces()
-    if workspaces:
-        for wsp in workspaces:
-            logging.info('Starting {} workspace...'.format(wsp))
-            _start_worker(wsp, private_credentials)
+    for wsp in workspaces:
+        start_worker_monitor(wsp)
 
     try:
         server.serve_forever()

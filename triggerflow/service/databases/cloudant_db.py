@@ -235,3 +235,7 @@ class CloudantDatabase:
                 retry -= 1
                 if retry == 0:
                     raise e
+
+    def delete_keys(self, workspace: str, document_id: str, keys: list):
+        #TODO:
+        pass
