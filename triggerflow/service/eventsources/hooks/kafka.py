@@ -36,7 +36,7 @@ class KafkaEventSource(EventSourceHook):
         self.__config = {'bootstrap.servers': ','.join(self.broker_list),
                          'group.id': self.name,
                          'default.topic.config': {'auto.offset.reset': 'earliest'},
-                         #'enable.auto.commit': False
+                         'enable.auto.commit': False
                          }
 
         if self.auth_mode == 'SASL_PLAINTEXT':
@@ -75,14 +75,15 @@ class KafkaEventSource(EventSourceHook):
                     event['data'] = json.loads(event['data'])
                 except:
                     pass
+                event['id'] = TopicPartition(message.topic(), message.partition(), message.offset() + 1)
                 self.event_queue.put(event)
                 self.records.append(message)
             except TypeError:
                 logging.error("[{}] Received event did not contain "
                               "JSON payload, got {} instead".format(self.name, type(payload)))
 
-    def commit(self, records):
-        self.consumer.commit(offsets=self.__get_offset_list(self.records), async=False)
+    def commit(self, ids):
+        self.consumer.commit(offsets=ids, async=True)
 
     def __create_topic(self, topic):
         admin_client = AdminClient(self.__config)

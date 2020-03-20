@@ -18,7 +18,8 @@ class CloudantDatabase:
         return self.client
 
     def put(self, workspace: str, document_id: str, data: dict):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         data = data.copy()
         data['_id'] = document_id
         retry = self.max_retries
@@ -40,7 +41,8 @@ class CloudantDatabase:
                     raise e
 
     def get(self, workspace: str, document_id: str = None):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
 
         retry = self.max_retries
         while retry > 0:
@@ -80,7 +82,8 @@ class CloudantDatabase:
         return dict(doc)
 
     def delete(self, workspace: str, document_id: str):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -96,22 +99,26 @@ class CloudantDatabase:
                     raise e
 
     def get_auth(self, username: str):
-        return self.get_key('$auth$', 'users', username)
+        database = 'triggerflow'
+        document_id = 'auth'
+        return self.get_key(database, document_id, username)
 
-    def create_workspace(self, workspace):
-        db = CloudantDatabase(self.client, workspace)
-        retry = self.max_retries
-        while retry > 0:
-            try:
-                return db.create()
-            except (CloudantException, HTTPError) as e:
-                time.sleep(random.random())
-                retry -= 1
-                if retry == 0:
-                    raise e
+    def list_workspaces(self):
+        database = 'triggerflow'
+        document_id = 'workspaces'
+        return self.get(database, document_id)
+
+    def create_workspace(self, workspace, event_sources, global_context):
+        database = 'triggerflow'
+        document_id = 'workspaces'
+        self.set_key(database, document_id, workspace, time.time())
+        self.put(workspace=workspace, document_id='event_sources', data=event_sources)
+        self.put(workspace=workspace, document_id='triggers', data={'0': 'dummy_trigger'})
+        self.put(workspace=workspace, document_id='global_context', data=global_context)
 
     def workspace_exists(self, workspace):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -123,7 +130,8 @@ class CloudantDatabase:
                     raise e
 
     def delete_workspace(self, workspace):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -137,7 +145,8 @@ class CloudantDatabase:
                     raise e
 
     def document_exists(self, workspace, document_id):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -151,7 +160,8 @@ class CloudantDatabase:
                     raise e
 
     def key_exists(self, workspace, document_id, key):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -165,9 +175,10 @@ class CloudantDatabase:
                     raise e
 
     def set_key(self, workspace, document_id, key, value):
+        database = workspace
         retry = self.max_retries
         while retry > 0:
-            db = CloudantDatabase(self.client, workspace)
+            db = CloudantDatabase(self.client, database)
             try:
                 doc = Document(db, document_id=document_id)
                 doc.update_field(
@@ -184,7 +195,8 @@ class CloudantDatabase:
                     raise e
 
     def get_key(self, workspace, document_id, key):
-        db = CloudantDatabase(self.client, workspace)
+        database = workspace
+        db = CloudantDatabase(self.client, database)
         retry = self.max_retries
         while retry > 0:
             try:
@@ -199,9 +211,10 @@ class CloudantDatabase:
                     raise e
 
     def delete_key(self, workspace, document_id, key):
+        database = workspace
         retry = self.max_retries
         while retry > 0:
-            db = CloudantDatabase(self.client, workspace)
+            db = CloudantDatabase(self.client, database)
             try:
                 doc = Document(db, document_id=document_id)
                 doc.update_field(
@@ -216,3 +229,11 @@ class CloudantDatabase:
                 retry -= 1
                 if retry == 0:
                     raise e
+
+    def delete_keys(self, workspace: str, document_id: str, keys: list):
+        #TODO:
+        pass
+
+    def new_trigger(self, workspace):
+        #TODO: Subscribe to triggers document
+        pass

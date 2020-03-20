@@ -2,18 +2,20 @@ import logging
 import os
 import signal
 import yaml
-
+import queue
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-
+from multiprocessing import Process, Queue
 from triggerflow.service.databases import RedisDatabase
-from worker import Worker
-
+import triggerflow.service.eventsources as eventsources
+from .worker import Worker
+import threading
 
 app = Flask(__name__)
 app.debug = False
 
 workers = {}
+monitors = {}
 private_credentials = None
 db = None
 
@@ -35,7 +37,7 @@ def before_request_func():
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
-def start_worker(workspace):
+def create_worker(workspace):
     """
     This method gets the request parameters and starts a new thread worker
     that will act as the event-processor for the the specific trigger workspace.
@@ -44,33 +46,68 @@ def start_worker(workspace):
     if not db.workspace_exists(workspace):
         return jsonify('Workspace does not exists in the database'.format(workspace)), 400
 
+    if workspace in monitors:
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
+
+    logging.info('New request to create workspace {}'.format(workspace))
+
+    start_worker_monitor(workspace)
+
+    return jsonify('Created workspace {}'.format(workspace)), 201
+
+
+def start_worker_monitor(workspace):
+    """
+    Auxiliary method to monitor a worker triggers
+    """
+    global monitors
+    logging.info('Starting {} workspace monitor'.format(workspace))
+
+    def monitor():
+
+        if len(db.get(workspace, 'triggers')) > 1:
+            start_worker(workspace)
+
+        while True:
+            if db.new_trigger(workspace):
+                start_worker(workspace)
+            else:
+                break
+
+    monitors[workspace] = threading.Thread(target=monitor, daemon=True)
+    monitors[workspace].start()
+
+
+def start_worker(workspace):
+    """
+    Auxiliary method to start a worker
+    """
     global workers
 
-    if workspace in workers.keys():
-        return jsonify('Workspace {} is already running'.format(workspace)), 400
-
-    logging.info('New request to run workspace {}'.format(workspace))
-    worker = Worker(workspace, private_credentials)
-    worker.start()
-    workers[workspace] = worker
-
-    return jsonify('Started workspace {}'.format(workspace)), 201
+    if workspace not in workers or not workers[workspace].is_alive():
+        logging.info('Starting {} workspace'.format(workspace))
+        workers[workspace] = Worker(workspace, private_credentials)
+        workers[workspace].start()
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
 def delete_worker(workspace):
     logging.info('New request to delete workspace {}'.format(workspace))
-    global workers
-    if workspace not in workers:
+    global workers, monitors
+
+    if workspace not in monitors and workspace not in workers:
         return jsonify('Workspace {} is not active'.format(workspace)), 400
     else:
-        workers[workspace].stop_worker()
-        del workers[workspace]
+        if workspace in workers:
+            if workers[workspace].is_alive():
+                workers[workspace].stop_worker()
+            del workers[workspace]
+        del monitors[workspace]
         return jsonify('Workspace {} deleted'.format(workspace)), 200
 
 
 def main():
-    global private_credentials, db
+    global private_credentials, db, workers
 
     # Create process group
     os.setpgrp()
@@ -78,7 +115,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-service-0')
+    component = os.getenv('INSTANCE', 'triggerflow-controller')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
@@ -87,7 +124,7 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting Triggerflow Service')
+    logging.info('Starting Triggerflow Controller')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -105,6 +142,11 @@ def main():
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
     logging.info('Triggerflow service started on port {}'.format(port))
+
+    workspaces = db.list_workspaces()
+    for wsp in workspaces:
+        start_worker_monitor(wsp)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:

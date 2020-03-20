@@ -17,10 +17,13 @@ def add_workspace(db, path, params):
         else:
             event_sources = {}
 
-        db.create_workspace(path.workspace)
-        db.put(workspace=path.workspace, document_id='event_sources', data=event_sources)
-        db.put(workspace=path.workspace, document_id='triggers', data={})
-        db.put(workspace=path.workspace, document_id='global_context', data=params['global_context'])
+        if 'global_context' in params:
+            global_context = params['global_context']
+        else:
+            global_context = {}
+        global_context['event_sources'] = event_sources
+
+        db.create_workspace(path.workspace, event_sources, global_context)
 
     user, password = get_authentication_parameters(params)
     auth = HTTPBasicAuth(username=user, password=password)

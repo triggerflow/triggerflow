@@ -72,8 +72,22 @@ def start_worker(workspace):
     if not authenticate_request(db, request):
         return jsonify('Unauthorized'), 401
 
-    print('New request to start a worker for workspace {}'.format(workspace))
+    if not db.workspace_exists(workspace):
+        return jsonify('Workspace does not exists in the database'.format(workspace)), 400
 
+    print('New request to start a worker for workspace {}'.format(workspace))
+    worker_created = _start_worker(workspace)
+
+    if worker_created:
+        return jsonify('Started workspace {}'.format(workspace)), 201
+    else:
+        return jsonify('Workspace {} is already running'.format(workspace)), 400
+
+
+def _start_worker(workspace):
+    """
+    Auxiliary method to start a worker
+    """
     svc_res = yaml.safe_load(service_res)
 
     service_name = 'triggerflow-worker-{}'.format(workspace)
@@ -104,10 +118,7 @@ def start_worker(workspace):
         print('Warning: {}'.format(str(e)))
         worker_created = False
 
-    if worker_created:
-        return jsonify('Started workspace {}'.format(workspace)), 201
-    else:
-        return jsonify('Workspace {} is already running'.format(workspace)), 400
+    return worker_created
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -165,10 +176,18 @@ def net_test():
 
 
 def main():
+    logging.info('Starting Triggerflow controller')
+
+    workspaces = db.list_workspaces()
+    if workspaces:
+        for wsp in workspaces:
+            logging.info('Starting {} workspace...'.format(wsp))
+            _start_worker(wsp)
+
     port = int(os.getenv('PORT', 8080))
     app.run(debug=True, host='0.0.0.0', port=port)
 
-    logger.info('Trigger Service controller started')
+    logger.info('Triggerflow controller started')
 
 
 if __name__ == '__main__':
