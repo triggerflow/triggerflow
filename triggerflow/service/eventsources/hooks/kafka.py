@@ -73,7 +73,7 @@ class KafkaEventSource(EventSourceHook):
                 event = json.loads(payload)
                 try:
                     event['data'] = json.loads(event['data'])
-                except:
+                except Exception:
                     pass
                 event['id'] = TopicPartition(message.topic(), message.partition(), message.offset() + 1)
                 self.event_queue.put(event)
@@ -83,7 +83,7 @@ class KafkaEventSource(EventSourceHook):
                               "JSON payload, got {} instead".format(self.name, type(payload)))
 
     def commit(self, ids):
-        self.consumer.commit(offsets=ids, async=True)
+        self.consumer.commit(offsets=ids, asynchronous=True)
 
     def __create_topic(self, topic):
         admin_client = AdminClient(self.__config)

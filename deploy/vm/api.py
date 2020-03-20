@@ -230,13 +230,10 @@ def delete_trigger(workspace, trigger):
 def main():
     global private_credentials, db
 
-    # Create process group
-    os.setpgrp()
-
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-api-0')
+    component = os.getenv('INSTANCE', 'triggerflow-api')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
@@ -263,13 +260,11 @@ def main():
     port = int(os.getenv('PORT', 8080))
     server = WSGIServer(('', port), app, log=logging.getLogger())
     logging.info('Triggerflow API started on port {}'.format(port))
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print('exiting...')
-    finally:
-        # Kill all child processes
-        os.killpg(0, signal.SIGKILL)
 
 
 if __name__ == "__main__":
