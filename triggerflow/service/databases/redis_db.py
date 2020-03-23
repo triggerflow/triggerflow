@@ -4,7 +4,6 @@ import json
 
 
 class RedisDatabase:
-    max_retries = 15
 
     def __init__(self, host: str, port: int, password: str=None):
         self.client = redis.StrictRedis(host=host, port=port, password=password,

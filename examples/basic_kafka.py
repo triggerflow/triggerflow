@@ -16,7 +16,7 @@ if __name__ == "__main__":
     url = 'https://us-east.functions.cloud.ibm.com/api/v1/namespaces/cloudlab_urv_us_east/actions/eventprocessor_functions/kafka_test'
 
     tf.add_trigger(event=CloudEvent('init__'),
-                   action=DefaultActions.IBM_CF_INVOKE_KAFKA,
+                   action=DefaultActions.IBM_CF_INVOKE,
                    context={'subject': 'ca1',
                             'function_args': {'iter': 1},
                             'function_url': url,

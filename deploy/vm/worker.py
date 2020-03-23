@@ -205,7 +205,7 @@ class Worker(Process):
                     del events[subject]
                     del self.trigger_events[subject][event_type]
                     triggers_to_delete = []
-                    if not self.triggers:
+                    if len(self.triggers) == 1:  # dummy_trigger is always in triggers
                         self.current_state = Worker.State.FINISHED
                         self.__commiter.join()
                         self._stop_eventsources()

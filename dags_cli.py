@@ -36,4 +36,4 @@ def cli_run(dagrun_id):
 
 
 if __name__ == "__main__":
-    cli()  # pylint: disable=no-value-for-parameter
+    cli()

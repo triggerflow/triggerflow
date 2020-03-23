@@ -45,7 +45,7 @@ def put_workspace(workspace):
         params = request.get_json()
 
         if not re.fullmatch(r"^[a-zA-Z0-9.-]*$", workspace):
-            return {"statusCode": 400, "body": {"error": "Illegal workspace name".format(workspace)}}
+            return {"statusCode": 400, "body": {"error": "Illegal workspace name {}".format(workspace)}}
 
         if 'event_source' in params:
             name = params['event_source']['name']
@@ -59,7 +59,7 @@ def put_workspace(workspace):
             global_context = {}
         global_context['event_sources'] = event_sources
 
-        db.create_workspace(workspace)
+        db.create_workspace(workspace, event_sources, global_context)
 
     user = request.authorization['username']
     password = request.authorization['password']
@@ -75,7 +75,7 @@ def get_workspace(workspace):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -186,7 +186,7 @@ def add_trigger(workspace):
             trigger['trigger_id'] = str(uuid4())
 
         else:  # Unnamed non-transient trigger: illegal
-            return jsonify({"error": "Non-transient unnamed trigger".format(trigger['trigger_id'])}), 400
+            return jsonify({"error": "Non-transient unnamed trigger {}".format(trigger['trigger_id'])}), 400
 
         db.set_key(workspace=workspace, document_id='triggers', key=trigger['trigger_id'], value=trigger)
         committed_triggers = trigger['trigger_id']
@@ -216,7 +216,7 @@ def get_trigger(workspace, trigger):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 @app.route('/workspace/<workspace>/trigger/<trigger>', methods=['DELETE'])
@@ -224,7 +224,7 @@ def delete_trigger(workspace, trigger):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 def main():

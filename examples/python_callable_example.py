@@ -1,6 +1,6 @@
 from triggerflow.client import TriggerflowClient, CloudEvent, PythonCallable
 from triggerflow.client.utils import load_config_yaml
-from triggerflow.client.sources.interfaces.kafka import KafkaEventSource
+from triggerflow.client.sources import KafkaEventSource
 
 if __name__ == "__main__":
     tf_config = load_config_yaml('~/client_config.yaml')

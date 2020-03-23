@@ -2,10 +2,9 @@ import sys
 import json
 from confluent_kafka import Producer
 from concurrent.futures import ThreadPoolExecutor
-
-from eventprocessor_client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
-from eventprocessor_client.utils import load_config_yaml
-from eventprocessor_client.sources.interfaces.kafka import KafkaCloudEventSource
+from triggerflow.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.sources import KafkaEventSource
 
 
 N_MAPS = 1
@@ -15,13 +14,10 @@ TOPIC = 'stress_kafka'
 
 def setup():
     client_config = load_config_yaml('~/client_config.yaml')
-    kafka_config = client_config['event_sources']['kafka']
 
-    ep = CloudEventProcessorClient(**client_config['event_processor'])
+    ep = CloudEventProcessorClient(**client_config['triggerflow'])
 
-    kafka = KafkaCloudEventSource(name='stress_kafka',
-                                  broker_list=kafka_config['broker_list'],
-                                  topic='stress_kafka')
+    kafka = KafkaEventSource(**client_config['kafka'])
 
     ep.create_namespace(namespace='stress_kafka', event_source=kafka)
 
