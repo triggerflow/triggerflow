@@ -1,10 +1,7 @@
-import logging
-import os
 import yaml
+import logging
 from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
-import requests as req
-
 from redis_db import RedisDatabase
 
 logger = logging.getLogger('triggerflow-controller')
@@ -12,18 +9,10 @@ logger = logging.getLogger('triggerflow-controller')
 app = Flask(__name__)
 
 TOTAL_REQUESTS = 0
-
-print('Loading private credentials')
-with open('config.yaml', 'r') as config_file:
-    private_credentials = yaml.safe_load(config_file)
-
-print('Creating DB connection')
-db = RedisDatabase(**private_credentials['redis'])
-
-print('loading kubernetes config')
-config.load_incluster_config()
-k_co_api = client.CustomObjectsApi()
-k_v1_api = client.CoreV1Api()
+private_credentials = None
+db = None
+k_v1_api = None
+k_co_api = None
 
 service_res = """
 apiVersion: serving.knative.dev/v1
@@ -103,17 +92,28 @@ def authenticate_request(db, request):
     return passwd and passwd == request.authorization['password']
 
 
+@app.before_request
+def before_request_func():
+    if not authenticate_request(db, request):
+        return jsonify('Unauthorized'), 401
+
+
 @app.route('/workspace/<workspace>', methods=['POST'])
-def start_worker(workspace):
+def create_workspace(workspace):
     """
     This method gets the request parameters and starts a new thread worker
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    if not authenticate_request(db, request):
-        return jsonify('Unauthorized'), 401
+    if not db.workspace_exists(workspace):
+        return jsonify('Workspace {} does not exists in the database'.format(workspace)), 400
 
-    print('New request to start a worker for workspace {}'.format(workspace))
+    print('New request to create workspace {}'.format(workspace))
+
+    return create_knative_service(workspace)
+
+
+def create_knative_service(workspace):
 
     svc_res = yaml.safe_load(service_res)
 
@@ -162,7 +162,7 @@ def start_worker(workspace):
                 es_res['metadata']['name'] = evt_src['name']
                 es_res['spec']['bootstrapServers'] = ','.join(evt_src['spec']['broker_list'])
                 es_res['spec']['topics'] = evt_src['spec']['topic']
-                #es_res['spec']['sink']['name'] = service_name
+                # es_res['spec']['sink']['name'] = service_name
 
                 # create the service resource
                 k_co_api.create_workspaced_custom_object(
@@ -193,13 +193,13 @@ def start_worker(workspace):
         print('Warning: {}'.format(str(e)))
 
     if worker_created:
-        return jsonify('Started worker for workspace {}'.format(workspace)), 201
+        return jsonify('Created workspace {}'.format(workspace)), 201
     else:
-        return jsonify('Worker for workspace {} is already running'.format(workspace)), 400
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
-def delete_worker(workspace):
+def delete_workspace(workspace):
     if not authenticate_request(db, request):
         return jsonify('Unauthorized'), 401
 
@@ -247,39 +247,30 @@ def delete_worker(workspace):
         return jsonify('Workspace {} is not active'.format(workspace)), 400
 
 
-@app.route('/')
-def test_route():
-    return jsonify('Hi!')
-
-
-@app.route('/test', methods=['GET', 'POST'])
-def net_test():
-    global TOTAL_REQUESTS
-    TOTAL_REQUESTS = TOTAL_REQUESTS+1
-    logger.info('Checking Internet connection: {} Request'.format(request.method))
-    message = request.get_json(force=True, silent=True)
-
-    print(message, flush=True)
-
-    url = os.environ.get('URL', 'https://httpbin.org/get')
-    resp = req.get(url)
-    print(resp.status_code, flush=True)
-
-    if resp.status_code == 200:
-        return_statement = {'Internet Connection': "True", "Total Requests": TOTAL_REQUESTS}
-    else:
-        return_statement = {'Internet Connection': "False", "Total Requests": TOTAL_REQUESTS}
-
-    # return_statement = {"Total Requests": TOTAL_REQUESTS}
-    return jsonify(return_statement), 200
-
-
 def main():
-    port = int(os.getenv('PORT', 8080))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    print('Starting Triggerflow controller')
 
-    logger.info('Triggerflow controller started')
+    global private_credentials, db, k_v1_api, k_co_api
+
+    print('Loading private credentials')
+    with open('config.yaml', 'r') as config_file:
+        private_credentials = yaml.safe_load(config_file)
+
+    print('Creating DB connection')
+    db = RedisDatabase(**private_credentials['redis'])
+
+    print('loading kubernetes config')
+    config.load_incluster_config()
+    k_v1_api = client.CoreV1Api()
+    k_co_api = client.CustomObjectsApi()
+
+    workspaces = db.list_workspaces()
+    if workspaces:
+        for wsp in workspaces:
+            print('Starting {} workspace...'.format(wsp))
+            create_knative_service(wsp)
+
+    print('Triggerflow controller started')
 
 
-if __name__ == '__main__':
-    main()
+main()

@@ -1,19 +1,18 @@
-import logging
 import os
+import yaml
+import logging
 from multiprocessing import Queue
 from flask import Flask, jsonify, request
 
 from .worker import Worker
 
-# TODO: Logger does not work with gunicorn
 logger = logging.getLogger('triggerflow-worker')
 
 app = Flask(__name__)
 
-event_queue = Queue()
-namespace = os.environ.get('WORKSPACE')
-worker = Worker(event_queue)
-worker.start()
+event_queue = None
+workspace = None
+worker = None
 
 
 @app.route('/', methods=['POST'])
@@ -38,9 +37,15 @@ def run():
 
 
 def main():
-    port = int(os.getenv('PORT', 8080))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    global event_queue, workspace, worker
+    workspace = os.environ.get('WORKSPACE')
+    print('Starting workspace {}'.format(workspace))
+    print('Loading private credentials')
+    with open('config.yaml', 'r') as config_file:
+        credentials = yaml.safe_load(config_file)
+    event_queue = Queue()
+    worker = Worker(workspace, credentials, event_queue)
+    worker.run()
 
 
-if __name__ == '__main__':
-    main()
+main()

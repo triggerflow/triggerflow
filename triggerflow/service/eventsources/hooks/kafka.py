@@ -58,13 +58,14 @@ class KafkaEventSource(EventSourceHook):
         def commiter(commit_queue):
             while True:
                 ids = commit_queue.get()
+                if ids is None:
+                    break
                 offsets = []
                 for id in ids:
                     offsets.append(TopicPartition(*id))
                 self.consumer.commit(offsets=offsets, asynchronous=False)
 
         self.__commiter = Thread(target=commiter, args=(self.commit_queue, ))
-        self.__commiter.daemon = True
         self.__commiter.start()
 
     def run(self):
@@ -159,6 +160,8 @@ class KafkaEventSource(EventSourceHook):
 
     def stop(self):
         logging.info("[{}] Stopping event source".format(self.name))
+        self.commit_queue.pu(None)
+        self.__commiter.join()
         if self.created_topic.value:
             self.__delete_topic(self.topic)
         self.terminate()

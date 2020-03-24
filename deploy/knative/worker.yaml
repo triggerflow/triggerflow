@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: triggerflow-worker
+  name: triggerflow-knative-worker
   #namespace: default
 spec:
   template:
@@ -12,11 +12,11 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-worker
+        - image: jsampe/triggerflow-knative-worker
           env:
           - name: KAFKA_TOPIC
             value: 'workspace-topic'
           resources:
             limits:
-              memory: 2Gi
-              cpu: 2
+              memory: 512Mi
+              cpu: 500m
