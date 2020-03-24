@@ -160,8 +160,7 @@ class KafkaEventSource(EventSourceHook):
 
     def stop(self):
         logging.info("[{}] Stopping event source".format(self.name))
-        self.commit_queue.pu(None)
-        self.__commiter.join()
+        self.commit_queue.put(None)
         if self.created_topic.value:
             self.__delete_topic(self.topic)
         self.terminate()

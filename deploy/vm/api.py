@@ -1,7 +1,6 @@
 import os
 import re
 import yaml
-import signal
 import logging
 from uuid import uuid4
 import requests as req
@@ -18,19 +17,19 @@ private_credentials = None
 db = None
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request):
+    if not authenticate_request(db, request.auth):
         return jsonify('Unauthorized'), 401
 
 
@@ -65,7 +64,7 @@ def put_workspace(workspace):
     password = request.authorization['password']
     auth = HTTPBasicAuth(username=user, password=password)
 
-    resp = req.post('/'.join([private_credentials['triggerflow_service']['endpoint'],
+    resp = req.post('/'.join([private_credentials['triggerflow_controller']['endpoint'],
                              'workspace', workspace]), auth=auth, json={})
     return (resp.text, resp.status_code, resp.headers.items())
 
@@ -89,7 +88,7 @@ def delete_workspace(workspace):
         password = request.authorization['password']
         auth = HTTPBasicAuth(username=user, password=password)
 
-        resp = req.delete('/'.join([private_credentials['triggerflow_service']['endpoint'],
+        resp = req.delete('/'.join([private_credentials['triggerflow_controller']['endpoint'],
                                    'workspace', workspace]), auth=auth, json={})
         return (resp.text, resp.status_code, resp.headers.items())
 

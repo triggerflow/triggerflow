@@ -8,7 +8,6 @@ logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
-TOTAL_REQUESTS = 0
 private_credentials = None
 db = None
 k_v1_api = None
@@ -82,19 +81,19 @@ spec:
 """
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request):
+    if not authenticate_request(db, request.auth):
         return jsonify('Unauthorized'), 401
 
 
@@ -110,7 +109,10 @@ def create_workspace(workspace):
 
     print('New request to create workspace {}'.format(workspace))
 
-    return create_knative_service(workspace)
+    if create_knative_service(workspace):
+        return jsonify('Created workspace {}'.format(workspace)), 201
+    else:
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
 
 
 def create_knative_service(workspace):
@@ -154,7 +156,7 @@ def create_knative_service(workspace):
     try:
         # Create event sources
         print('Starting event sources...')
-        event_sources = db.get(database_name=workspace, document_id='.event_sources')
+        event_sources = db.get(workspace, 'event_sources')
         for evt_src in event_sources.values():
             if evt_src['class'] == 'KafkaCloudEventSource':
                 print('Starting {}'.format(evt_src['name']))
@@ -192,10 +194,7 @@ def create_knative_service(workspace):
     except Exception as e:
         print('Warning: {}'.format(str(e)))
 
-    if worker_created:
-        return jsonify('Created workspace {}'.format(workspace)), 201
-    else:
-        return jsonify('Workspace {} is already created'.format(workspace)), 400
+    return worker_created
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])

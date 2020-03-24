@@ -1,6 +1,5 @@
 import logging
 import traceback
-from queue import Empty
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime

@@ -1,4 +1,4 @@
-triggerflow_service:
+triggerflow_controller:
    endpoint: <API_ENDPOINT>
 
 cloudant:

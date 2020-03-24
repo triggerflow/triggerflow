@@ -1,28 +1,16 @@
 import logging
-import os
 import yaml
 from flask import Flask, jsonify, request
-from kubernetes import client, config, watch
-import requests as req
-
+from kubernetes import client, config
 from redis_db import RedisDatabase
 
 logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
-TOTAL_REQUESTS = 0
-
-print('Loading private credentials')
-with open('config.yaml', 'r') as config_file:
-    private_credentials = yaml.safe_load(config_file)
-
-print('Creating DB connection')
-db = RedisDatabase(**private_credentials['redis'])
-
-print('loading kubernetes config')
-config.load_incluster_config()
-k_v1_api = client.CoreV1Api()
+private_credentials = None
+db = None
+k_v1_api = None
 
 service_res = """
 apiVersion: apps/v1
@@ -52,19 +40,19 @@ spec:
 """
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request):
+    if not authenticate_request(db, request.auth):
         return jsonify('Unauthorized'), 401
 
 
@@ -80,7 +68,10 @@ def create_workspace(workspace):
 
     print('New request to create workspace {}'.format(workspace))
 
-    return create_k8s_deployment(workspace)
+    if create_k8s_deployment(workspace):
+        return jsonify('Created workspace {}'.format(workspace)), 201
+    else:
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
 
 
 def create_k8s_deployment(workspace):
@@ -100,10 +91,10 @@ def create_k8s_deployment(workspace):
             )
     except Exception as e:
         print('Warning: {}'.format(str(e)))
-        return jsonify('Workspace {} is already created'.format(workspace)), 400
+        return False
 
     print('Created workspace {}'.format(workspace))
-    return jsonify('Created workspace {}'.format(workspace)), 201
+    return True
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -144,7 +135,7 @@ def main():
 
     print('loading kubernetes config')
     config.load_incluster_config()
-    k_v1_api = client.CoreV1Api()
+    k_v1_api = client.AppsV1Api()
 
     workspaces = db.list_workspaces()
     if workspaces:

@@ -2,12 +2,9 @@ import logging
 import os
 import signal
 import yaml
-import queue
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-from multiprocessing import Process, Queue
 from triggerflow.service.databases import RedisDatabase
-import triggerflow.service.eventsources as eventsources
 from .worker import Worker
 import threading
 
@@ -20,19 +17,19 @@ private_credentials = None
 db = None
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request):
+    if not authenticate_request(db, request.auth):
         return jsonify('Unauthorized'), 401
 
 
