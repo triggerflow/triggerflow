@@ -44,7 +44,7 @@ def create_worker(workspace):
     It returns 400 error if the provided parameters are not correct.
     """
     if not db.workspace_exists(workspace):
-        return jsonify('Workspace does not exists in the database'.format(workspace)), 400
+        return jsonify('Workspace {} does not exists in the database'.format(workspace)), 400
 
     if workspace in monitors:
         return jsonify('Workspace {} is already created'.format(workspace)), 400
