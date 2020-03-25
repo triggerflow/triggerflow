@@ -5,7 +5,7 @@ cloudant
 confluent_kafka
 PyYAML
 dill
-pika==0.13
+pika==0.13.1
 python-dateutil
 docker
 boto3

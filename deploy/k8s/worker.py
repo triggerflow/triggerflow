@@ -1,15 +1,14 @@
 import os
-import time
 import yaml
 import logging
 import traceback
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
-from multiprocessing import Queue
-
+from multiprocessing import Process, Queue
+from threading import Thread
 from triggerflow.service.databases import RedisDatabase
-import triggerflow.service.eventsources as hooks
+import triggerflow.service.eventsources as eventsources
 import triggerflow.service.conditions.default as default_conditions
 import triggerflow.service.actions.default as default_actions
 
@@ -19,7 +18,7 @@ class AuthHandlerException(Exception):
         self.response = response
 
 
-class Worker:
+class Worker(Process):
     class State(Enum):
         INITIALIZED = 'Initialized'
         RUNNING = 'Running'
@@ -35,33 +34,39 @@ class Worker:
         self.triggers = {}
         self.trigger_events = {}
         self.global_context = {}
-        self.events = {}
         self.eventsources = {}
         self.event_queue = Queue()
+        self.commit_queue = Queue()
         self.dead_letter_queue = Queue()
 
         self.current_state = Worker.State.INITIALIZED
 
-        self._start_db()
-        self._start_eventsources()
+        self.__start_db()
+        self.__start_eventsources()
 
-    def _start_db(self):
+    def __start_db(self):
         print('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
         self.__db = RedisDatabase(**self.__credentials['redis'])
 
-    def _start_eventsources(self):
+    def __start_eventsources(self):
         print("[{}] Starting event sources ".format(self.workspace))
         event_sources = self.__db.get(workspace=self.workspace, document_id='event_sources')
         for evt_src in event_sources.values():
             if evt_src['name'] in self.eventsources:
                 continue
             print("[{}] Starting {}".format(self.workspace, evt_src['name']))
-            eventsource_class = getattr(hooks, '{}'.format(evt_src['class']))
+            eventsource_class = getattr(eventsources, '{}'.format(evt_src['class']))
             eventsource = eventsource_class(event_queue=self.event_queue, **evt_src)
             eventsource.start()
             self.eventsources[evt_src['name']] = eventsource
+
+    def __stop_eventsources(self):
+        print("[{}] Stopping event sources ".format(self.workspace))
+        for evt_src in list(self.eventsources):
+            self.eventsources[evt_src].stop()
+            del self.eventsources[evt_src]
 
     def __get_global_context(self):
         print('[{}] Getting workspace global context'.format(self.workspace))
@@ -71,9 +76,11 @@ class Worker:
         print("[{}] Updating triggers cache".format(self.workspace))
         try:
             all_triggers = self.__db.get(workspace=self.workspace, document_id='triggers')
-            new_triggers = {key: all_triggers[key] for key in all_triggers.keys() if key not in self.triggers}
+            new_triggers = {key: all_triggers[key] for key in all_triggers if key not in self.triggers}
 
             for new_trigger_id, new_trigger in new_triggers.items():
+                if new_trigger_id == "0":
+                    continue
                 for event in new_trigger['activation_events']:
                     if event['subject'] not in self.trigger_events:
                         self.trigger_events[event['subject']] = {}
@@ -89,6 +96,44 @@ class Worker:
             logging.error('Could not retrieve triggers and/or source events for {}'.format(self.workspace))
         print("[{}] Triggers updated".format(self.workspace))
 
+    def __start_commiter(self):
+
+        def commiter(commit_queue):
+            """
+            Commit events and delete transient triggers
+            """
+            print('[{}] Starting committer thread'.format(self.workspace))
+
+            while self.__should_run():
+                ids = {}
+                events_to_commit, triggers_to_delete = commit_queue.get()
+
+                if events_to_commit is None and triggers_to_delete is None:
+                    continue
+
+                print('[{}] Committing {} events'
+                      .format(self.workspace, len(events_to_commit)))
+
+                for event in events_to_commit:
+                    event_source = event['event_source']
+                    if not event['event_source'] in ids:
+                        ids[event_source] = []
+                    ids[event_source].append(event['id'])
+
+                for event_source in ids:
+                    self.eventsources[event_source].commit(ids[event_source])
+
+                # Delete all transient triggers from DB
+                if triggers_to_delete:
+                    print('[{}] Deleting {} transient triggers'
+                          .format(self.workspace, len(triggers_to_delete)))
+                    self.__db.delete_keys(workspace=self.workspace,
+                                          document_id='triggers',
+                                          keys=triggers_to_delete)
+
+        self.__commiter = Thread(target=commiter, args=(self.commit_queue, ))
+        self.__commiter.start()
+
     def __should_run(self):
         return self.current_state == Worker.State.RUNNING
 
@@ -101,53 +146,59 @@ class Worker:
 
         print('[{}] Worker {} Started'.format(self.workspace, self.worker_id))
         self.current_state = Worker.State.RUNNING
-        total = 0
+
+        self.__start_commiter()
+
+        events = {}
+        triggers_to_delete = []
+
         while self.__should_run():
-            #print('[{}] Waiting for events...'.format(self.workspace))
+            print('[{}] Waiting for events...'.format(self.workspace))
             event = self.event_queue.get()
-            total += 1
-            if total == 1:
-                t0 = time.time()
-
-            if total == 200000:
-                print('TOTAL TIME:', time.time()-t0)
-
-            #print('[{}] New event from {}'.format(self.workspace, event['source']))
+            print('[{}] New event from {}'.format(self.workspace, event['source']))
             subject = event['subject']
             event_type = event['type']
 
             if subject in self.trigger_events and event_type in self.trigger_events[subject]:
 
-                if subject not in self.events:
-                    self.events[subject] = []
-                self.events[subject].append(event)
+                if subject not in events:
+                    events[subject] = []
+                events[subject].append(event)
 
-                triggers = self.trigger_events[subject][event_type]
                 success = True
-                for trigger_id in triggers:
-                    condition_name = self.triggers[trigger_id]['condition']['name']
-                    action_name = self.triggers[trigger_id]['action']['name']
-                    context = self.triggers[trigger_id]['context']
+                for trigger_id in self.trigger_events[subject][event_type]:
+                    trigger = self.triggers[trigger_id]
+
+                    condition = trigger['condition']
+                    action = trigger['action']
+                    context = trigger['context']
 
                     context['global_context'] = self.global_context
                     context['workspace'] = self.workspace
                     context['local_event_queue'] = self.event_queue
-                    context['events'] = self.events
+                    context['events'] = events
                     context['trigger_events'] = self.trigger_events
                     context['triggers'] = self.triggers
                     context['trigger_id'] = trigger_id
-                    context['activation_events'] = self.triggers[trigger_id]['activation_events']
-                    context['condition'] = self.triggers[trigger_id]['condition']
-                    context['action'] = self.triggers[trigger_id]['action']
+                    context['activation_events'] = trigger['activation_events']
+                    context['condition'] = condition
+                    context['action'] = action
 
-                    condition = getattr(default_conditions, '_'.join(['condition', condition_name.lower()]))
-                    action = getattr(default_actions, '_'.join(['action', action_name.lower()]))
+                    condition = getattr(default_conditions, '_'.join(['condition', condition['name'].lower()]))
+                    action = getattr(default_actions, '_'.join(['action', action['name'].lower()]))
 
                     try:
                         if condition(context, event):
+                            # Apply action
                             action(context, event)
+                            # Delete transient triggers
+                            if trigger['transient']:
+                                triggers_to_delete.append(trigger_id)
+                                del self.triggers[trigger_id]
+                                self.trigger_events[subject][event_type].remove(trigger_id)
                         else:
                             success = False
+
                     except Exception as e:
                         print(traceback.format_exc())
                         # TODO Handle condition/action exceptions
@@ -155,23 +206,31 @@ class Worker:
 
                 if success:
                     print('[{}] Successfully processed "{}" subject'.format(self.workspace, subject))
-                    if subject in self.events:
-                        context['counter'] = 0
-                        del self.events[subject]
+                    processed_events = events[subject]
+                    self.commit_queue.put((processed_events, triggers_to_delete.copy()))
+                    del events[subject]
+                    del self.trigger_events[subject][event_type]
+                    triggers_to_delete = []
+                    if len(self.triggers) == 1:  # dummy_trigger is always in triggers
+                        self.stop_worker()
+
             else:
-                print('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
+                logging.warn('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
                 self.__get_triggers()
                 if subject in self.trigger_events:
                     self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
                     self.dead_letter_queue.put(event)
 
-    def stop_worker(self):
-        for eventosurce in self.eventsources.values():
-            eventosurce.stop()
+        print("[{}] Worker {} finished".format(self.workspace, self.worker_id))
 
+    def stop_worker(self):
+        print("[{}] Stopping Worker {}".format(self.workspace, self.worker_id))
+        self.current_state = Worker.State.FINISHED
+        self.commit_queue.put((None, None))  # To finish the __commiter thread
+        self.__commiter.join()
+        self.__stop_eventsources()
         print("[{}] Worker {} stopped".format(self.workspace, self.worker_id))
-        self.terminate()
 
 
 def main():

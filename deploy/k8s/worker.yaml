@@ -20,5 +20,5 @@ spec:
             value: 'pywren'
         resources:
           limits:
-            memory: 1Gi
-            cpu: 1000m
+            memory: 512Mi
+            cpu: 500m

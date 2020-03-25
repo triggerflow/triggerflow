@@ -39,16 +39,16 @@ class Worker(Process):
 
         self.current_state = Worker.State.INITIALIZED
 
-        self._start_db()
-        self._start_eventsources()
+        self.__start_db()
+        self.__start_eventsources()
 
-    def _start_db(self):
+    def __start_db(self):
         logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         # TODO Make storage abstract
         self.__db = RedisDatabase(**self.__credentials['redis'])
 
-    def _start_eventsources(self):
+    def __start_eventsources(self):
         logging.info("[{}] Starting event sources ".format(self.workspace))
         event_sources = self.__db.get(workspace=self.workspace, document_id='event_sources')
         for evt_src in event_sources.values():
@@ -60,7 +60,7 @@ class Worker(Process):
             eventsource.start()
             self.eventsources[evt_src['name']] = eventsource
 
-    def _stop_eventsources(self):
+    def __stop_eventsources(self):
         logging.info("[{}] Stopping event sources ".format(self.workspace))
         for evt_src in list(self.eventsources):
             self.eventsources[evt_src].stop()
@@ -105,6 +105,10 @@ class Worker(Process):
             while self.__should_run():
                 ids = {}
                 events_to_commit, triggers_to_delete = commit_queue.get()
+
+                if events_to_commit is None and triggers_to_delete is None:
+                    continue
+
                 logging.info('[{}] Committing {} events'
                              .format(self.workspace, len(events_to_commit)))
 
@@ -205,10 +209,8 @@ class Worker(Process):
                     del events[subject]
                     del self.trigger_events[subject][event_type]
                     triggers_to_delete = []
-                    if not self.triggers:
-                        self.current_state = Worker.State.FINISHED
-                        self.__commiter.join()
-                        self._stop_eventsources()
+                    if len(self.triggers) == 1:  # dummy_trigger is always in triggers
+                        self.stop_worker()
 
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
@@ -222,6 +224,12 @@ class Worker(Process):
 
     def stop_worker(self):
         logging.info("[{}] Stopping Worker {}".format(self.workspace, self.worker_id))
-        self._stop_eventsources()
-        self.terminate()
+        self.current_state = Worker.State.FINISHED
+        self.commit_queue.put((None, None))
+        self.__commiter.join()
+        self.__stop_eventsources()
+        try:
+            self.terminate()
+        except Exception:
+            pass
         logging.info("[{}] Worker {} stopped".format(self.workspace, self.worker_id))

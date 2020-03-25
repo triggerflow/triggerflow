@@ -1,28 +1,16 @@
 import logging
-import os
 import yaml
 from flask import Flask, jsonify, request
-from kubernetes import client, config, watch
-import requests as req
-
+from kubernetes import client, config
 from redis_db import RedisDatabase
 
 logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
-TOTAL_REQUESTS = 0
-
-print('Loading private credentials')
-with open('config.yaml', 'r') as config_file:
-    private_credentials = yaml.safe_load(config_file)
-
-print('Creating DB connection')
-db = RedisDatabase(**private_credentials['redis'])
-
-print('loading kubernetes config')
-config.load_incluster_config()
-k_v1_api = client.CoreV1Api()
+private_credentials = None
+db = None
+k_v1_api = None
 
 service_res = """
 apiVersion: apps/v1
@@ -52,39 +40,41 @@ spec:
 """
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
+
+
+@app.before_request
+def before_request_func():
+    if not authenticate_request(db, request.auth):
+        return jsonify('Unauthorized'), 401
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
-def start_worker(workspace):
+def create_workspace(workspace):
     """
     This method gets the request parameters and starts a new thread worker
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    if not authenticate_request(db, request):
-        return jsonify('Unauthorized'), 401
-
     if not db.workspace_exists(workspace):
-        return jsonify('Workspace does not exists in the database'.format(workspace)), 400
+        return jsonify('Workspace {} does not exists in the database'.format(workspace)), 400
 
-    print('New request to start a worker for workspace {}'.format(workspace))
-    worker_created = _start_worker(workspace)
+    print('New request to create workspace {}'.format(workspace))
 
-    if worker_created:
-        return jsonify('Started workspace {}'.format(workspace)), 201
+    if create_k8s_deployment(workspace):
+        return jsonify('Created workspace {}'.format(workspace)), 201
     else:
-        return jsonify('Workspace {} is already running'.format(workspace)), 400
+        return jsonify('Workspace {} is already created'.format(workspace)), 400
 
 
-def _start_worker(workspace):
+def create_k8s_deployment(workspace):
     """
     Auxiliary method to start a worker
     """
@@ -95,37 +85,20 @@ def _start_worker(workspace):
     svc_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
     try:
-        # create the service resource
         k_v1_api.create_namespaced_deployment(
                 namespace='default',
                 body=svc_res
             )
-
-        w = watch.Watch()
-        for event in w.stream(k_v1_api.list_namespaced_deployment,
-                              namespace='default',
-                              field_selector="metadata.name={0}".format(service_name)):
-            conditions = None
-            if event['object'].get('status') is not None:
-                conditions = event['object']['status']['conditions']
-                if event['object']['status'].get('url') is not None:
-                    service_url = event['object']['status']['url']
-            if conditions and conditions[0]['status'] == 'True' and \
-               conditions[1]['status'] == 'True' and conditions[2]['status'] == 'True':
-                w.stop()
-        worker_created = True
     except Exception as e:
         print('Warning: {}'.format(str(e)))
-        worker_created = False
+        return False
 
-    return worker_created
+    print('Created workspace {}'.format(workspace))
+    return True
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
-def delete_worker(workspace):
-    if not authenticate_request(db, request):
-        return jsonify('Unauthorized'), 401
-
+def delete_workspace(workspace):
     print('Stopping workspace: {}'.format(workspace))
     try:
         # delete the service resource if exists
@@ -148,47 +121,29 @@ def delete_worker(workspace):
         return jsonify('Workspace {} is not active'.format(workspace)), 400
 
 
-@app.route('/')
-def test_route():
-    return jsonify('Hi!')
-
-
-@app.route('/test', methods=['GET', 'POST'])
-def net_test():
-    global TOTAL_REQUESTS
-    TOTAL_REQUESTS = TOTAL_REQUESTS+1
-    logger.info('Checking Internet connection: {} Request'.format(request.method))
-    message = request.get_json(force=True, silent=True)
-
-    print(message, flush=True)
-
-    url = os.environ.get('URL', 'https://httpbin.org/get')
-    resp = req.get(url)
-    print(resp.status_code, flush=True)
-
-    if resp.status_code == 200:
-        return_statement = {'Internet Connection': "True", "Total Requests": TOTAL_REQUESTS}
-    else:
-        return_statement = {'Internet Connection': "False", "Total Requests": TOTAL_REQUESTS}
-
-    # return_statement = {"Total Requests": TOTAL_REQUESTS}
-    return jsonify(return_statement), 200
-
-
 def main():
-    logging.info('Starting Triggerflow controller')
+    print('Starting Triggerflow controller')
+
+    global private_credentials, db, k_v1_api, k_co_api
+
+    print('Loading private credentials')
+    with open('config.yaml', 'r') as config_file:
+        private_credentials = yaml.safe_load(config_file)
+
+    print('Creating DB connection')
+    db = RedisDatabase(**private_credentials['redis'])
+
+    print('loading kubernetes config')
+    config.load_incluster_config()
+    k_v1_api = client.AppsV1Api()
 
     workspaces = db.list_workspaces()
     if workspaces:
         for wsp in workspaces:
-            logging.info('Starting {} workspace...'.format(wsp))
-            _start_worker(wsp)
+            print('Starting {} workspace...'.format(wsp))
+            create_k8s_deployment(wsp)
 
-    port = int(os.getenv('PORT', 8080))
-    app.run(debug=True, host='0.0.0.0', port=port)
-
-    logger.info('Triggerflow controller started')
+    print('Triggerflow controller started')
 
 
-if __name__ == '__main__':
-    main()
+main()

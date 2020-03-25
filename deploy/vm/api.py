@@ -1,7 +1,6 @@
 import os
 import re
 import yaml
-import signal
 import logging
 from uuid import uuid4
 import requests as req
@@ -18,19 +17,19 @@ private_credentials = None
 db = None
 
 
-def authenticate_request(db, request):
-    if not request.authorization or \
-       'username' not in request.authorization \
-       or 'password' not in request.authorization:
+def authenticate_request(db, auth):
+    if not auth or \
+       'username' not in auth \
+       or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=request.authorization['username'])
-    return passwd and passwd == request.authorization['password']
+    passwd = db.get_auth(username=auth['username'])
+    return passwd and passwd == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request):
+    if not authenticate_request(db, request.auth):
         return jsonify('Unauthorized'), 401
 
 
@@ -45,7 +44,7 @@ def put_workspace(workspace):
         params = request.get_json()
 
         if not re.fullmatch(r"^[a-zA-Z0-9.-]*$", workspace):
-            return {"statusCode": 400, "body": {"error": "Illegal workspace name".format(workspace)}}
+            return {"statusCode": 400, "body": {"error": "Illegal workspace name {}".format(workspace)}}
 
         if 'event_source' in params:
             name = params['event_source']['name']
@@ -59,13 +58,13 @@ def put_workspace(workspace):
             global_context = {}
         global_context['event_sources'] = event_sources
 
-        db.create_workspace(workspace)
+        db.create_workspace(workspace, event_sources, global_context)
 
     user = request.authorization['username']
     password = request.authorization['password']
     auth = HTTPBasicAuth(username=user, password=password)
 
-    resp = req.post('/'.join([private_credentials['triggerflow_service']['endpoint'],
+    resp = req.post('/'.join([private_credentials['triggerflow_controller']['endpoint'],
                              'workspace', workspace]), auth=auth, json={})
     return (resp.text, resp.status_code, resp.headers.items())
 
@@ -75,7 +74,7 @@ def get_workspace(workspace):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
@@ -89,7 +88,7 @@ def delete_workspace(workspace):
         password = request.authorization['password']
         auth = HTTPBasicAuth(username=user, password=password)
 
-        resp = req.delete('/'.join([private_credentials['triggerflow_service']['endpoint'],
+        resp = req.delete('/'.join([private_credentials['triggerflow_controller']['endpoint'],
                                    'workspace', workspace]), auth=auth, json={})
         return (resp.text, resp.status_code, resp.headers.items())
 
@@ -186,7 +185,7 @@ def add_trigger(workspace):
             trigger['trigger_id'] = str(uuid4())
 
         else:  # Unnamed non-transient trigger: illegal
-            return jsonify({"error": "Non-transient unnamed trigger".format(trigger['trigger_id'])}), 400
+            return jsonify({"error": "Non-transient unnamed trigger {}".format(trigger['trigger_id'])}), 400
 
         db.set_key(workspace=workspace, document_id='triggers', key=trigger['trigger_id'], value=trigger)
         committed_triggers = trigger['trigger_id']
@@ -216,7 +215,7 @@ def get_trigger(workspace, trigger):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 @app.route('/workspace/<workspace>/trigger/<trigger>', methods=['DELETE'])
@@ -224,19 +223,16 @@ def delete_trigger(workspace, trigger):
     if not db.workspace_exists(workspace=workspace):
         return jsonify({"error": "Workspace {} does not exists".format(workspace)}), 404
 
-    return jsonify({"error": "Not Implemented".format(workspace)}), 501
+    return jsonify({"error": "Not Implemented"}), 501
 
 
 def main():
     global private_credentials, db
 
-    # Create process group
-    os.setpgrp()
-
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-api-0')
+    component = os.getenv('INSTANCE', 'triggerflow-api')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
@@ -263,13 +259,11 @@ def main():
     port = int(os.getenv('PORT', 8080))
     server = WSGIServer(('', port), app, log=logging.getLogger())
     logging.info('Triggerflow API started on port {}'.format(port))
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print('exiting...')
-    finally:
-        # Kill all child processes
-        os.killpg(0, signal.SIGKILL)
 
 
 if __name__ == "__main__":

@@ -2,8 +2,8 @@ import json
 import logging
 from enum import Enum
 from typing import List
+from threading import Thread
 from multiprocessing import Queue, Value
-
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Consumer, TopicPartition
 
@@ -51,10 +51,26 @@ class KafkaEventSource(EventSourceHook):
         self.consumer = None
         self.topic = topic or self.name
         self.records = []
+        self.commit_queue = Queue()
         self.created_topic = Value('i', 0)
+
+    def __start_commiter(self):
+        def commiter(commit_queue):
+            while True:
+                ids = commit_queue.get()
+                if ids is None:
+                    break
+                offsets = []
+                for id in ids:
+                    offsets.append(TopicPartition(*id))
+                self.consumer.commit(offsets=offsets, asynchronous=False)
+
+        self.__commiter = Thread(target=commiter, args=(self.commit_queue, ))
+        self.__commiter.start()
 
     def run(self):
         self.consumer = Consumer(self.__config)
+        self.__start_commiter()
 
         # Create topic if it does not exist
         topics = self.consumer.list_topics().topics
@@ -73,9 +89,10 @@ class KafkaEventSource(EventSourceHook):
                 event = json.loads(payload)
                 try:
                     event['data'] = json.loads(event['data'])
-                except:
+                except Exception:
                     pass
-                event['id'] = TopicPartition(message.topic(), message.partition(), message.offset() + 1)
+                event['id'] = (message.topic(), message.partition(), message.offset() + 1)
+                event['event_source'] = self.name
                 self.event_queue.put(event)
                 self.records.append(message)
             except TypeError:
@@ -83,7 +100,7 @@ class KafkaEventSource(EventSourceHook):
                               "JSON payload, got {} instead".format(self.name, type(payload)))
 
     def commit(self, ids):
-        self.consumer.commit(offsets=ids, async=True)
+        self.commit_queue.put(ids)
 
     def __create_topic(self, topic):
         admin_client = AdminClient(self.__config)
@@ -143,6 +160,7 @@ class KafkaEventSource(EventSourceHook):
 
     def stop(self):
         logging.info("[{}] Stopping event source".format(self.name))
+        self.commit_queue.put(None)
         if self.created_topic.value:
             self.__delete_topic(self.topic)
         self.terminate()
