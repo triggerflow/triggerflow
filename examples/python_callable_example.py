@@ -4,13 +4,9 @@ from triggerflow.client.sources import KafkaEventSource
 
 if __name__ == "__main__":
     tf_config = load_config_yaml('~/client_config.yaml')
-
-    tf = TriggerflowClient(**tf_config['event_processor'])
-
-    kafka = KafkaEventSource(**tf_config['kafka'])
-
-    tf.create_workspace(namespace='python_callable_example',
-                        event_source=kafka)
+    tf = TriggerflowClient(**tf_config['triggerflow'])
+    es = KafkaEventSource(**tf_config['kafka'])
+    tf.create_workspace(workspace='python_callable_example', event_source=es)
 
     def my_condition(context, event):
         if 'data' in event:
