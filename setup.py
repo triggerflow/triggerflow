@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     entry_points='''
         [console_scripts]
-        triggerflow=triggerflow.client.cli:cli
+        triggerflow=triggerflow.cli:cli
     ''',
     classifiers=[
         "Programming Language :: Python :: 3",

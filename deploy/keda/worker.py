@@ -1,8 +1,10 @@
 import os
 import yaml
+import time
 import logging
 import traceback
 from uuid import uuid4
+from queue import Empty
 from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
@@ -154,7 +156,12 @@ class Worker(Process):
 
         while self.__should_run():
             print('[{}] Waiting for events...'.format(self.workspace))
-            event = self.event_queue.get()
+            try:
+                # keda is set to scale down the pod in 20 seconds
+                event = self.event_queue.get(timeout=10)
+            except Empty:
+                self.stop_worker()
+                continue
             print('[{}] New event from {}'.format(self.workspace, event['source']))
             subject = event['subject']
             event_type = event['type']
@@ -207,12 +214,11 @@ class Worker(Process):
                 if success:
                     print('[{}] Successfully processed "{}" subject'.format(self.workspace, subject))
                     processed_events = events[subject]
+                    # TODO: Save context in commiter
                     self.commit_queue.put((processed_events, triggers_to_delete.copy()))
                     del events[subject]
                     del self.trigger_events[subject][event_type]
                     triggers_to_delete = []
-                    if len(self.triggers) == 1:  # dummy_trigger is always in triggers
-                        self.stop_worker()
 
             else:
                 logging.warn('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
@@ -223,6 +229,9 @@ class Worker(Process):
                     self.dead_letter_queue.put(event)
 
         print("[{}] Worker {} finished".format(self.workspace, self.worker_id))
+
+        while True:
+            time.sleep(5)
 
     def stop_worker(self):
         print("[{}] Stopping Worker {}".format(self.workspace, self.worker_id))

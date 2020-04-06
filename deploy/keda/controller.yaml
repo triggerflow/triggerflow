@@ -1,36 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: triggerflow-controller
+  name: triggerflow-keda-controller
 spec:
   selector:
     matchLabels:
-      app: triggerflow-controller
+      app: triggerflow-keda-controller
   replicas: 1
   template:
     metadata:
       labels:
-        app: triggerflow-controller
+        app: triggerflow-keda-controller
     spec:
       containers:
-      - name: triggerflow-controller
-        image: jsampe/triggerflow-controller
+      - name: triggerflow-keda-controller
+        image: jsampe/triggerflow-keda-controller
         ports:
         - containerPort: 8080
         resources:
             limits:
               memory: 512Mi
               cpu: 1000m
- 
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: triggerflow-controller
+  name: triggerflow-keda-controller
   labels:
-    run: triggerflow-controller
+    run: triggerflow-keda-controller
 spec:
   ports:
   - port: 8080
     protocol: TCP
   selector:
-    app: triggerflow-controller
+    app: triggerflow-keda-controller

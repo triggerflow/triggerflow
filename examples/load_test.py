@@ -2,7 +2,7 @@ import sys
 import json
 from confluent_kafka import Producer
 from concurrent.futures import ThreadPoolExecutor
-from triggerflow.client import CloudEventProcessorClient, CloudEvent, DefaultActions, DefaultConditions
+from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
 from triggerflow.client.utils import load_config_yaml
 from triggerflow.client.sources import KafkaEventSource
 
@@ -15,11 +15,9 @@ TOPIC = 'stress_kafka'
 def setup():
     client_config = load_config_yaml('~/client_config.yaml')
 
-    ep = CloudEventProcessorClient(**client_config['triggerflow'])
-
-    kafka = KafkaEventSource(**client_config['kafka'])
-
-    ep.create_namespace(namespace='stress_kafka', event_source=kafka)
+    ep = TriggerflowClient(**client_config['triggerflow'])
+    es = KafkaEventSource(**client_config['kafka'])
+    ep.create_workspace(workspace=TOPIC, event_source=es)
 
     for i in range(N_MAPS):
         ep.add_trigger(CloudEvent('map_{}'.format(i)),
@@ -45,7 +43,8 @@ def publish_events(argv):
     def generate_events(i):
         kafka_producer = Producer(**config)
         for _ in range(n_join):
-            termination_event = {'source': 'test', 'subject': 'map_{}'.format(i), 'type': 'termination.event.success'}
+            termination_event = {'source': 'test', 'subject': 'map_{}'.format(i),
+                                 'type': 'termination.event.success', 'data': '"test"'}
             kafka_producer.produce(topic=TOPIC,
                                    value=json.dumps(termination_event),
                                    callback=delivery_callback)

@@ -14,7 +14,7 @@ ENV PYTHONUNBUFFERED TRUE
 ENV APP_HOME /triggerflow
 WORKDIR $APP_HOME
 
-ADD deploy/k8s/controllerproxy.py .
+ADD deploy/keda/controllerproxy.py .
 ADD triggerflow/service/databases/redis_db.py .
 ADD triggerflow/service/databases/cloudant_db.py .
 ADD config.yaml .

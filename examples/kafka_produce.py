@@ -1,6 +1,5 @@
 import json
-import time
-from confluent_kafka import Producer, Consumer
+from confluent_kafka import Producer
 from triggerflow.client.utils import load_config_yaml
 
 if __name__ == '__main__':

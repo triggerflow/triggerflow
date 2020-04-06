@@ -5,7 +5,8 @@ RUN apt-get update && apt-get upgrade -y \
 
 COPY deploy/requirements.txt requirements.txt
 
-RUN pip install --upgrade gunicorn pip setuptools kubernetes six && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade eventlet gunicorn pip setuptools kubernetes six \
+    && pip install --no-cache-dir -r requirements.txt
 
 ENV PORT 8080
 ENV PYTHONUNBUFFERED TRUE
@@ -14,7 +15,7 @@ ENV APP_HOME /triggerflow
 WORKDIR $APP_HOME
 
 ADD triggerflow triggerflow
-ADD deploy/k8s/worker.py .
+ADD deploy/keda/worker.py .
 ADD config.yaml .
 
 CMD exec python worker.py 
