@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import click
 import json
-import triggerflow.client.asf.client as asf_cli
+import eventprocessor.client.asf.client as asf_cli
 
 
 @click.group()

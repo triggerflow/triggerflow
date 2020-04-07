@@ -29,7 +29,7 @@ def add_workspace(db, path, params):
     auth = HTTPBasicAuth(username=user, password=password)
 
     try:
-        res = requests.post('/'.join([params['credentials']['triggerflow_service']['endpoint'],
+        res = requests.post('/'.join([params['credentials']['eventprocessor_service']['endpoint'],
                                       'workspace', path.workspace]), auth=auth, json={})
         if res.ok:
             return {"statusCode": 201, "body": {"created": path.workspace}}
@@ -37,7 +37,7 @@ def add_workspace(db, path, params):
             return {"statusCode": res.status_code, "body": {"error": res.text}}
 
     except requests.exceptions.HTTPError:
-        return {"statusCode": 503, "body": {"error": "Triggerflow service unavailable"}}
+        return {"statusCode": 503, "body": {"error": "eventprocessor service unavailable"}}
 
 
 def get_workspace(db, path, params):
@@ -55,11 +55,11 @@ def delete_workspace(db, path, params):
     auth = HTTPBasicAuth(username=user, password=password)
 
     try:
-        res = requests.delete('/'.join([params['credentials']['triggerflow_service']['endpoint'],
+        res = requests.delete('/'.join([params['credentials']['eventprocessor_service']['endpoint'],
                                         'workspace', path.workspace]), auth=auth, json={})
         if res.ok:
             return {"statusCode": 201, "body": {"deleted": path.workspace}}
         else:
             return {"statusCode": res.status_code, "body": {"error": res.text}}
     except requests.exceptions.HTTPError:
-        return {"statusCode": 503, "body": {"error": "Triggerflow service unavailable"}}
+        return {"statusCode": 503, "body": {"error": "eventprocessor service unavailable"}}

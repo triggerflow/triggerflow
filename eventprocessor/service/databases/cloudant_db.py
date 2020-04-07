@@ -99,17 +99,17 @@ class CloudantDatabase:
                     raise e
 
     def get_auth(self, username: str):
-        database = 'triggerflow'
+        database = 'eventprocessor'
         document_id = 'auth'
         return self.get_key(database, document_id, username)
 
     def list_workspaces(self):
-        database = 'triggerflow'
+        database = 'eventprocessor'
         document_id = 'workspaces'
         return self.get(database, document_id)
 
     def create_workspace(self, workspace, event_sources, global_context):
-        database = 'triggerflow'
+        database = 'eventprocessor'
         document_id = 'workspaces'
         self.set_key(database, document_id, workspace, time.time())
         self.put(workspace=workspace, document_id='event_sources', data=event_sources)

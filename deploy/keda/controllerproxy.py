@@ -5,7 +5,7 @@ from kubernetes import client, config
 
 from redis_db import RedisDatabase
 
-logger = logging.getLogger('triggerflow-controller')
+logger = logging.getLogger('eventprocessor-controller')
 
 app = Flask(__name__)
 
@@ -18,7 +18,7 @@ scaledobject_res = """
 apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
-  name: triggerflow-keda-worker-so
+  name: eventprocessor-keda-worker-so
 spec:
   scaleType: job
   jobTargetRef:
@@ -30,11 +30,11 @@ spec:
     template:
       metadata:
         labels:
-          app: triggerflow-keda-worker
+          app: eventprocessor-keda-worker
       spec:
         containers:
-        - name: triggerflow-keda-worker
-          image: jsampe/triggerflow-keda-worker
+        - name: eventprocessor-keda-worker
+          image: jsampe/eventprocessor-keda-worker
           env:
             - name: WORKSPACE
               value: 'workspace_name'
@@ -61,20 +61,20 @@ deployment_res = """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: triggerflow-keda-worker
+  name: eventprocessor-keda-worker
 spec:
   selector:
     matchLabels:
-      app: triggerflow-keda-worker
+      app: eventprocessor-keda-worker
   replicas: 0
   template:
     metadata:
       labels:
-        app: triggerflow-keda-worker
+        app: eventprocessor-keda-worker
     spec:
       containers:
-      - name: triggerflow-keda-worker
-        image: jsampe/triggerflow-keda-worker
+      - name: eventprocessor-keda-worker
+        image: jsampe/eventprocessor-keda-worker
         env:
           - name: WORKSPACE
             value: 'workspace'
@@ -88,11 +88,11 @@ scaledobject_res = """
 apiVersion: keda.k8s.io/v1alpha1
 kind: ScaledObject
 metadata:
-  name: triggerflow-keda-worker-so
+  name: eventprocessor-keda-worker-so
   namespace: default
 spec:
   scaleTargetRef:
-    deploymentName: triggerflow-keda-worker
+    deploymentName: eventprocessor-keda-worker
   pollingInterval: 5  # Optional. Default: 30 seconds
   cooldownPeriod:  10  # Optional. Default: 300 seconds
   minReplicaCount: 0   # Optional. Default: 0
@@ -147,7 +147,7 @@ def create_keda_scaledobject(workspace):
     """
     dpl_res = yaml.safe_load(deployment_res)
 
-    service_name = 'triggerflow-keda-worker-{}'.format(workspace)
+    service_name = 'eventprocessor-keda-worker-{}'.format(workspace)
 
     dpl_res['metadata']['name'] = service_name
     dpl_res['spec']['selector']['matchLabels']['app'] = service_name
@@ -199,7 +199,7 @@ def delete_workspace(workspace):
     print('Stopping workspace: {}'.format(workspace))
 
     try:
-        service_name = 'triggerflow-keda-worker-{}'.format(workspace)
+        service_name = 'eventprocessor-keda-worker-{}'.format(workspace)
         k_v1_api.delete_namespaced_deployment(
                 name=service_name,
                 namespace='default',
@@ -213,7 +213,7 @@ def delete_workspace(workspace):
         worker_deleted = False
 
     try:
-        service_name = 'triggerflow-keda-worker-{}-so'.format(workspace)
+        service_name = 'eventprocessor-keda-worker-{}-so'.format(workspace)
         k_co_api.delete_namespaced_custom_object(
                 group="keda.k8s.io",
                 version="v1alpha1",
@@ -236,7 +236,7 @@ def delete_workspace(workspace):
 
 
 def main():
-    print('Starting Triggerflow controller')
+    print('Starting eventprocessor controller')
 
     global private_credentials, db, k_v1_api, k_co_api
 
@@ -258,7 +258,7 @@ def main():
             print('Starting {} workspace...'.format(wsp))
             create_keda_scaledobject(wsp)
 
-    print('Triggerflow controller started')
+    print('eventprocessor controller started')
 
 
 main()

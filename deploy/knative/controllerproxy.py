@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request
 from kubernetes import client, config, watch
 from redis_db import RedisDatabase
 
-logger = logging.getLogger('triggerflow-controller')
+logger = logging.getLogger('eventprocessor-controller')
 
 app = Flask(__name__)
 
@@ -17,7 +17,7 @@ service_res = """
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: triggerflow-knative-worker
+  name: eventprocessor-knative-worker
   #namespace: default
 spec:
   template:
@@ -29,7 +29,7 @@ spec:
       #containerConcurrency: 1
       #timeoutSeconds: 300
       containers:
-        - image: jsampe/triggerflow-knative-worker
+        - image: jsampe/eventprocessor-knative-worker
           env:
           - name: workspace
             value: 'default'
@@ -45,7 +45,7 @@ kind: KafkaSource
 metadata:
   name: kafka-source
 spec:
-  consumerGroup: triggerflow
+  consumerGroup: eventprocessor
   bootstrapServers: IP:PORT
   topics: topic-name
   sink:
@@ -57,9 +57,9 @@ spec:
     name: default
     #apiVersion: messaging.knative.dev/v1alpha1
     #kind: Channel
-    #name: triggerflow-channel
+    #name: eventprocessor-channel
     #kind: KafkaChannel
-    #name: triggerflow-kafka-channel
+    #name: eventprocessor-kafka-channel
   resources:
     requests:
       memory: 512Mi
@@ -70,14 +70,14 @@ trigger_res = """
 apiVersion: eventing.knative.dev/v1alpha1
 kind: Trigger
 metadata:
-  name: triggerflow-worker-trigger
+  name: eventprocessor-worker-trigger
 spec:
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
       kind: Service
       #name: event-display
-      name: triggerflow-worker-pywren
+      name: eventprocessor-worker-pywren
 """
 
 
@@ -119,7 +119,7 @@ def create_knative_service(workspace):
 
     svc_res = yaml.safe_load(service_res)
 
-    service_name = 'triggerflow-worker-{}'.format(workspace)
+    service_name = 'eventprocessor-worker-{}'.format(workspace)
     svc_res['metadata']['name'] = service_name
     svc_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
@@ -205,7 +205,7 @@ def delete_workspace(workspace):
     print('Stopping workspace: {}'.format(workspace))
     try:
         # delete the service resource if exists
-        service_name = 'triggerflow-worker-{}'.format(workspace)
+        service_name = 'eventprocessor-worker-{}'.format(workspace)
         k_co_api.delete_workspaced_custom_object(
                 group="serving.knative.dev",
                 version="v1",
@@ -247,7 +247,7 @@ def delete_workspace(workspace):
 
 
 def main():
-    print('Starting Triggerflow controller')
+    print('Starting eventprocessor controller')
 
     global private_credentials, db, k_v1_api, k_co_api
 
@@ -269,7 +269,7 @@ def main():
             print('Starting {} workspace...'.format(wsp))
             create_knative_service(wsp)
 
-    print('Triggerflow controller started')
+    print('eventprocessor controller started')
 
 
 main()

@@ -1,8 +1,8 @@
 from uuid import uuid4
 from importlib import import_module
 
-from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions
-from triggerflow.client.utils import load_config_yaml
+from eventprocessor.client import eventprocessorClient, CloudEvent, DefaultActions
+from eventprocessor.client.utils import load_config_yaml
 from .conditions_actions import AwsAsfActions, AwsAsfConditions
 
 ep = None
@@ -20,11 +20,11 @@ def asf2triggers(asf_json):
     evt_src_class = asf_config['event_sources'][evt_src_type]['class']
     del evt_src_config['class']
 
-    mod = import_module('triggerflow.client.sources')
+    mod = import_module('eventprocessor.client.sources')
     evt_src = getattr(mod, '{}EventSource'.format(evt_src_class))
     event_source = evt_src(**evt_src_config)
 
-    ep = TriggerflowClient(**tf_config['triggerflow'],
+    ep = eventprocessorClient(**tf_config['eventprocessor'],
                            workspace=run_id,
                            caching=True)
 

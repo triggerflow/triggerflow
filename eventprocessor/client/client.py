@@ -13,7 +13,7 @@ from .conditions_actions import ConditionActionModel, DefaultActions, DefaultCon
 
 # TODO Replace prints with proper logging
 
-class TriggerflowClient:
+class eventprocessorClient:
     def __init__(self,
                  endpoint: str,
                  user: str,
