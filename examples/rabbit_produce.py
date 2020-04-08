@@ -1,6 +1,6 @@
 import pika
 import json
-from triggerflow.client.utils import load_config_yaml
+from eventprocessor.client.utils import load_config_yaml
 
 if __name__ == '__main__':
     rabbit_credentials = load_config_yaml('~/rabbit_credentials.yaml')

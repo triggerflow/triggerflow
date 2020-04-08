@@ -8,7 +8,7 @@ from requests.auth import HTTPBasicAuth
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 
-from triggerflow.service.databases import RedisDatabase
+from eventprocessor.service.databases import RedisDatabase
 
 app = Flask(__name__)
 app.debug = False
@@ -64,7 +64,7 @@ def put_workspace(workspace):
     password = request.authorization['password']
     auth = HTTPBasicAuth(username=user, password=password)
 
-    resp = req.post('/'.join([private_credentials['triggerflow_controller']['endpoint'],
+    resp = req.post('/'.join([private_credentials['eventprocessor_controller']['endpoint'],
                              'workspace', workspace]), auth=auth, json={})
     return (resp.text, resp.status_code, resp.headers.items())
 
@@ -88,7 +88,7 @@ def delete_workspace(workspace):
         password = request.authorization['password']
         auth = HTTPBasicAuth(username=user, password=password)
 
-        resp = req.delete('/'.join([private_credentials['triggerflow_controller']['endpoint'],
+        resp = req.delete('/'.join([private_credentials['eventprocessor_controller']['endpoint'],
                                    'workspace', workspace]), auth=auth, json={})
         return (resp.text, resp.status_code, resp.headers.items())
 
@@ -232,16 +232,16 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-api')
+    component = os.getenv('INSTANCE', 'eventprocessor-api')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][triggerflow] %(message)s',
+    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][eventprocessor] %(message)s',
                                   datefmt="%Y-%m-%dT%H:%M:%S")
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting Triggerflow API')
+    logging.info('Starting eventprocessor API')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -258,7 +258,7 @@ def main():
 
     port = int(os.getenv('PORT', 8080))
     server = WSGIServer(('', port), app, log=logging.getLogger())
-    logging.info('Triggerflow API started on port {}'.format(port))
+    logging.info('eventprocessor API started on port {}'.format(port))
 
     try:
         server.serve_forever()

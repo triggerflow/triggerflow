@@ -4,7 +4,7 @@ import signal
 import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-from triggerflow.service.databases import RedisDatabase
+from eventprocessor.service.databases import RedisDatabase
 from .worker import Worker
 import threading
 
@@ -112,16 +112,16 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    component = os.getenv('INSTANCE', 'triggerflow-controller')
+    component = os.getenv('INSTANCE', 'eventprocessor-controller')
 
     # Make sure we log to the console
     stream_handler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][triggerflow] %(message)s',
+    formatter = logging.Formatter('[%(asctime)s.%(msecs)03dZ][%(levelname)s][eventprocessor] %(message)s',
                                   datefmt="%Y-%m-%dT%H:%M:%S")
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logging.info('Starting Triggerflow Controller')
+    logging.info('Starting eventprocessor Controller')
 
     # also log to file if /logs is present
     if os.path.isdir('/logs'):
@@ -138,7 +138,7 @@ def main():
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
-    logging.info('Triggerflow service started on port {}'.format(port))
+    logging.info('eventprocessor service started on port {}'.format(port))
 
     workspaces = db.list_workspaces()
     for wsp in workspaces:

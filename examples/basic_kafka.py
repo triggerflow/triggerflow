@@ -1,10 +1,10 @@
-from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions
-from triggerflow.client.utils import load_config_yaml
-from triggerflow.client.sources import KafkaEventSource
+from eventprocessor.client import eventprocessorClient, CloudEvent, DefaultActions
+from eventprocessor.client.utils import load_config_yaml
+from eventprocessor.client.sources import KafkaEventSource
 
 if __name__ == "__main__":
     client_config = load_config_yaml('~/client_config.yaml')
-    tf = TriggerflowClient(**client_config['triggerflow'])
+    tf = eventprocessorClient(**client_config['eventprocessor'])
     es = KafkaEventSource(**client_config['kafka'])
     tf.create_workspace(workspace='basic_kafka', global_context={'ibm_cf': client_config['ibm_cf']}, event_source=es)
 

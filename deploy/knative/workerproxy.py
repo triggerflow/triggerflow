@@ -6,7 +6,7 @@ from flask import Flask, jsonify, request
 
 from .worker import Worker
 
-logger = logging.getLogger('triggerflow-worker')
+logger = logging.getLogger('eventprocessor-worker')
 
 app = Flask(__name__)
 

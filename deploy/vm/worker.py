@@ -5,10 +5,10 @@ from enum import Enum
 from datetime import datetime
 from multiprocessing import Process, Queue
 from threading import Thread
-from triggerflow.service.databases import RedisDatabase
-import triggerflow.service.eventsources as eventsources
-import triggerflow.service.conditions.default as default_conditions
-import triggerflow.service.actions.default as default_actions
+from eventprocessor.service.databases import RedisDatabase
+import eventprocessor.service.eventsources as eventsources
+import eventprocessor.service.conditions.default as default_conditions
+import eventprocessor.service.actions.default as default_actions
 
 
 class AuthHandlerException(Exception):

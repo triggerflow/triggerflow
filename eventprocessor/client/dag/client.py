@@ -3,9 +3,9 @@ import os
 from uuid import uuid4
 from importlib import import_module
 
-from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
-from triggerflow.client.utils import load_config_yaml
-import triggerflow.client.sources as event_sources_mod
+from eventprocessor.client import eventprocessorClient, CloudEvent, DefaultActions, DefaultConditions
+from eventprocessor.client.utils import load_config_yaml
+import eventprocessor.client.sources as event_sources_mod
 from .dag import DAG
 
 
@@ -42,7 +42,7 @@ def deploy(dag_json):
                            topic=dagrun_id,
                            **evt_src_config)
 
-    tf = TriggerflowClient(**ep_config['triggerflow'],
+    tf = eventprocessorClient(**ep_config['eventprocessor'],
                            workspace=dagrun_id,
                            caching=True)
 
@@ -85,7 +85,7 @@ def deploy(dag_json):
 def run(dagrun_id):
     tf_config = load_config_yaml('~/client_config.yaml')
 
-    tf = TriggerflowClient(**tf_config['triggerflow'], workspace=dagrun_id)
+    tf = eventprocessorClient(**tf_config['eventprocessor'], workspace=dagrun_id)
 
     event_sources = tf.list_eventsources()
     event_source_name = event_sources['event_sources'].pop()
