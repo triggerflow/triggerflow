@@ -1,6 +1,6 @@
-from eventprocessor.client.dag.operators import IBMCloudFunctionsCallAsyncOperator
-from eventprocessor.client.dag.utils.helpers import chain
-from eventprocessor.client.dag import DAG
+from triggerflow.client.dag.operators import IBMCloudFunctionsCallAsyncOperator
+from triggerflow.client.dag.utils.helpers import chain
+from triggerflow.client.dag import DAG
 
 dag = DAG(dag_id='sequence',
           event_source='redis')

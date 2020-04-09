@@ -1,5 +1,5 @@
-from eventprocessor.client.dag.operators import AWSLambdaMapOperator
-from eventprocessor.client.dag import DAG
+from triggerflow.client.dag.operators import AWSLambdaMapOperator
+from triggerflow.client.dag import DAG
 
 dag = DAG(dag_id='parallel',
           event_source='lambda_destination')

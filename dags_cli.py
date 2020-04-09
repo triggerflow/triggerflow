@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import click
 import json
-import eventprocessor.client.dag.client as dag_cli
+import triggerflow.client.dag.client as dag_cli
 
 
 @click.group()

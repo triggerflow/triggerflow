@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer
-from eventprocessor.client.utils import load_config_yaml
+from triggerflow.client.utils import load_config_yaml
 
 if __name__ == '__main__':
     kafka_credentials = load_config_yaml('~/kafka_credentials.yaml')

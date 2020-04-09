@@ -33,26 +33,26 @@ class RedisDatabase:
         self.client.delete(redis_key)
 
     def get_auth(self, username: str):
-        redis_key = 'eventprocessor-auth'
+        redis_key = 'triggerflow-auth'
         return self.client.hget(redis_key, username)
 
     def list_workspaces(self):
-        redis_key = 'eventprocessor-workspaces'
+        redis_key = 'triggerflow-workspaces'
         return self.client.hgetall(redis_key)
 
     def create_workspace(self, workspace, event_sources, global_context):
-        redis_key = 'eventprocessor-workspaces'
+        redis_key = 'triggerflow-workspaces'
         self.client.hset(redis_key, workspace, time.time())
         self.put(workspace=workspace, document_id='event_sources', data=event_sources)
         self.put(workspace=workspace, document_id='triggers', data={'0': 'dummy_trigger'})
         self.put(workspace=workspace, document_id='global_context', data=global_context)
 
     def workspace_exists(self, workspace):
-        redis_key = 'eventprocessor-workspaces'
+        redis_key = 'triggerflow-workspaces'
         return self.client.hexists(redis_key, workspace)
 
     def delete_workspace(self, workspace):
-        redis_key = 'eventprocessor-workspaces'
+        redis_key = 'triggerflow-workspaces'
         self.client.hdel(redis_key, workspace)
 
         wk = self.client.keys('{}-*'.format(workspace))

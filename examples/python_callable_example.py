@@ -1,10 +1,10 @@
-from eventprocessor.client import eventprocessorClient, CloudEvent, PythonCallable
-from eventprocessor.client.utils import load_config_yaml
-from eventprocessor.client.sources import KafkaEventSource
+from triggerflow.client import TriggerflowClient, CloudEvent, PythonCallable
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.sources import KafkaEventSource
 
 if __name__ == "__main__":
     tf_config = load_config_yaml('~/client_config.yaml')
-    tf = eventprocessorClient(**tf_config['eventprocessor'])
+    tf = TriggerflowClient(**tf_config['triggerflow'])
     es = KafkaEventSource(**tf_config['kafka'])
     tf.create_workspace(workspace='python_callable_example', event_source=es)
 

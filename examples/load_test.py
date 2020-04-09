@@ -2,9 +2,9 @@ import sys
 import json
 from confluent_kafka import Producer
 from concurrent.futures import ThreadPoolExecutor
-from eventprocessor.client import eventprocessorClient, CloudEvent, DefaultActions, DefaultConditions
-from eventprocessor.client.utils import load_config_yaml
-from eventprocessor.client.sources import KafkaEventSource
+from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
+from triggerflow.client.utils import load_config_yaml
+from triggerflow.client.sources import KafkaEventSource
 
 
 N_MAPS = 1
@@ -15,7 +15,7 @@ TOPIC = 'stress_kafka'
 def setup():
     client_config = load_config_yaml('~/client_config.yaml')
 
-    ep = eventprocessorClient(**client_config['eventprocessor'])
+    ep = TriggerflowClient(**client_config['triggerflow'])
     es = KafkaEventSource(**client_config['kafka'])
     ep.create_workspace(workspace=TOPIC, event_source=es)
 

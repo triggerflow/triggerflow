@@ -271,7 +271,7 @@ def run():
 
     if runner.verify():
         try:
-            tf_data = args.pop('__OW_eventprocessor', None)
+            tf_data = args.pop('__OW_TRIGGERFLOW', None)
             env = runner.env(message or {})
             code, result = runner.run(args, env)
             response = flask.jsonify(result)

@@ -108,7 +108,7 @@ def action_ibm_cf_invoke(context, event):
 
     tf_data = {'sink': sink, 'workspace': workspace,
                'trigger_id': trigger_id, 'subject': subject}
-    payload = {'__OW_eventprocessor': tf_data}
+    payload = {'__OW_TRIGGERFLOW': tf_data}
 
     ################################################
     def invoke(call_id, args, payload):

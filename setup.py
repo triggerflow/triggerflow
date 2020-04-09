@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='eventprocessor',
+    name='triggerflow',
     version='0.1.1',
-    url='https://github.com/eventprocessor',
-    author='eventprocessor Team',
+    url='https://github.com/triggerflow',
+    author='Triggerflow Team',
     description='Event-based Orchestration of Serverless Workflows',
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     entry_points='''
         [console_scripts]
-        eventprocessor=eventprocessor.cli:cli
+        triggerflow=triggerflow.cli:cli
     ''',
     classifiers=[
         "Programming Language :: Python :: 3",

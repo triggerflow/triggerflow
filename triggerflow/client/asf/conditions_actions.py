@@ -1,5 +1,5 @@
 from enum import Enum
-from eventprocessor.client.conditions_actions import ConditionActionModel
+from triggerflow.client.conditions_actions import ConditionActionModel
 
 
 class AwsAsfConditions(ConditionActionModel, Enum):
