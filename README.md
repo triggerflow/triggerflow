@@ -20,8 +20,9 @@ You can read more about Triggerflow architecture and features in the
 [Triggerflow: Trigger-based Orchestration of Serverless Workflows](https://arxiv.org/abs/2006.08654) article, presented 
 and accepted at the [ACM Distributed and Event Based Systems 2020 conference](https://2020.debs.org/accepted-papers/).
 
-## Local installation for testing purposes
+## Installation guides
 
+- [Local installation](docs/LOCAL_INSTALL.md)
 
 
 ## Triggerflow Example
