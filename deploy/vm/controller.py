@@ -4,8 +4,8 @@ import signal
 import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-from triggerflow.service.databases import RedisDatabase
-from .worker import Worker
+from triggerflow.service import triggerstorage
+from triggerflow.service.worker import Worker
 import threading
 
 app = Flask(__name__)
@@ -13,23 +13,23 @@ app.debug = False
 
 workers = {}
 monitors = {}
-private_credentials = None
-db = None
+config_map = None
+trigger_storage = None
+
+CONFIG_MAP_PATH = 'config_map.yaml'
 
 
 def authenticate_request(db, auth):
-    if not auth or \
-       'username' not in auth \
-       or 'password' not in auth:
+    if not auth or 'username' not in auth or 'password' not in auth:
         return False
 
-    passwd = db.get_auth(username=auth['username'])
-    return passwd and passwd == auth['password']
+    password = db.get_auth(username=auth['username'])
+    return password and password == auth['password']
 
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(db, request.auth):
+    if not authenticate_request(trigger_storage, request.auth):
         return jsonify('Unauthorized'), 401
 
 
@@ -40,7 +40,7 @@ def create_worker(workspace):
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    if not db.workspace_exists(workspace):
+    if not trigger_storage.workspace_exists(workspace):
         return jsonify('Workspace {} does not exists in the database'.format(workspace)), 400
 
     if workspace in monitors:
@@ -62,11 +62,11 @@ def start_worker_monitor(workspace):
 
     def monitor():
 
-        if len(db.get(workspace, 'triggers')) > 1:
+        if len(trigger_storage.get(workspace, 'triggers')) > 1:
             start_worker(workspace)
 
         while True:
-            if db.new_trigger(workspace):
+            if trigger_storage.new_trigger(workspace):
                 start_worker(workspace)
             else:
                 break
@@ -83,7 +83,7 @@ def start_worker(workspace):
 
     if workspace not in workers or not workers[workspace].is_alive():
         logging.info('Starting {} workspace'.format(workspace))
-        workers[workspace] = Worker(workspace, private_credentials)
+        workers[workspace] = Worker(workspace, config_map)
         workers[workspace].start()
 
 
@@ -104,7 +104,7 @@ def delete_worker(workspace):
 
 
 def main():
-    global private_credentials, db, workers
+    global config_map, trigger_storage, workers
 
     # Create process group
     os.setpgrp()
@@ -130,17 +130,20 @@ def main():
         logger.addHandler(fh)
 
     logging.info('Loading private credentials')
-    with open('config.yaml', 'r') as config_file:
-        private_credentials = yaml.safe_load(config_file)
+    with open(CONFIG_MAP_PATH, 'r') as config_file:
+        config_map = yaml.safe_load(config_file)
 
-    logging.info('Creating database client')
-    db = RedisDatabase(**private_credentials['redis'])
+    # Instantiate trigger storage client
+    logging.info('Creating trigger storage client')
+    backend = config_map['trigger_storage']['backend']
+    trigger_storage_class = getattr(triggerstorage, backend.capitalize() + 'TriggerStorage')
+    trigger_storage = trigger_storage_class(**config_map['trigger_storage']['parameters'])
 
     port = int(os.getenv('PORT', 5000))
     server = WSGIServer(('', port), app, log=logging.getLogger())
     logging.info('Triggerflow service started on port {}'.format(port))
 
-    workspaces = db.list_workspaces()
+    workspaces = trigger_storage.list_workspaces()
     for wsp in workspaces:
         start_worker_monitor(wsp)
 

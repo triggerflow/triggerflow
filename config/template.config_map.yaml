@@ -1,0 +1,8 @@
+triggerflow_controller:
+  endpoint: <API_ENDPOINT>
+  token: 123456
+
+trigger_storage:
+  backend: <BACKEND>
+  parameters:
+    <PARAMETER>: <VALUE>

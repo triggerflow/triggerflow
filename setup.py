@@ -9,14 +9,15 @@ setup(
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
     install_requires=[
-        'psutil', 'gevent', 'cloudant', 'pika==0.13.1', 'flask',
-        'PyYAML', 'confluent_kafka', 'dill', 'jsonpath_ng',
-        'requests', 'python-dateutil', 'docker', 'redis', 'boto3'
+        'psutil', 'gevent', 'pika==0.13.1', 'flask',
+        'PyYAML', 'confluent-kafka', 'dill', 'jsonpath_ng',
+        'requests', 'python-dateutil', 'docker', 'redis', 'boto3',
+        'click'
     ],    
     include_package_data=True,
     entry_points='''
         [console_scripts]
-        triggerflow=triggerflow.cli:cli
+        triggerflow=triggerflow.cli.cli:entry_point
     ''',
     classifiers=[
         "Programming Language :: Python :: 3",

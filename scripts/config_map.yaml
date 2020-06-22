@@ -1,0 +1,12 @@
+triggerflow_controller:
+  endpoint: 127.0.0.1:5000
+  token: token
+
+trigger_storage:
+  backend: redis
+  parameters:
+    #host: 108.168.188.158
+    host: 34.224.4.89
+    port: 6379
+    password: "gPVWL8ttfRffNS7ausKsrtKfQoAIrVglTDWB8TV2"
+    db: 0
