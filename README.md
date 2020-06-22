@@ -1,6 +1,6 @@
 # TriggerFlow: Event-based Orchestration of Serverless Workflows
 
-Triggerflow is an scalable, extensible and serverless in design platform for event-based orchestration of
+Triggerflow is a scalable, extensible and serverless in design platform for event-based orchestration of
 serverless workflows.
 
 ![triggerflow_architecture](https://user-images.githubusercontent.com/33722759/85291482-d46b8180-b49a-11ea-973f-3995b21425ad.png)
