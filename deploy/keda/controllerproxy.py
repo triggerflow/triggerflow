@@ -9,7 +9,7 @@ logger = logging.getLogger('triggerflow-controller')
 
 app = Flask(__name__)
 
-private_credentials = None
+config_map = None
 db = None
 k_v1_api = None
 k_co_api = None
@@ -238,7 +238,7 @@ def delete_workspace(workspace):
 def main():
     print('Starting Triggerflow controller')
 
-    global private_credentials, db, k_v1_api, k_co_api
+    global config_map, db, k_v1_api, k_co_api
 
     print('Loading private credentials')
     with open('config.yaml', 'r') as config_file:
