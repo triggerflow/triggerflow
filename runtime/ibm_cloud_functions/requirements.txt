@@ -6,7 +6,7 @@ flask == 1.1.1
 
 # default available packages for python3action
 beautifulsoup4 == 4.7.1
-httplib2 == 0.12.1
+httplib2 == 0.18.0
 kafka_python == 1.4.4
 confluent-kafka == 1.2.0
 lxml == 4.3.1
