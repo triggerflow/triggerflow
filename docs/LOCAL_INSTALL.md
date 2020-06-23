@@ -8,7 +8,7 @@ termination events to the event broker, so it **must be publicly accessible**.
 
 1. Clone the repository and install the Triggerflow client. Using a virutal environment is recommended.
 ```
-$ python3 -p venv venv
+$ python3 -m venv venv
 $ source venv/bin/activate
 $ python setup.py install --user    
 ```
