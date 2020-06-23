@@ -5,12 +5,13 @@ serverless workflows.
 
 ![triggerflow_architecture](https://user-images.githubusercontent.com/33722759/85291482-d46b8180-b49a-11ea-973f-3995b21425ad.png)
 
-Triggerflow follows an Event-Condition-Action architecture with its stateful triggers that can aggregate, filter,
+Triggerflow follows an Event-Condition-Action architecture with stateful triggers to aggregate, filter,
 process and route incoming events from a variety of event sources.
 
-Thanks to Triggerflow's extensibility provided by its fully programmable trigger condition and action scripts, and 
+Thanks to Triggerflow's extensibility provided by its fully programmable trigger condition and action functions,
 combining and chaining multiple triggers, we can orchestrate different serverless workflow abstractions such as
-DAGs (Apache Airflow), State Machines (Amazon Step Functions), and Workflow as Code like (Azure Durable Functions).
+DAGs (Apache Airflow), State Machines (Amazon Step Functions), and Workflow as Code (Azure Durable Functions),
+or any other specialized workflow.
 
 Triggerflow has been implemented using Open-Source Cloud Native projects like CloudEvents and KEDA or Knative.
 When Triggerflow is deployed using KEDA or Knative, the trigger processing service runs only when there are incoming
