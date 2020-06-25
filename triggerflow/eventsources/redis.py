@@ -28,7 +28,7 @@ class RedisEventSource(EventSource):
     def publish_cloudevent(self, cloudevent):
         r = redis.StrictRedis(host=self.host, port=self.port, password=self.password,
                               charset="utf-8", decode_responses=True)
-        r.xadd(self.name, json.loads(cloudevent.MarshalJSON(json.dumps).read().decode('utf-8')))
+        r.xadd(self.stream, json.loads(cloudevent.MarshalJSON(json.dumps).read().decode('utf-8')))
 
     def get_json_eventsource(self):
         parameters = vars(self).copy()

@@ -5,6 +5,7 @@ import boto3
 import urllib3
 import uuid
 import docker
+import jsonpath_ng
 from datetime import datetime
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
@@ -137,7 +138,13 @@ def action_ibm_cf_invoke(context, event):
             payload['__OW_TRIGGERFLOW'] = triggerflow_meta
             invoke_payloads.append(payload)
     else:
-        payload = context['operator']['invoke_kwargs'].copy()
+        for key, arg in context['operator']['invoke_kwargs'].items():
+            if isinstance(arg, str) and arg.startswith('$'):
+                jsonpath_expr = jsonpath_ng.parse(arg)
+                result_args = [match.value for match in jsonpath_expr.find(context['result'])]
+                context['operator']['invoke_kwargs'][key] = result_args
+
+        payload = context['operator']['invoke_kwargs']
         payload['__OW_TRIGGERFLOW'] = triggerflow_meta
         invoke_payloads.append(payload)
 

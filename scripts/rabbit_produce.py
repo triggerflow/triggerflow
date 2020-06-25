@@ -1,10 +1,8 @@
 import pika
 import json
-from triggerflow.cache import get_triggerflow_config
 
 if __name__ == '__main__':
-    rabbit_credentials = get_triggerflow_config('~/rabbit_credentials.yaml')
-    params = pika.URLParameters(rabbit_credentials['rabbitmq']['amqp_url'])
+    params = pika.URLParameters('')
     connection = pika.BlockingConnection(params)
     channel = connection.channel()
     channel.queue_declare(queue='hello')

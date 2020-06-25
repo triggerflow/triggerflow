@@ -1,11 +1,13 @@
 import re
 import json
 
-from typing import Optional
+from typing import Optional, List, Dict
 
 from . import operators
+from .models.baseoperator import BaseOperator
 from .dagrun import DAGRun
 from ..cache import TriggerflowCache
+from .other.notebook import display_graph
 
 
 class DAG:
@@ -15,9 +17,9 @@ class DAG:
         :param dag_id: DAG identifier (can only contain alphanumeric characters, hyphens and underscores)
         """
         # Check DAG id
-        __pattern = r"[a-zA-Z0-9_\-]+"
-        if not re.fullmatch(__pattern, dag_id):
-            raise Exception("Dag id \"{}\" does not match pattern {}".format(dag_id, __pattern))
+        pattern = r"[a-zA-Z0-9_\-]+"
+        if not re.fullmatch(pattern, dag_id):
+            raise Exception("Dag id \"{}\" does not match pattern {}".format(dag_id, pattern))
 
         self.dag_id = dag_id
 
@@ -26,18 +28,19 @@ class DAG:
 
     @property
     def initial_tasks(self):
-        tasks = list(filter(lambda operator: not bool(operator.upstream_relatives), self.__tasks))
-        return tasks
+        return [task for task in self.__tasks if not task.upstream_relatives]
 
     @property
     def final_tasks(self):
-        tasks = list(filter(lambda operator: not bool(operator.downstream_relatives), self.__tasks))
-
-        return tasks
+        return [task for task in self.__tasks if not task.downstream_relatives]
 
     @property
-    def tasks(self):
+    def tasks(self) -> List[BaseOperator]:
         return list(self.__tasks)
+
+    @property
+    def tasks_dict(self) -> Dict[str, BaseOperator]:
+        return {task.task_id: task for task in self.__tasks}
 
     def add_task(self, task):
         if task.task_id in [task.task_id for task in self.tasks]:
@@ -48,6 +51,9 @@ class DAG:
         if self.dag_id is None:
             raise Exception('DAG id must be set')
         return DAGRun.from_dag_def(self).run()
+
+    def show(self):
+        return display_graph(self)
 
     def json_marshal(self):
         return {
@@ -78,13 +84,11 @@ class DAG:
     def save(self):
         with TriggerflowCache(path='dags', file_name=self.dag_id + '.json', method='w') as dag_file:
             dag_file.write(json.dumps(self.json_marshal(), indent=4))
-        return self
 
     def load(self):
         with TriggerflowCache(path='dags', file_name=self.dag_id + '.json', method='r') as dag_file:
             dag_json = json.loads(dag_file.read())
         self.json_unmarshal(dag_json)
-        return self
 
     def export_to_json(self, dest_path: Optional[str] = '.', dest_file: Optional[str] = None):
         if dest_file is None:

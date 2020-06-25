@@ -4,7 +4,7 @@ import logging
 
 from triggerflow.service.worker import Worker as TriggerflowWorker
 
-WORKSPACE = 'workspace-name'
+WORKSPACE = ''
 CONFIG_MAP_PATH = 'config_map.yaml'
 
 stream_handler = logging.StreamHandler()

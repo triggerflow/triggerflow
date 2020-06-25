@@ -11,7 +11,7 @@ from . import triggerstorage
 from . import eventsources
 from .conditions import default as default_conditions
 from .actions import default as default_actions
-from .structs import Trigger, Context
+from .trigger import Trigger, Context
 
 
 class AuthHandlerException(Exception):
@@ -200,6 +200,7 @@ class Worker(Process):
                             fired = True
                     except Exception:
                         trigger.context['exception'] = traceback.format_exc()
+                        logging.warning(trigger.context['exception'])
                         self.checkpoint_queue.put('')
 
                 if fired:

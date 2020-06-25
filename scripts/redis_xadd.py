@@ -6,7 +6,7 @@ from datetime import datetime
 
 sys.path.append('../')
 
-red = redis.client.StrictRedis(host='', port=6379, password="", db=0)
+red = redis.client.StrictRedis(host='', port=6379, password='', db=0)
 
 uuid = uuid4()
 event = {'specversion': '1.0',
@@ -16,4 +16,4 @@ event = {'specversion': '1.0',
          'time': str(datetime.utcnow().isoformat("T") + "Z"),
          'subject': '__init__'}
 
-red.xadd('WORKSPACE', event)
+red.xadd('', event)

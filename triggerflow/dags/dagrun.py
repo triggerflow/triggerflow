@@ -6,11 +6,12 @@ from platform import node
 from enum import Enum
 
 from ..cache import TriggerflowCache
-from ..libs.cloudevents.sdk.event import v1
 from ..client import (
+    TriggerflowClient,
     TriggerflowCachedClient,
     DefaultActions,
-    DefaultConditions
+    DefaultConditions,
+    CloudEvent
 )
 
 
@@ -71,6 +72,19 @@ class DAGRun:
 
         return self
 
+    def result(self, task=None):
+        tf = TriggerflowClient()
+        tf.target_workspace(self.dagrun_id)
+        if task is None:
+            return tf.get_trigger('__end__')['context']['result']
+        else:
+            if task in self.dag.tasks_dict:
+                task_op = self.dag.tasks_dict[task]
+                results = []
+                for downstream in task_op.downstream_relatives:
+                    trg = tf.get_trigger(downstream.task_id)
+                    results.append(trg['result'])
+
     def __save_cache(self):
         with TriggerflowCache(path='dag-runs', file_name=self.dagrun_id + '.json', method='w') as dagrun_file:
             metadata = {
@@ -85,20 +99,19 @@ class DAGRun:
             pickle.dump(self.dag, dag_file)
 
     def __trigger(self):
-        print('fake dag trigger -- debug/testing -- remove later')
-        return self
-
-        event_source = self.dag.event_sources.values().pop()
+        event_source = list(self.dag.event_sources.values()).pop()
         uuid = uuid4()
         init_cloudevent = (
-            v1.Event()
+            CloudEvent()
             .SetSubject('__init__')
             .SetEventType('event.triggerflow.init')
-            .SetID(uuid4.hex)
+            .SetEventID(uuid.hex)
             .SetSource(f'urn:{node()}:{str(uuid)}')
         )
+        event_source.set_stream(self.dagrun_id)
         event_source.publish_cloudevent(init_cloudevent)
         self.state = DAGRun.State.RUNNING
+        print('DAG Run ID: {}'.format(self.dagrun_id))
         return self
 
     def __create_triggers(self):
@@ -113,13 +126,16 @@ class DAGRun:
             tf.add_event_source(event_source)
 
         for task in self.dag.tasks:
-            context = {'subject': task.task_id, 'dependencies': {}, 'operator': task.get_trigger_meta()}
+            context = {'subject': task.task_id,
+                       'dependencies': {},
+                       'operator': task.get_trigger_meta(),
+                       'result': []}
 
             # If this task does not have upstream relatives, then it will be executed when the sentinel event __init__
             # is produced, else, it will be executed every time one of its upstream relatives produces its term. event
             if not task.upstream_relatives:
                 condition = DefaultConditions.TRUE  # Initial task do not have dependencies
-                activation_event = v1.Event().SetSubject('__init__').SetEventType('event.triggerflow.init')
+                activation_event = CloudEvent().SetSubject('__init__').SetEventType('event.triggerflow.init')
                 act_events = [activation_event]
             else:
                 condition = DefaultConditions.DAG_TASK_JOIN
@@ -127,7 +143,7 @@ class DAGRun:
                 for upstream_relative in task.upstream_relatives:
                     context['dependencies'][upstream_relative.task_id] = {'join': -1, 'counter': 0}
                     activation_event = (
-                        v1.Event()
+                        CloudEvent()
                         .SetSubject(upstream_relative.task_id)
                         .SetEventType('event.triggerflow.termination.success')
                     )
@@ -146,8 +162,9 @@ class DAGRun:
         # Join final tasks (those that do not have downstream relatives)
         context = {'subject': '__end__',
                    'dependencies': {final_task.task_id: {'join': -1, 'counter': 0} for final_task in
-                                    self.dag.final_tasks}}
-        activation_events = [(v1.Event()
+                                    self.dag.final_tasks},
+                   'result': []}
+        activation_events = [(CloudEvent()
                               .SetSubject(final_task.task_id)
                               .SetEventType('event.triggerflow.termination.success'))
                              for final_task in self.dag.final_tasks]

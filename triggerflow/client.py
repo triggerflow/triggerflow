@@ -90,7 +90,11 @@ class TriggerflowClient:
         payload = {'workspace_name': workspace_name,
                    'global_context': global_context,
                    'event_source': event_source.get_json_eventsource()}
-        res = requests.post(url, auth=self._auth, json=payload)
+
+        try:
+            res = requests.post(url, auth=self._auth, json=payload)
+        except requests.HTTPError as e:
+            raise Exception('Triggerflow API unavailable: {}'.format(e))
 
         if res.ok:
             log.info('Ok -- {}'.format(workspace_name, res.json()))
@@ -195,7 +199,7 @@ class TriggerflowClient:
             raise Exception(res.text)
 
     def add_trigger(self,
-                    event: Union[CloudEvent, List[CloudEvent]],
+                    event: Union[object, List[object]],
                     trigger_id: Optional[str] = None,
                     condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
@@ -331,7 +335,7 @@ class TriggerflowCachedClient(TriggerflowClient):
         self.__trigger_cache = {}
 
     def add_trigger(self,
-                    event: Union[CloudEvent, List[CloudEvent]],
+                    event: Union[object, List[object]],
                     trigger_id: Optional[str] = None,
                     condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
