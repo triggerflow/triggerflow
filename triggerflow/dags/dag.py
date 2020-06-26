@@ -84,11 +84,13 @@ class DAG:
     def save(self):
         with TriggerflowCache(path='dags', file_name=self.dag_id + '.json', method='w') as dag_file:
             dag_file.write(json.dumps(self.json_marshal(), indent=4))
+        return self
 
     def load(self):
         with TriggerflowCache(path='dags', file_name=self.dag_id + '.json', method='r') as dag_file:
             dag_json = json.loads(dag_file.read())
         self.json_unmarshal(dag_json)
+        return self
 
     def export_to_json(self, dest_path: Optional[str] = '.', dest_file: Optional[str] = None):
         if dest_file is None:
