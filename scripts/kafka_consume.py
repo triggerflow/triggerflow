@@ -2,11 +2,6 @@ from confluent_kafka import Consumer
 
 if __name__ == '__main__':
     config = {'bootstrap.servers': '127.0.0.1:9092',
-              # 'ssl.ca.location': '/etc/ssl/certs/',
-              # 'sasl.mechanisms': 'PLAIN',
-              # 'sasl.username': kafka_credentials['eventstreams']['user'],
-              # 'sasl.password': kafka_credentials['eventstreams']['password'],
-              # 'security.protocol': 'sasl_ssl',
               'group.id': '123',
               'default.topic.config': {'auto.offset.reset': 'earliest'},
               'enable.auto.commit': True

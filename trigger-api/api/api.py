@@ -67,12 +67,13 @@ def create_workspace():
     try:
         controller_res = req.post(url, auth=auth, json={})
     except req.exceptions.RequestException as e:
-        return jsonify({'error': 'Triggerflow service is unavailable: {}'.format(e)}), 500
+        logging.warning('Triggerflow Controller Service is unavailable: {}'.format(e))
+        return jsonify(res), 202
 
     if controller_res.ok:
-        return jsonify(res), code
+        return jsonify(res), 201
     else:
-        return jsonify({'error': 'Triggerflow service is unavailable'}), 500
+        return jsonify({'error': 'Triggerflow Controller service is unavailable'}), 202
 
 
 @api.route('/workspace/<workspace>', methods=['GET'])

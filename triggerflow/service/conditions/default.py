@@ -1,6 +1,7 @@
 import dill
 import docker
 import requests
+import json
 from base64 import b64decode
 
 docker_containers = {}
@@ -11,6 +12,9 @@ def condition_true(context, event):
 
 
 def condition_dag_task_join(context, event):
+    if 'data' in event:
+        context['result'].append(event['data'])
+
     context['dependencies'][event['subject']]['counter'] += 1
 
     return all([dep['counter'] == dep['join'] for dep in context['dependencies'].values()])

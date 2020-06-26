@@ -75,6 +75,9 @@ class EventGetterSetter(object):
     def SetContentType(self, contentType: str) -> object:
         raise Exception("not implemented")
 
+    def SetSubject(self, subject: str) -> object:
+        raise Exception("not implemented")
+
 
 class BaseEvent(EventGetterSetter):
     def Properties(self, with_nullable=False) -> dict:

@@ -1,7 +1,6 @@
-from triggerflow import Triggerflow
+from triggerflow import Triggerflow, CloudEvent
 from triggerflow.functions import PythonCallable
 from triggerflow.eventsources.rabbit import RabbitMQEventSource
-from triggerflow.libs.cloudevents.sdk.event.v1 import Event
 
 tf_client = Triggerflow()
 
@@ -14,7 +13,7 @@ def my_action(context, event):
     context['message'] += 'World!'
 
 
-activation_event = Event().SetEventType('test.event.type').SetSubject('Test')
+activation_event = CloudEvent().SetEventType('test.event.type').SetSubject('Test')
 
 tf_client.add_trigger(trigger_id='MyTrigger',
                       event=activation_event,

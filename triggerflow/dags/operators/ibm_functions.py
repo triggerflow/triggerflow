@@ -100,6 +100,8 @@ class IBMCloudFunctionsMapOperator(IBMCloudFunctionsOperator):
 
         try:
             kwarg, it_data = iter_data
+            if isinstance(it_data, range):
+                it_data = list(it_data)
             iter(it_data)  # Will raise TypeError if iter_data is not iterable
         except ValueError:
             raise TypeError('Parameter \'iter_data\' must be a tuple as (kwarg, iterable)')

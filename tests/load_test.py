@@ -1,6 +1,5 @@
-from triggerflow.client import TriggerflowClient, CloudEvent, DefaultActions, DefaultConditions
-from triggerflow.cache import get_triggerflow_config
-from triggerflow.client.sources import RabbitEventSource
+from triggerflow.client import TriggerflowCachedClient, CloudEvent, DefaultActions, DefaultConditions
+from triggerflow.eventsources.rabbit import RabbitMQEventSource
 
 
 N_MAPS = 20
@@ -9,15 +8,15 @@ TOPIC = 'load_test'
 
 
 def setup():
-    client_config = get_triggerflow_config('~/client_config.yaml')
+    amqp_url = ''
+    tf = TriggerflowCachedClient()
+    rabbit = RabbitMQEventSource(amqp_url)
 
-    tf = TriggerflowClient(**client_config['triggerflow'], caching=True)
-    rabbit = RabbitEventSource(**client_config['event_sources']['rabbitmq'])
-
-    tf.create_workspace(workspace=TOPIC, event_source=rabbit)
+    tf.create_workspace(workspace_name=TOPIC, event_source=rabbit)
 
     for i in range(N_MAPS):
-        tf.add_trigger(CloudEvent('map_{}'.format(i)),
+        ce = CloudEvent().SetEventType('triggerflow.event.success').SetSubject('map_{}'.format(i))
+        tf.add_trigger(ce,
                        action=DefaultActions.PASS,
                        condition=DefaultConditions.SIMPLE_JOIN,
                        context={'total_activations': N_JOIN})

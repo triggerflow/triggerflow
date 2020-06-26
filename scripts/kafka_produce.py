@@ -3,8 +3,7 @@ import sys
 from uuid import uuid4
 from platform import node
 from confluent_kafka import Producer
-sys.path.append('../')
-from triggerflow.libs.cloudevents.sdk.event import v1
+from triggerflow import CloudEvent
 
 TOPIC = 'map-a706f6ade13d'
 
@@ -18,13 +17,7 @@ if __name__ == '__main__':
     type = 'event.triggerflow.init'
     data = {}
 
-    config = {'bootstrap.servers': '108.168.188.158:9092',
-              # 'ssl.ca.location': '/etc/ssl/certs/',
-              # 'sasl.mechanisms': 'PLAIN',
-              # 'sasl.username': kafka_credentials['user'],
-              # 'sasl.password': kafka_credentials['password'],
-              # 'security.protocol': 'sasl_ssl'
-              }
+    config = {'bootstrap.servers': ':9092'}
 
 
     def delivery_callback(err, msg):
@@ -36,7 +29,7 @@ if __name__ == '__main__':
 
     kafka_producer = Producer(**config)
     uuid = uuid4()
-    cloudevent = (v1.Event()
+    cloudevent = (CloudEvent()
                   .SetSubject(subject)
                   .SetEventType(type)
                   .SetEventID(uuid.hex)

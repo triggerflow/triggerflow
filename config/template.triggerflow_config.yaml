@@ -5,16 +5,21 @@ triggerflow:
 
 dags:
   operators:
+
     ibm_cf:
       endpoint: <ENDPOINT_URL>
       namespace: <NAMESPACE>
       api_key: <API_KEY>
-      event_source: <TERMINATION_EVENT_DESTINATION>
+      event_source: <EVENT_SOURCE_NAME>
       kafka:
         broker_list: []
       rabbitmq:
         amqp_url: <AMQP_URL>
       redis:
+        host: <REDIS_HOST>
+        port: 6379
+        password: <REDIS_PASSWORD>
+        db: 0
 
     aws_lambda:
       access_key_id: <ACCESS_KEY_ID>
