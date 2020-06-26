@@ -5,12 +5,13 @@ serverless workflows.
 
 ![triggerflow_architecture](https://user-images.githubusercontent.com/33722759/85291482-d46b8180-b49a-11ea-973f-3995b21425ad.png)
 
-Triggerflow follows an Event-Condition-Action architecture with its stateful triggers that can aggregate, filter,
-process and route incoming events from a variety of event sources.
+Triggerflow follows an Event-Condition-Action architecture with stateful triggers that can aggregate, filter,
+process and route incoming events from a variety of event sources in a consistent and fault tolerant way.
 
-Thanks to Triggerflow's extensibility provided by its fully programmable trigger condition and action scripts, and 
+Thanks to Triggerflow's extensibility provided by its fully programmable trigger condition and action functions, and 
 combining and chaining multiple triggers, we can orchestrate different serverless workflow abstractions such as
-DAGs (Apache Airflow), State Machines (Amazon Step Functions), and Workflow as Code like (Azure Durable Functions).
+DAGs (Apache Airflow), State Machines (Amazon Step Functions), and Workflow as Code like (Azure Durable Functions),
+among other specialized workflows.
 
 Triggerflow has been implemented using Open-Source Cloud Native projects like CloudEvents and KEDA or Knative.
 When Triggerflow is deployed using KEDA or Knative, the trigger processing service runs only when there are incoming
@@ -20,9 +21,10 @@ You can read more about Triggerflow architecture and features in the
 [Triggerflow: Trigger-based Orchestration of Serverless Workflows](https://arxiv.org/abs/2006.08654) article, presented 
 and accepted at the [ACM Distributed and Event Based Systems 2020 conference](https://2020.debs.org/accepted-papers/).
 
-## Installation guides
+## Documentation
 
-- [Local installation](docs/LOCAL_INSTALL.md)
+- [Triggerflow standalone local installation](docs/LOCAL_INSTALL.md)
+- [Triggerflow DAG Interface example](examples/dag-example/count_words.ipynb)
 
 
 ## Triggerflow Example
@@ -56,6 +58,5 @@ rabbitmq_source.publish_cloudevent(activation_event)
 
 # Retrieve the trigger's context
 trg = tf_client.get_trigger('MyTrigger')
-print(trg['context']['message'])
-
+print(trg['context']['message'])  # Prints 'Hello World!'
 ```   
