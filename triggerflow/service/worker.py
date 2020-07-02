@@ -9,8 +9,8 @@ from collections import defaultdict
 
 from . import triggerstorage
 from . import eventsources
-from .conditions import default as default_conditions
-from .actions import default as default_actions
+from . import conditions as default_conditions
+from . import actions as default_actions
 from .trigger import Trigger, Context
 
 
@@ -207,8 +207,6 @@ class Worker(Process):
                     logging.info('[{}] Performing state checkpoint'.format(self.workspace))
                     self.checkpoint_queue.put(subject)
                     del self.events[subject]
-                    # if len(self.triggers) == 1:  # dummy_trigger is always in triggers
-                    #     self.stop_worker()
             else:
                 logging.warning('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
                 self.__get_triggers()

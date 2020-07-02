@@ -1,6 +1,13 @@
+import boto3
+import json
+import logging
 from typing import Optional
 
 from triggerflow.eventsources.model import EventSource
+
+
+logging.getLogger('boto3').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 
 class SQSEventSource(EventSource):
@@ -15,7 +22,17 @@ class SQSEventSource(EventSource):
         self.queue = stream_id
 
     def publish_cloudevent(self, cloudevent: dict):
-        raise NotImplementedError()
+        sqs = boto3.resource('sqs',
+                             aws_access_key_id=self.access_key_id,
+                             aws_secret_access_key=self.secret_access_key)
+        client = boto3.client('sqs',
+                              aws_access_key_id=self.access_key_id,
+                              aws_secret_access_key=self.secret_access_key)
+        response = client.get_queue_url(QueueName=self.queue)
+        queue_url = response['QueueUrl']
+        sqs_queue = sqs.Queue(queue_url)
+
+        sqs_queue.send_message(MessageBody=cloudevent.MarshalJSON(json.dumps).read().decode('utf-8'))
 
     def get_json_eventsource(self):
         parameters = vars(self).copy()

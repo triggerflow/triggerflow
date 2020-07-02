@@ -1,0 +1,28 @@
+{
+  "Comment": "A Hello World example of the Amazon States Language using Pass states",
+  "StartAt": "Array",
+  "States": {
+    "Array": {
+      "Type": "Pass",
+      "Result": {"array": [1,2,3]},
+      "Next": "MapState"
+    },
+    "MapState": {
+      "Type": "Map",
+      "Iterator": {
+        "StartAt": "Hello",
+        "States": {
+          "Hello": {
+            "Type": "Pass",
+            "Next": "World"
+          },
+          "World": {
+            "Type": "Pass",
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}

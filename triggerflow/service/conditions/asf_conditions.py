@@ -39,7 +39,7 @@ def condition_aws_asf_condition(context, event):
                     eval_condition = True
                     break
         else:
-            eval_condition = __evaluate_condition(condition, context['global_context'])
+            eval_condition = __evaluate_condition(condition, event['data'])
         return eval_condition
     else:
         return True
@@ -57,9 +57,9 @@ def condition_aws_asf_join_statemachine(context, event):
         return True
 
 
-def __evaluate_condition(condition, global_context):
+def __evaluate_condition(condition, data):
     exp = parse(condition['Variable'])
-    matches = [match.value for match in exp.find(global_context)]
+    matches = [match.value for match in exp.find(data)]
 
     results = []
     for match in matches:

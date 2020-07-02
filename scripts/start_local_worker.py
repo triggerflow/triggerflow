@@ -4,7 +4,7 @@ import logging
 
 from triggerflow.service.worker import Worker as TriggerflowWorker
 
-WORKSPACE = ''
+WORKSPACE = '<WORKSPACE>'
 CONFIG_MAP_PATH = 'config_map.yaml'
 
 stream_handler = logging.StreamHandler()
@@ -23,8 +23,7 @@ def bootstrap_worker(workspace: str, config_map: dict):
     Used for testing and development purposes.
     """
     worker = TriggerflowWorker(workspace=workspace, config=config_map)
-    worker.start()
-    worker.join()
+    worker.run()
 
 
 if __name__ == '__main__':

@@ -1,0 +1,102 @@
+{
+  "Comment": "Example State Machine",
+  "StartAt": "GenerateRandom",
+  "States": {
+    "GenerateRandom": {
+      "Type": "Task",
+      "Resource": "$step-generate-random",
+      "Next": "Verify"
+    },
+    "Verify": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.random",
+          "NumericLessThan": 0,
+          "Next": "ToPositive"
+        },
+        {
+          "Variable": "$.random",
+          "NumericGreaterThan": 0,
+          "Next": "Pass"
+        }
+      ]
+    },
+    "Pass": {
+      "Type": "Pass",
+      "Next": "GenerateList",
+      "InputPath": "$.random",
+      "ResultPath": "$.number"
+    },
+    "ToPositive": {
+      "Type": "Task",
+      "Resource": "$step-abs",
+      "Parameters": {
+        "number.$": "$.random"
+      },
+      "Next": "GenerateList"
+    },
+    "GenerateList": {
+      "Type": "Task",
+      "Resource": "$function:step-gen-list",
+      "Parameters": {
+        "size.$": "$.number"
+      },
+      "Next": "ParallelMap"
+    },
+    "ParallelMap": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "MapAdd1",
+          "States": {
+            "MapAdd1": {
+              "Type": "Map",
+              "ItemsPath": "$.list",
+              "Iterator": {
+                "StartAt": "MapTask1",
+                "States": {
+                  "MapTask1": {
+                    "Type": "Task",
+                    "Parameters": {
+                      "x.$": "$",
+                      "y": 100
+                    },
+                    "Resource": "$step-add",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "MapAdd2",
+          "States": {
+            "MapAdd2": {
+              "Type": "Map",
+              "ItemsPath": "$.list",
+              "Iterator": {
+                "StartAt": "MapTask2",
+                "States": {
+                  "MapTask2": {
+                    "Type": "Task",
+                    "Parameters": {
+                      "x.$": "$",
+                      "y": -100
+                    },
+                    "Resource": "$function:step-add",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "End": true
+    }
+  }
+}

@@ -29,6 +29,7 @@ def build(dag_file):
 
     code_vars = {}
     try:
+        click.echo("Evaluating DAG from file...")
         exec(code, {}, code_vars)
     except Exception as e:
         click.echo(click.style("Error: ", fg='red', bold=True) + "DAG build failed -- {}".format(str(e)))
