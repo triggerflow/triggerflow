@@ -8,6 +8,7 @@ from cos_backend import COSBackend
 
 def main(args):
     start_time = time.time()
+    print(args)
     parameters = SimpleNamespace(**args['parameters'])
     mdt_key = args['mdt_key']
     mdt_filename = os.path.basename(mdt_key)

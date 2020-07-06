@@ -4,10 +4,14 @@ from ibm_boto3.s3.transfer import TransferConfig
 
 class COSBackend:
     def __init__(self, endpoint_url, aws_access_key_id, aws_secret_access_key):
+
         session = ibm_boto3.Session(aws_access_key_id=aws_access_key_id,
                                     aws_secret_access_key=aws_secret_access_key)
+
         self.cos_client = session.client("s3", endpoint_url=endpoint_url)
-        self.cos_resource = session.resource("s3", aws_access_key_id=aws_access_key_id,
+
+        self.cos_resource = session.resource("s3",
+                                             aws_access_key_id=aws_access_key_id,
                                              aws_secret_access_key=aws_secret_access_key,
                                              endpoint_url=endpoint_url)
 

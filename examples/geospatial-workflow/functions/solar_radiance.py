@@ -97,6 +97,7 @@ def map_interpolation(mdt, day_of_year, block_x, block_y, splits):
 
 def main(args):
     start_time = time.time()
+    args.update(args['chunk'])
     parameters = SimpleNamespace(**args['parameters'])
     cos = COSBackend(aws_access_key_id=args['cos']['aws_access_key_id'],
                      aws_secret_access_key=args['cos']['aws_secret_access_key'],

@@ -68,6 +68,7 @@ def map_interpolation(siam_stream, mdt, block_x, block_y, splits, zdet, r, area_
 
 def main(args):
     start_time = time.time()
+    args.update(args['chunk'])
     print(args)
     parameters = SimpleNamespace(**args['parameters'])
     cos = COSBackend(aws_access_key_id=args['cos']['aws_access_key_id'],

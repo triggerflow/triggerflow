@@ -1,4 +1,4 @@
-FROM aitorarjona/eventprocessor-kafka-runtime-v36:0.5
+FROM triggerflow/ibm_cloud_functions_runtime-v36:0.2
 
 ENV FLASK_PROXY_PORT 8080
 
