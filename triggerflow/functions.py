@@ -18,7 +18,7 @@ class DefaultConditions(ConditionActionModel, Enum):
 class DefaultActions(ConditionActionModel, Enum):
     PASS = {'name': 'PASS'}
     TERMINATE = {'name': 'TERMINATE'}
-    DUMMY_TASK = {'name': 'DUMMY_TASK'}
+    DAG_DUMMY_TASK = {'name': 'DAG_DUMMY_TASK'}
     DAG_TASK_FAILURE_HANDLER = {'name': 'DAG_TASK_FAILURE_HANDLER'}
     DAG_TASK_RETRY_HANDLER = {'name': 'DAG_TASK_RETRY_HANDLER'}
     THROTTLE_IBMCF_FUNCTION = {'name': 'THROTTLE_IBMCF_FUNCTION'}
