@@ -23,13 +23,28 @@ and accepted at the [ACM Distributed and Event Based Systems 2020 conference](ht
 
 ## Documentation
 
-- [Triggerflow standalone local installation](docs/LOCAL_INSTALL.md)
-- [Triggerflow DAG Interface example](examples/dag-example/count_words.ipynb)
+- [Triggerflow Client Installation](docs/CLIENT_INSTALL.md)
+
+- [Standalone Deployment for testing guide](docs/STANDALONE_SETUP.md)
+
+- [Knative on Kubernetes Deployment guide](docs/KNATIVE_SETUP.md)
+
+- [KEDA on Kubernetes Deployment guide](docs/KEDA_SETUP.md)
+
+- [Standalone Deployment for testing guide](docs/STANDALONE_SETUP.md)
+
+- [Triggerflow Experiments instructions for replication](docs/EXPERIMENTS.md)
+
+- [DAG Interface example](examples/dag-example/count_words.ipynb)
+
+- [ASL State Machines example](docs/STATEMACHINES.md)
+
+- Workflow As Code example **TODO**
 
 
 ## Triggerflow Example
 ```python
-from triggerflow import Triggerflow, CloudEvent
+from triggerflow import Triggerflow, CloudEvent, DefaultConditions
 from triggerflow.functions import PythonCallable
 from triggerflow.eventsources.rabbit import RabbitMQEventSource
 
@@ -47,14 +62,16 @@ def my_action(context, event):
 # Create the trigger activation event 
 activation_event = CloudEvent().SetEventType('test.event.type').SetSubject('Test')
 
-# Create a trigger with a custom Python callable action
+# Create a trigger with a custom Python callable action and a Join condition that joins 10 events
 tf_client.add_trigger(trigger_id='MyTrigger',
                       event=activation_event,
+                      condition=DefaultConditions.JOIN,
                       action=PythonCallable(my_action),
-                      context={'message': 'Hello '})
+                      context={'message': 'Hello ', 'join': 10})
 
-# Publish the activation event, the trigger will be fired
-rabbitmq_source.publish_cloudevent(activation_event)
+# Publish 10 the activation events, the action will only be executed on the 10th event
+for _ in range(10):
+    rabbitmq_source.publish_cloudevent(activation_event)
 
 # Retrieve the trigger's context
 trg = tf_client.get_trigger('MyTrigger')
