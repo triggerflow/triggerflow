@@ -10,9 +10,9 @@ from ..client import (
     TriggerflowClient,
     TriggerflowCachedClient,
     DefaultActions,
-    DefaultConditions,
-    CloudEvent
+    DefaultConditions
 )
+from triggerflow import CloudEvent
 
 
 class DAGRun:
@@ -62,12 +62,12 @@ class DAGRun:
         dagrun.state = DAGRun.State[metadata['state']]
         return dagrun
 
-    def run(self):
+    def run(self, silent=False):
         if self.state == DAGRun.State.RUNNING:
             raise Exception('DAG already running')
 
         self.__create_triggers()
-        self.__trigger()
+        self.__trigger(silent)
         self.__save_cache()
 
         return self
@@ -98,7 +98,7 @@ class DAGRun:
         with TriggerflowCache(path='dag-runs', file_name=self.dagrun_id + '.pickle', method='wb') as dag_file:
             pickle.dump(self.dag, dag_file)
 
-    def __trigger(self):
+    def __trigger(self, silent=False):
         event_source = list(self.dag.event_sources.values()).pop()
         uuid = uuid4()
         init_cloudevent = (
@@ -111,7 +111,8 @@ class DAGRun:
         event_source.set_stream(self.dagrun_id)
         event_source.publish_cloudevent(init_cloudevent)
         self.state = DAGRun.State.RUNNING
-        print('DAG Run ID: {}'.format(self.dagrun_id))
+        if not silent:
+            print('DAG Run ID: {}'.format(self.dagrun_id))
         return self
 
     def __create_triggers(self):

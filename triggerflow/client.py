@@ -7,7 +7,6 @@ import json
 from requests.auth import HTTPBasicAuth
 from typing import List, Union, Optional
 
-from .libs.cloudevents.sdk.event.v1 import Event as CloudEvent
 from .eventsources.model import EventSource
 from .functions import ConditionActionModel, DefaultConditions, DefaultActions
 from .config import get_config
@@ -96,15 +95,16 @@ class TriggerflowClient:
         except requests.HTTPError as e:
             raise Exception('Triggerflow API unavailable: {}'.format(e))
 
-        if res.ok:
-            log.info('Ok -- {}'.format(workspace_name, res.json()))
+        if res.status_code == 201:
+            log.info('Created Workspace -- {}'.format(workspace_name, res.json()))
+        elif res.status_code == 202:
+            log.warning('Workspace created but not Worker not deployed -- {}'.format(workspace_name, res.json()))
         elif res.status_code == 400:
             res_json = res.json()
             if res_json['err_code'] == 2 and silent:
                 log.warning('Workspace {} already exists'.format(workspace_name))
                 self.target_workspace(workspace_name)
             else:
-                print(res_json)
                 raise Exception(res_json['error'])
         else:
             raise Exception(res.text)
@@ -353,7 +353,6 @@ class TriggerflowCachedClient(TriggerflowClient):
         :param context: Trigger key-value state, only visible for this specific trigger.
         :param context_parser: Parser used to decode the context data struct.
         :param transient: If true, this trigger is deleted after action is executed.
-        :return:
         """
         self._check_workspace()
 
@@ -402,6 +401,15 @@ class TriggerflowCachedClient(TriggerflowClient):
             return json.loads(self.__trigger_cache[trigger_id])
         else:
             raise Exception('Trigger {} not found'.format(trigger_id))
+
+    def update_trigger(self, trigger_json):
+        if 'id' not in trigger_json:
+            raise Exception('trigger_id not in trigger JSON definition')
+
+        trigger_id = trigger_json['id']
+        trg = json.loads(self.__trigger_cache[trigger_id])
+        trg.update(trigger_json)
+        self.__trigger_cache[trigger_id] = json.dumps(trg)
 
     def list_triggers(self) -> List[str]:
         """

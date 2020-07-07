@@ -8,7 +8,7 @@ def create_workspace(trigger_storage: TriggerStorage, workspace: str, global_con
         return {'error': 'Workspace {} already exists'.format(workspace), 'err_code': 2}, 400
 
     # Workspace name can only contain alphanumeric, hyphens or underscore characters
-    if not re.fullmatch(r"^[a-zA-Z0-9.-]*$", workspace):
+    if not re.fullmatch(r"^[a-zA-Z0-9._-]*$", workspace):
         return {'error': 'Illegal workspace name', 'err_code': 3}, 400
 
     if {'name', 'class', 'parameters'} != set(event_source):

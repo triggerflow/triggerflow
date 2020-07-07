@@ -1,54 +1,100 @@
 import json
 import logging
-import boto3
+import threading
 from multiprocessing import Queue
+
+import boto3
+from arnparse import arnparse
 
 from .model import EventSourceHook
 
-logging.getLogger('botocore').setLevel(logging.INFO)
+logging.getLogger('boto3').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 
 class SQSEventSource(EventSourceHook):
     def __init__(self,
                  event_queue: Queue,
-                 region: str,
-                 account: str,
-                 topic: str,
+                 queue: str,
+                 access_key_id: str,
+                 secret_access_key: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.event_queue = event_queue
-        self.region = region
-        self.account = account
-        self.topic = topic or self.name
+        self.__access_key_id = access_key_id
+        self.__secret_access_key = secret_access_key
 
-        self.queue_url = 'https://sqs.{}.amazonaws.com/{}/{}'.format(region, account, topic)
+        self.event_queue = event_queue
+        self.queue = queue
         self.client = None
+        self.sqs = None
+        self.records = {}
+        self.__commit_queue = Queue()
+        self.__committer = None
 
     def run(self):
-        sqs = boto3.resource('sqs')  # Consumer expects queue to be publicly accessible
-        queue = sqs.Queue(self.queue_url)
+
+        def delete_messages():
+            commit_records = self.__commit_queue.get()
+            for record in commit_records:
+                if record not in self.records:
+                    continue
+                logging.debug('[{}] Deleting message {} from queue {}'.format(self.name, record, self.queue))
+                if record in self.records:
+                    commit_message = self.records[record]
+                    commit_message.delete()
+
+        self.__committer = threading.Thread(target=delete_messages)
+        self.__committer.start()
+
+        self.sqs = boto3.resource('sqs',
+                                  aws_access_key_id=self.__access_key_id,
+                                  aws_secret_access_key=self.__secret_access_key)
+        self.client = boto3.client('sqs',
+                                   aws_access_key_id=self.__access_key_id,
+                                   aws_secret_access_key=self.__secret_access_key)
+
+        response = self.client.get_queue_url(QueueName=self.queue)
+        queue_url = response['QueueUrl']
+        sqs_queue = self.sqs.Queue(queue_url)
 
         while True:
-            for message in queue.receive_messages(WaitTimeSeconds=10):
-                termination_event = json.loads(message.body)
-                payload_body = termination_event['responsePayload']['body']
-                subject = payload_body.get('subject') if type(payload_body) == dict else json.loads(payload_body).get(
-                    'subject')
-                termination_cloudevent = {'specversion': '1.0',
-                                          'id': termination_event['requestContext']['requestId'],
-                                          'source': termination_event['requestContext']['functionArn'],
-                                          'type': 'termination.event.{}'.format(
-                                              termination_event['requestContext']['condition'].lower()),
-                                          'time': termination_event['timestamp'],
-                                          'subject': subject,
-                                          'datacontenttype': 'application/json',
-                                          'data': termination_event['responsePayload']['body']}
-                self.event_queue.put(termination_cloudevent)
-                # message.delete()
+            messages = sqs_queue.receive_messages(WaitTimeSeconds=10)
+            for message in messages:
+                event = json.loads(message.body)
+                print(event)
+                if {'specversion', 'id', 'source', 'type'}.issubset(set(event)):
+                    logging.info('[{}] Received CloudEvent'.format(self.name))
+
+                    event_id = event['id']
+                    if event_id in self.records:
+                        continue
+
+                    cloudevent = event
+                else:
+                    event_id = event['requestContext']['requestId']
+
+                    if event_id in self.records:
+                        continue
+
+                    subject = event['responsePayload']['__TRIGGERFLOW_SUBJECT']
+                    del event['responsePayload']['__TRIGGERFLOW_SUBJECT']
+                    event_type = 'lambda.success' if event['requestContext']['condition'] == 'Success' else 'lambda.failure'
+
+                    cloudevent = {'specversion': '1.0',
+                                  'id': event['requestContext']['requestId'],
+                                  'source': event['requestContext']['functionArn'],
+                                  'type': event_type,
+                                  'time': event['timestamp'],
+                                  'subject': subject,
+                                  'datacontenttype': 'application/json',
+                                  'data': event['responsePayload']}
+
+                self.event_queue.put(cloudevent)
+                self.records[event_id] = message
 
     def commit(self, records):
-        raise NotImplementedError()
+        self.__commit_queue.put(records)
 
     def stop(self):
         raise NotImplementedError()

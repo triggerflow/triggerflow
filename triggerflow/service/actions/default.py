@@ -3,9 +3,10 @@ import time
 import dill
 import boto3
 import urllib3
-import uuid
 import docker
 import jsonpath_ng
+from uuid import uuid4
+from platform import node
 from datetime import datetime
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
@@ -28,19 +29,21 @@ def action_terminate(context, event):
     logging.info('Terminate action call ({})'.format(time.time()))
 
 
-def action_dummy_task(context, event):
+def action_dag_dummy_task(context, event):
+    uuid = uuid4()
     termination_cloudevent = {'specversion': '1.0',
-                              'id': uuid.uuid4().hex,
-                              'source': '/'.join(['local', context.workspace, context.trigger_id]),
-                              'type': 'termination.event.success',
+                              'id': uuid.hex,
+                              'source': f'urn:{node()}:{str(uuid)}',
+                              'type': 'event.triggerflow.termination.success',
                               'time': str(datetime.utcnow().isoformat()),
-                              'subject': context['subject']}
+                              'subject': context['subject'],
+                              'datacontenttype': 'application/json'}
 
     context.local_event_queue.put(termination_cloudevent)
 
     subject = context['subject']
     if subject in context.trigger_mapping:
-        downstream_triggers = context.trigger_mapping[subject]['termination.event.success']
+        downstream_triggers = context.trigger_mapping[subject]['event.triggerflow.termination.success']
         for downstream_trigger in downstream_triggers:
             if context.triggers[downstream_trigger].context['dependencies'][subject]['join'] > 0:
                 context.triggers[downstream_trigger].context['dependencies'][subject]['join'] += 1
@@ -335,7 +338,7 @@ def action_aws_lambda_invoke(context, event):
     activations_not_done = [call_id for call_id in range(total_activations) if call_id not in activations_done]
 
     if subject in context.trigger_mapping:
-        downstream_triggers = context.trigger_mapping[subject]['termination.event.success']
+        downstream_triggers = context.trigger_mapping[subject]['event.triggerflow.termination.success']
         for downstream_trigger in downstream_triggers:
             downstream_trigger_ctx = context.triggers[downstream_trigger].context
             if 'total_activations' in downstream_trigger_ctx:
