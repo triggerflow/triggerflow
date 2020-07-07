@@ -14,8 +14,8 @@
 - Workflow as code **TODO**
 
 ### Triggerflow experiments
-- Ingestion test
-- Autoscaling test
-- DAGs overhead test
-- Event sourcing overhead test
-- Fault tolerance scientific workflow
+- [Ingestion test](EXPERIMENTS.md#ingestion-test)
+- [Autoscaling test](EXPERIMENTS.md#autoscaling-test)
+- [DAGs overhead test](EXPERIMENTS.md#dags-overhead-test)
+- [Event sourcing overhead test](EXPERIMENTS.md#event-sourcing-overhead-test)
+- [Fault tolerance scientific workflow](EXPERIMENTS.md#fault-tolerance-scientific-workflow)
