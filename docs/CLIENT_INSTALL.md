@@ -7,7 +7,7 @@ client.
 ```
 $ python3 -m venv venv
 $ source venv/bin/activate
-$ python setup.py install --user    
+$ python setup.py install
 ```
 
 2. Configure the Triggerflow client credentials. Create a file named `triggerflow_config.yaml` located in the home directory,
