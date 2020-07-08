@@ -32,7 +32,6 @@ def gather_blocks(tiles, profile):
 
 def main(args):
     start_time = time.time()
-    print(args)
     parameters = SimpleNamespace(**args['parameters'])
     cos = COSBackend(aws_access_key_id=args['cos']['aws_access_key_id'],
                      aws_secret_access_key=args['cos']['aws_secret_access_key'],
