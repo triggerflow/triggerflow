@@ -11,7 +11,7 @@
 ### Triggerflow workflow interfaces tutorials 
 - [DAGs](/examples/dag-example/count_words.ipynb)
 - [State Machines](STATEMACHINES.md)
-- Workflow as code **TODO**
+- [Workflow as code](WORKFLOWASCODE.md)
 
 ### Triggerflow experiments
 - [Ingestion test](EXPERIMENTS.md#ingestion-test)
