@@ -10,7 +10,7 @@ termination events to the event broker, so it **must be publicly addressable**.
 $ docker run --rm -d --name triggerflow-redis redis:6.0-rc4-alpine --requirepass myredispassword
 ```
 
-2. Create the configuration file for the API. Create a file named `config_map.ymal`, locate it into the `triggerflow-api`
+2. Create the configuration file for the API. Create a file named `config_map.yaml`, locate it into the `triggerflow-api`
 directory and fill in the following configuration parameters:
 
 ```yaml
@@ -27,7 +27,7 @@ trigger_storage:
     db: 0
 ``` 
 
-3. Create a client user and password. Execute the script `add_user.yaml` located in the `triggerflow-api` directory:
+3. Create a client user and password. Execute the script `add_user.py` located in the `triggerflow-api` directory:
 ```
 $ cd triggerflow-api
 $ python add_user.py config_file.yaml admin admin

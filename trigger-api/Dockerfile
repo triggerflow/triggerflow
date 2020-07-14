@@ -7,6 +7,6 @@ ENV PORT 8080
 ENV APP_HOME /api
 
 WORKDIR $APP_HOME
-COPY ./api ./
+COPY ["./api", "setup.py", "./"]
 
-CMD python3 api.py
+CMD python3 setup.py && python3 api.py

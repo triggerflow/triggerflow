@@ -1,5 +1,4 @@
 flask
-psutil
 gevent
 cloudant
 confluent_kafka
@@ -11,3 +10,7 @@ docker
 boto3
 jsonpath_ng
 redis
+requests
+click
+graphviz
+arnparse

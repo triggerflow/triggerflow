@@ -1,6 +1,5 @@
 gunicorn
 flask
-psutil
 gevent
 cloudant
 confluent_kafka
