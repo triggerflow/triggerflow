@@ -69,7 +69,7 @@ tf_client.add_trigger(trigger_id='MyTrigger',
                       action=PythonCallable(my_action),
                       context={'message': 'Hello ', 'join': 10})
 
-# Publish 10 the activation events, the action will only be executed on the 10th event
+# Publish 10 activation events, the action will only be executed on the 10th event
 for _ in range(10):
     rabbitmq_source.publish_cloudevent(activation_event)
 
