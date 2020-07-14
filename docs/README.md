@@ -4,7 +4,8 @@
 - [Triggerflow Client Installation](CLIENT_INSTALL.md)
 
 ### Triggerflow Backend Setup
-- [Standalone (VM) Installation](LOCAL_INSTALL.md)
+- [Standalone (Docker Compose) Installation](STANDALONE_INSTALL.md)
+- [Local Installation](LOCAL_INSTALL.md)
 - Knative installation **TODO**
 - KEDA installation **TODO**
 
