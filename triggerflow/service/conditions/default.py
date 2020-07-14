@@ -1,7 +1,6 @@
 import dill
 import docker
 import requests
-import json
 from base64 import b64decode
 
 docker_containers = {}
@@ -27,6 +26,15 @@ def condition_function_join(context, event):
         context['counter'] += 1
 
     return context['counter'] == context['total_activations']
+
+
+def condition_join(context, event):
+    if 'counter' not in context:
+        context['counter'] = 1
+    else:
+        context['counter'] += 1
+
+    return context['counter'] >= context['join']
 
 
 def condition_counter_threshold(context, event):

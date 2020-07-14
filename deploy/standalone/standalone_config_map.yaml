@@ -1,0 +1,9 @@
+triggerflow_controller:
+  endpoint: controller:5000
+  token: token
+
+trigger_storage:
+  backend: redis
+  parameters:
+    host: redis
+    password: 123456
