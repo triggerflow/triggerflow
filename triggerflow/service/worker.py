@@ -43,7 +43,7 @@ class Worker(Process):
         self.dead_letter_queue = Queue()
         self.deleted_triggers = {}
 
-        self.current_state = Worker.State.INITIALIZED
+        self.state = Worker.State.INITIALIZED
 
     def __start_db(self):
         logging.info('[{}] Creating database connection'.format(self.workspace))
@@ -137,8 +137,10 @@ class Worker(Process):
             logging.info('[{}] Starting committer thread'.format(self.workspace))
 
             while self.__should_run():
-                ids = {}
                 events_subject = commit_queue.get()
+
+                if events_to_commit is None:
+                    break
 
                 events_to_commit = self.events[events_subject]
 
@@ -160,7 +162,7 @@ class Worker(Process):
         self.__commiter.start()
 
     def __should_run(self):
-        return self.current_state == Worker.State.RUNNING
+        return self.state == Worker.State.RUNNING
 
     def run(self):
         logging.info('[{}] Starting worker {}'.format(self.workspace, self.worker_id))
@@ -172,7 +174,7 @@ class Worker(Process):
         self.__get_triggers()
 
         logging.info('[{}] Worker {} Started'.format(self.workspace, self.worker_id))
-        self.current_state = Worker.State.RUNNING
+        self.state = Worker.State.RUNNING
 
         self.__start_commiter()
 
@@ -219,8 +221,9 @@ class Worker(Process):
 
     def stop_worker(self):
         logging.info("[{}] Stopping Worker {}".format(self.workspace, self.worker_id))
-        self.current_state = Worker.State.FINISHED
-        self.checkpoint_queue.put((None, None))
+        self.state = Worker.State.FINISHED
+        self.checkpoint_queue.put("")  # Checkpoint missing triggers
+        self.checkpoint_queue.put(None)  # Stop committer
         self.__commiter.join()
         self.__stop_event_sources()
         try:

@@ -1,15 +1,20 @@
 import redis
 import time
 import json
+import logging
 
 from triggerflow.service.triggerstorage.model import TriggerStorage
 
 
 class RedisTriggerStorage(TriggerStorage):
-    def __init__(self, host: str, port: int, password: str = None, db: int = 0):
+    def __init__(self, host: str, port: int = 6379, password: str = None, db: int = 0):
         super().__init__()
         self.client = redis.StrictRedis(host=host, port=port, password=password, db=db,
                                         charset="utf-8", decode_responses=True)
+        if not self.client.ping():
+            raise Exception('Could not establish a connection to Redis node')
+
+        logging.debug('Redis connection established')
 
     def get_conn(self):
         return self.client
