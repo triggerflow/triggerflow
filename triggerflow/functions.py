@@ -11,6 +11,7 @@ class ConditionActionModel:
 class DefaultConditions(ConditionActionModel, Enum):
     TRUE = {'name': 'TRUE'}
     SIMPLE_JOIN = {'name': 'SIMPLE_JOIN'}
+    FUNCTION_JOIN = {'name': 'FUNCTION_JOIN'}
     DAG_TASK_JOIN = {'name': 'DAG_TASK_JOIN'}
     COUNTER_THRESHOLD = {'name': 'COUNTER_THRESHOLD'}
 

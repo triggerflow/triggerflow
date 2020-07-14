@@ -139,7 +139,7 @@ class Worker(Process):
             while self.__should_run():
                 events_subject = commit_queue.get()
 
-                if events_to_commit is None:
+                if events_subject is None:
                     break
 
                 events_to_commit = self.events[events_subject]
