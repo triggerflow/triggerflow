@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='triggerflow',
-    version='0.1.1',
+    version='0.2.0',
     url='https://github.com/triggerflow',
     author='Triggerflow Team',
     description='Event-based Orchestration of Serverless Workflows',
@@ -12,7 +12,7 @@ setup(
         'psutil', 'gevent', 'pika==0.13.1', 'flask',
         'PyYAML', 'confluent-kafka', 'dill', 'jsonpath_ng',
         'requests', 'python-dateutil', 'docker', 'redis', 'boto3',
-        'click', 'graphviz', 'arnparse'
+        'click', 'graphviz', 'arnparse', 'dataclasses'
     ],    
     include_package_data=True,
     entry_points='''
