@@ -40,7 +40,11 @@ def deploy_state_machine(statemachine_json: dict):
     event_source = SQSEventSource(name=run_id + '_' + 'SQSEventSource',
                                   access_key_id=credentials['access_key_id'],
                                   secret_access_key=credentials['secret_access_key'],
+                                  region=credentials['region'],
                                   queue=run_id)
+
+    # Create the SQS queue where the termination events will be sent
+    queue_arn = create_sqs_queue(run_id, credentials)
 
     triggerflow_client = TriggerflowCachedClient()
     triggerflow_client.create_workspace(workspace_name=run_id,
@@ -48,13 +52,10 @@ def deploy_state_machine(statemachine_json: dict):
                                         global_context={'aws_credentials': credentials})
 
     state_machine_count = 0
-
-    # Create the SQS queue where the termination events will be sent
-    queue_arn = create_sqs_queue(run_id, credentials)
-
     lambda_client = boto3.client('lambda',
                                  aws_access_key_id=credentials['access_key_id'],
-                                 aws_secret_access_key=credentials['secret_access_key'])
+                                 aws_secret_access_key=credentials['secret_access_key'],
+                                 region_name=credentials['region'])
 
     ###################################
     def state_machine(states, trigger_event):
@@ -181,6 +182,7 @@ def trigger_statemachine(run_id: str):
 
     event_source = SQSEventSource(access_key_id=credentials['access_key_id'],
                                   secret_access_key=credentials['secret_access_key'],
+                                  region=credentials['region'],
                                   queue=run_id)
     uuid = uuid4()
     init_cloudevent = (CloudEvent()
@@ -194,7 +196,8 @@ def trigger_statemachine(run_id: str):
 def create_sqs_queue(queue_name, credentials):
     sqs_client = boto3.client('sqs',
                               aws_access_key_id=credentials['access_key_id'],
-                              aws_secret_access_key=credentials['secret_access_key'])
+                              aws_secret_access_key=credentials['secret_access_key'],
+                              region_name=credentials['region'])
 
     response = sqs_client.create_queue(QueueName=queue_name)
 

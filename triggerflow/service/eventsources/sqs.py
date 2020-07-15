@@ -18,11 +18,13 @@ class SQSEventSource(EventSourceHook):
                  queue: str,
                  access_key_id: str,
                  secret_access_key: str,
+                 region: str,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.__access_key_id = access_key_id
         self.__secret_access_key = secret_access_key
+        self.__region = region
 
         self.event_queue = event_queue
         self.queue = queue
@@ -49,10 +51,12 @@ class SQSEventSource(EventSourceHook):
 
         self.sqs = boto3.resource('sqs',
                                   aws_access_key_id=self.__access_key_id,
-                                  aws_secret_access_key=self.__secret_access_key)
+                                  aws_secret_access_key=self.__secret_access_key,
+                                  region_name=self.__region)
         self.client = boto3.client('sqs',
                                    aws_access_key_id=self.__access_key_id,
-                                   aws_secret_access_key=self.__secret_access_key)
+                                   aws_secret_access_key=self.__secret_access_key,
+                                   region_name=self.__region)
 
         response = self.client.get_queue_url(QueueName=self.queue)
         queue_url = response['QueueUrl']
@@ -62,7 +66,6 @@ class SQSEventSource(EventSourceHook):
             messages = sqs_queue.receive_messages(WaitTimeSeconds=10)
             for message in messages:
                 event = json.loads(message.body)
-                print(event)
                 if {'specversion', 'id', 'source', 'type'}.issubset(set(event)):
                     logging.info('[{}] Received CloudEvent'.format(self.name))
 

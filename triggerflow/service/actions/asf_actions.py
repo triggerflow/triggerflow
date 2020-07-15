@@ -52,7 +52,8 @@ def action_aws_asf_task(context, event):
 
     lambda_client = boto3.client('lambda',
                                  aws_access_key_id=context.global_context['aws_credentials']['access_key_id'],
-                                 aws_secret_access_key=context.global_context['aws_credentials']['secret_access_key'])
+                                 aws_secret_access_key=context.global_context['aws_credentials']['secret_access_key'],
+                                 region_name=context.global_context['aws_credentials']['region'])
 
     invoke_args = {}
     if 'Parameters' in context['State']:

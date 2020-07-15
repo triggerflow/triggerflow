@@ -23,26 +23,25 @@ and accepted at the [ACM Distributed and Event Based Systems 2020 conference](ht
 
 ## Documentation
 
+### Installation and deployment
 - [Triggerflow Client Installation](docs/CLIENT_INSTALL.md)
 
-- [Standalone Deployment for testing guide](docs/STANDALONE_SETUP.md)
+- [Standalone Deployment for testing guide](docs/STANDALONE_INSTALL.md)
 
 - [Knative on Kubernetes Deployment guide](docs/KNATIVE_SETUP.md)
 
 - [KEDA on Kubernetes Deployment guide](docs/KEDA_SETUP.md)
 
-- [Standalone Deployment for testing guide](docs/STANDALONE_SETUP.md)
-
-- [Triggerflow Experiments instructions for replication](docs/EXPERIMENTS.md)
-
+### Examples
 - [DAG Interface example](examples/dag-example/count_words.ipynb)
 
 - [ASL State Machines example](docs/STATEMACHINES.md)
 
-- Workflow As Code example **TODO**
+- [Workflow As Code example](docs/WORKFLOWASCODE.md)
 
+- [Triggerflow Experiments instructions for replication](docs/EXPERIMENTS.md)
 
-## Triggerflow Example
+## Triggerflow Client Example
 ```python
 from triggerflow import Triggerflow, CloudEvent, DefaultConditions
 from triggerflow.functions import PythonCallable

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import os
 import yaml
 import logging
@@ -23,18 +25,15 @@ trigger_storage = None
 
 @api.before_request
 def authenticate_request():
-
     if request.authorization.type != 'basic' \
             or request.authorization.username is None \
             or request.authorization.password is None:
-        logging.warn('Unauthorized request attempt from {}'.format(request.remote_addr))
+        logging.warning('Unauthorized request attempt from {}'.format(request.remote_addr))
         return jsonify({'error': 'Unauthorized'}), 401
-
-    x = request
 
     password = trigger_storage.get_auth(username=request.authorization.username)
     if not password or password != request.authorization.password:
-        logging.warn('Unauthorized request attempt from {}'.format(request.remote_addr))
+        logging.warning('Unauthorized request attempt from {}'.format(request.remote_addr))
         return jsonify({'error': 'Unauthorized'}), 401
 
     logging.debug('Authorization for {} succeeded'.format(request.remote_addr))
@@ -250,6 +249,14 @@ def main():
     backend = config_map['trigger_storage']['backend']
     trigger_storage_class = getattr(triggerstorage, backend.capitalize() + 'TriggerStorage')
     trigger_storage = trigger_storage_class(**config_map['trigger_storage']['parameters'])
+
+    # Create admin user (for testing purposes only)
+    if os.environ.get('CREATE_ADMIN_USER', ''):
+        logging.info('Creating admin user')
+        password_hash = hmac.new(bytes('admin', 'utf-8'), bytes('admin', 'utf-8'), hashlib.sha3_256)
+        digest = str(password_hash.hexdigest())
+        logging.debug('admin:{}'.format(digest))
+        trigger_storage.set_auth('admin', digest)
 
     # Check config parameters
     if 'triggerflow_controller' not in config_map \
