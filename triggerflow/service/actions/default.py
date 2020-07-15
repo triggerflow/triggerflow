@@ -26,7 +26,7 @@ def action_pass(context, event):
 
 
 def action_terminate(context, event):
-    logging.info('Terminate action call ({})'.format(time.time()))
+    logging.info('######### Terminate action call ({}) #########'.format(time.time()))
 
 
 def action_dag_dummy_task(context, event):
