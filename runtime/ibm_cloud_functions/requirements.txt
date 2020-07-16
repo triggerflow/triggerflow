@@ -18,6 +18,7 @@ simplejson == 3.17.0
 virtualenv == 20.0.25
 twisted >= 20.3.0
 dill == 0.3.2
+kafka-python == 2.0.1
 
 # packages for numerics
 numpy == 1.19.0
@@ -29,4 +30,4 @@ pandas == 1.0.5
 Pillow == 7.1.2
 
 # IBM Cloud Specific libraries
-ibm-cos-sdk == 2.5.3
+ibm-cos-sdk == 2.6.2

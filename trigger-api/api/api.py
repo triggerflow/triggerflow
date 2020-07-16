@@ -94,8 +94,8 @@ def delete_workspace(workspace):
     res, code = workspaces.delete_workspace(trigger_storage, workspace)
 
     auth = HTTPBasicAuth(username='token', password=config_map['triggerflow_controller']['token'])
-    controller_res = req.post('/'.join([config_map['triggerflow_controller']['endpoint'],
-                                        'workspace', workspace]), auth=auth, json={})
+    controller_res = req.delete('/'.join([config_map['triggerflow_controller']['endpoint'],
+                                'workspace', workspace]), auth=auth, json={})
     if controller_res.ok:
         return jsonify(res), 200
     else:
