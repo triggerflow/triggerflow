@@ -2,11 +2,10 @@ import logging
 import os
 import signal
 import yaml
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from gevent.pywsgi import WSGIServer
 from triggerflow.service import triggerstorage
 from triggerflow.service.worker import Worker
-import threading
 
 app = Flask(__name__)
 app.debug = False

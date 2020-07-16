@@ -11,6 +11,8 @@ RUN pip install --upgrade eventlet gunicorn pip setuptools kubernetes six \
 ENV PORT 5000
 ENV PYTHONUNBUFFERED TRUE
 
+EXPOSE 5000
+
 WORKDIR /controller
 
 COPY triggerflow ./triggerflow

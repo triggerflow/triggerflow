@@ -238,7 +238,7 @@ def action_ibm_cf_invoke(context, event):
 
     # All activations are unsuccessful
     if not activations_done:
-        raise Exception('All invocations are unsuccessful')
+        raise Exception('All invocations have failed')
     # At least one activation is successful
     else:
         # All activations are successful
