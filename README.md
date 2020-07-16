@@ -26,7 +26,7 @@ and accepted at the [ACM Distributed and Event Based Systems 2020 conference](ht
 ### Installation and deployment
 - [Triggerflow Client Installation](docs/CLIENT_INSTALL.md)
 
-- [Standalone Deployment for testing guide](docs/STANDALONE_INSTALL.md)
+- [Standalone Deployment for testing guide](deploy/standalone/README.md)
 
 - [Knative on Kubernetes Deployment guide](docs/KNATIVE_SETUP.md)
 

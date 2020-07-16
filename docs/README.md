@@ -4,10 +4,10 @@
 - [Triggerflow Client Installation](CLIENT_INSTALL.md)
 
 ### Triggerflow Backend Setup
-- [Standalone (Docker Compose) Installation](STANDALONE_INSTALL.md)
-- [Local Installation](LOCAL_INSTALL.md)
-- Knative installation **TODO**
-- KEDA installation **TODO**
+- [Standalone (Docker Compose) Installation](../deploy/standalone/README.md)
+- [Local Installation](../deploy/vm/README.md)
+- [Knative installation](../deploy/knative/README.md)
+- [KEDA installation](../deploy/keda/README.md)
 
 ### Triggerflow workflow interfaces tutorials 
 - [DAGs](/examples/dag-example/count_words.ipynb)
