@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: triggerflow-keda-controller
-        image: triggerflow/triggerflow-keda-controller
+        image: triggerflow/keda-controller:1.0
         ports:
         - containerPort: 8080
         resources:
@@ -38,6 +38,7 @@ metadata:
   labels:
     run: triggerflow-keda-controller
 spec:
+  type: NodePort
   ports:
   - port: 8080
     protocol: TCP
