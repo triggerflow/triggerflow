@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
         libffi-dev \
         libssl-dev \
         librdkafka-dev \
+        git \
         zip \
         unzip \
         vim \
@@ -22,6 +23,10 @@ RUN apt-cache search linux-headers-generic
 COPY requirements.txt requirements.txt
 
 RUN pip install --upgrade pip setuptools six && pip install --no-cache-dir -r requirements.txt
+
+# Install Triggerflow lib
+RUN git clone https://github.com/triggerflow/triggerflow && \
+    cd triggerflow && python setup.py install
 
 # create action working directory
 RUN mkdir -p /action
