@@ -1,4 +1,6 @@
 import logging
+import traceback
+
 import yaml
 import os
 from flask import Flask, jsonify, request
@@ -13,52 +15,9 @@ logger = logging.getLogger('triggerflow-controller')
 app = Flask(__name__)
 
 config_map = None
-db = None
+trigger_storage = None
 k_v1_api = None
 k_co_api = None
-
-# scaledobject_res = """
-# apiVersion: keda.k8s.io/v1alpha1
-# kind: ScaledObject
-# metadata:
-#   name: triggerflow-keda-worker-so
-# spec:
-#   scaleType: job
-#   jobTargetRef:
-#     parallelism: 1
-#     #completions: 1
-#     #activeDeadlineSeconds: 600
-#     ttlSecondsAfterFinished: 10
-#     backoffLimit: 0
-#     template:
-#       metadata:
-#         labels:
-#           app: triggerflow-keda-worker
-#       spec:
-#         containers:
-#         - name: triggerflow-keda-worker
-#           image: jsampe/triggerflow-keda-worker
-#           env:
-#             - name: WORKSPACE
-#               value: 'workspace_name'
-#           resources:
-#             limits:
-#               memory: 512Mi
-#               cpu: 250m
-#
-#         restartPolicy: Never
-#   pollingInterval: 10  # Optional. Default: 30 seconds
-#   cooldownPeriod:  10 # Optional. Default: 300 seconds
-#   minReplicaCount: 0   # Optional. Default: 0
-#   maxReplicaCount: 1   # Optional. Default: 100
-#   triggers:
-#   - type: kafka
-#     metadata:
-#       bootstrapServers: IP:PORT
-#       consumerGroup: my-group
-#       topic: my-topic
-#       lagThreshold: '5'
-# """
 
 deployment_res = """
 apiVersion: apps/v1
@@ -77,7 +36,7 @@ spec:
     spec:
       containers:
       - name: triggerflow-keda-worker
-        image: triggerflow/keda-worker
+        image: docker.io/triggerflow/keda-worker:0.3
         env:
           - name: WORKSPACE
             value: 'workspace'
@@ -101,12 +60,7 @@ spec:
   minReplicaCount: 0   # Optional. Default: 0
   maxReplicaCount: 1   # Optional. Default: 100
   triggers:
-  - type: kafka
-    metadata:
-      bootstrapServers: IP:PORT
-      consumerGroup: my-group
-      topic: my-topic
-      lagThreshold: '5'
+  - type: TRIGGER_TYPE
 """
 
 
@@ -117,21 +71,27 @@ def create_workspace(workspace):
     that will act as the event-processor for the the specific trigger workspace.
     It returns 400 error if the provided parameters are not correct.
     """
-    if not db.workspace_exists(workspace):
+    global trigger_storage
+    if not trigger_storage.workspace_exists(workspace):
         return jsonify('Workspace {} does not exists in the database'.format(workspace)), 400
 
     logging.debug('New request to create workspace {}'.format(workspace))
 
-    if create_keda_scaledobject(workspace):
+    try:
+        create_keda_scaledobject(workspace)
+        logging.info('Created Workspace {}'.format(workspace))
         return jsonify('Created workspace {}'.format(workspace)), 201
-    else:
-        return jsonify('Workspace {} is already created'.format(workspace)), 400
+    except Exception as e:
+        logging.error('Error creating workspace {}: {}'.format(workspace, str(e)))
+        logging.error(traceback.format_exc())
+        return jsonify('Error creating workspace {}: {}'.format(workspace, str(e))), 400
 
 
 def create_keda_scaledobject(workspace):
     """
     Auxiliary method to start a worker
     """
+    global trigger_storage, config_map
     dpl_res = yaml.safe_load(deployment_res)
 
     service_name = 'triggerflow-keda-worker-{}'.format(workspace)
@@ -142,13 +102,15 @@ def create_keda_scaledobject(workspace):
     dpl_res['spec']['template']['spec']['containers'][0]['name'] = service_name
     dpl_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
-    try:
-        k_v1_api.create_namespaced_deployment(
-            namespace='default',
-            body=dpl_res
-        )
-    except Exception as e:
-        print('Warning: {}'.format(str(e)))
+    if config_map['trigger_storage']['backend'] == 'redis':
+        envs = dpl_res['spec']['template']['spec']['containers'][0]['env']
+        envs.append({'name': 'TRIGGERFLOW_STORAGE_BACKEND', 'value': 'redis'})
+        envs.append({'name': 'REDIS_HOST', 'value': config_map['trigger_storage']['parameters']['host']})
+        envs.append({'name': 'REDIS_PASSWORD', 'value': config_map['trigger_storage']['parameters'].get('password', '').replace('"', '')})
+        envs.append({'name': 'REDIS_PORT', 'value': str(config_map['trigger_storage']['parameters'].get('port', 6379)).replace('"', '')})
+        envs.append({'name': 'REDIS_DB', 'value': str(config_map['trigger_storage']['parameters'].get('db', 0)).replace('"', '')})
+    else:
+        raise Exception('Backend {} not supported'.format(backend))
 
     so_res = yaml.safe_load(scaledobject_res)
     so_res['metadata']['name'] = '{}-so'.format(service_name)
@@ -157,41 +119,45 @@ def create_keda_scaledobject(workspace):
     # so_res['spec']['jobTargetRef']['template']['spec']['containers'][0]['name'] = service_name
     # so_res['spec']['jobTargetRef']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
-    event_sources = db.get(workspace, 'event_sources')
+    event_sources = trigger_storage.get(workspace, 'event_sources')
     for i, es_name in enumerate(event_sources):
         es = event_sources[es_name]
         params = es['parameters']
         if es['class'] == 'KafkaEventSource':
+            so_res['spec']['triggers'][i]['type'] = 'kafka'
+            so_res['spec']['triggers'][i]['metadata'] = {}
             so_res['spec']['triggers'][i]['metadata']['bootstrapServers'] = ','.join(params['broker_list'])
             so_res['spec']['triggers'][i]['metadata']['consumerGroup'] = es['name']
             so_res['spec']['triggers'][i]['metadata']['topic'] = params['topic']
         elif es['class'] == 'RedisEventSource':
-            so_res['spec']['triggers'][i]['metadata']['address'] = ':'.join([params['host'], params['port']])
+            so_res['spec']['triggers'][i]['type'] = 'redis-streams'
+            so_res['spec']['triggers'][i]['metadata'] = {}
+            so_res['spec']['triggers'][i]['metadata']['address'] = ':'.join([params['host'], str(params['port'])])
             so_res['spec']['triggers'][i]['metadata']['password'] = params['password']
             so_res['spec']['triggers'][i]['metadata']['stream'] = params['stream']
             so_res['spec']['triggers'][i]['metadata']['consumerGroup'] = es['name']
-            so_res['spec']['triggers'][i]['metadata']['pendingEntriesCount'] = 10
+            so_res['spec']['triggers'][i]['metadata']['pendingEntriesCount'] = "10"
+        else:
+            raise Exception('Event Source {} is not currently supported'.format(es['class']))
 
+    k_v1_api.create_namespaced_deployment(
+        namespace='default',
+        body=dpl_res
+    )
 
-    try:
-        k_co_api.create_namespaced_custom_object(
-            group="keda.k8s.io",
-            version="v1alpha1",
-            namespace='default',
-            plural="scaledobjects",
-            body=so_res
-        )
-    except Exception as e:
-        print('Warning: {}'.format(str(e)))
-        return False
-
-    print('Created workspace {}'.format(workspace))
-    return True
+    k_co_api.create_namespaced_custom_object(
+        group="keda.k8s.io",
+        version="v1alpha1",
+        namespace='default',
+        plural="scaledobjects",
+        body=so_res
+    )
 
 
 @app.route('/workspace/<workspace>', methods=['DELETE'])
 def delete_workspace(workspace):
-    print('Stopping workspace: {}'.format(workspace))
+    global trigger_storage
+    logging.info('Stopping workspace: {}'.format(workspace))
 
     try:
         service_name = 'triggerflow-keda-worker-{}'.format(workspace)
@@ -200,11 +166,11 @@ def delete_workspace(workspace):
             namespace='default',
             body=client.V1DeleteOptions()
         )
-        print('Workspace {} stopped'.format(workspace))
+        logging.info('Workspace {} stopped'.format(workspace))
         worker_deleted = True
     except Exception:
         # Most probable exception is the service does not exists
-        print('Workspace {} is not active'.format(workspace))
+        logging.info('Workspace {} is not active'.format(workspace))
         worker_deleted = False
 
     try:
@@ -217,11 +183,11 @@ def delete_workspace(workspace):
             plural="scaledobjects",
             body=client.V1DeleteOptions()
         )
-        print('Workspace {} stopped'.format(workspace))
+        logging.info('Workspace {} stopped'.format(workspace))
         worker_deleted = True
     except Exception:
         # Most probable exception is the service does not exists
-        print('Workspace {} is not active'.format(workspace))
+        logging.info('Workspace {} is not active'.format(workspace))
         worker_deleted = False
 
     if worker_deleted:
@@ -272,4 +238,12 @@ if __name__ == '__main__':
     # Create workspaces
     active_workspaces = trigger_storage.list_workspaces()
     for active_workspace in active_workspaces:
-        create_keda_scaledobject(active_workspace)
+        try:
+            create_keda_scaledobject(active_workspace)
+        except Exception as e:
+            logging.error('Error creating workspace {}: {}'.format(active_workspace, str(e)))
+            logging.error(traceback.format_exc())
+
+    port = int(os.getenv('PORT', 8080))
+    logging.info('Triggerflow API started on port {}'.format(port))
+    app.run(host='0.0.0.0', port=port, debug=True)
