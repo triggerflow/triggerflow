@@ -1,7 +1,8 @@
-FROM python:3.6
+FROM python:3.8.2-slim
 
-RUN apt-get update && apt-get upgrade -y \
-        && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/requirements.txt requirements.txt
 
@@ -11,12 +12,12 @@ RUN pip install --upgrade eventlet gunicorn pip setuptools kubernetes six \
 ENV PORT 8080
 ENV PYTHONUNBUFFERED TRUE
 
-ENV APP_HOME /triggerflow
-WORKDIR $APP_HOME
+EXPOSE 8080
 
-ADD deploy/keda/controllerproxy.py .
-ADD triggerflow/service/databases/redis_db.py .
-ADD triggerflow/service/databases/cloudant_db.py .
-ADD config.yaml .
+WORKDIR /controller
 
-CMD exec gunicorn --workers 1 --worker-class eventlet --bind :$PORT controllerproxy:app 
+COPY triggerflow ./triggerflow
+ADD deploy/keda/controller.py .
+ADD deploy/keda/setup.py .
+
+CMD python setup.py && python controller.py

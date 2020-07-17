@@ -8,7 +8,7 @@ from triggerflow.eventsources.model import EventSource
 class RedisEventSource(EventSource):
     def __init__(self,
                  host: str,
-                 port: int,
+                 port: Optional[int] = 6379,
                  db: Optional[int] = 0,
                  password: Optional[str] = None,
                  stream: Optional[str] = None,

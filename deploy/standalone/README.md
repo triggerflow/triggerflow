@@ -34,7 +34,7 @@ respective local container. Use the machine's IP instead when creating event sou
 $ docker-compose -f deploy/standalone/docker-compose.yml up
 ```
 
-4. Test that everything works: Run the [hello world example](../examples/hello_world.py) to test the deployment.
+4. Test that everything works: Run the [hello world example](../../examples/hello_world.py) to test the deployment.
 Make sure to change the Triggerflow API endpoint and RabbitMQ source host IP on the script file (It should be the same
 when using this deployment).
 

@@ -18,7 +18,7 @@ termination events to the event broker, so it **must be publicly addressable**.
     python3 setup.py develop
     ```
 
-## COnfiguration
+## Configuration
 
 1. Create the configuration file for the API. Create a file named `config_map.ymal`, locate it into the `trigger-api\` and `deploy\vm\`
 directories, and fill in the following configuration parameters:
