@@ -26,6 +26,7 @@ def action_pass(context, event):
 
 
 def action_terminate(context, event):
+    # TODO kill worker when this action is executed
     logging.info('######### Terminate action call ({}) #########'.format(time.time()))
 
 
@@ -100,7 +101,7 @@ def action_throttle_ibmcf_function(context, event):
     if not ibmcf_session:
         create_ibmcf_session()
 
-    cf_auth = context['global_context']['ibm_cf']['api_key'].split(':')
+    cf_auth = context.global_context['ibm_cf']['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
     payload = {'__OW_TRIGGERFLOW': {'THROTTLE': True}}
@@ -122,32 +123,34 @@ def action_ibm_cf_invoke(context, event):
     if not ibmcf_session:
         create_ibmcf_session()
 
-    cf_auth = context['operator']['api_key'].split(':')
+    operator = context['operator'] if 'operator' in context else context
+
+    cf_auth = operator['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
-    url = context['operator']['url']
+    url = operator['url']
     subject = context['subject'] if 'subject' in context else None
 
     triggerflow_meta = {'subject': subject,
-                        'sink': context['operator']['sink']}
+                        'sink': operator['sink']}
 
     invoke_payloads = []
-    if context['operator']['iter_data']:
-        keys = list(context['operator']['iter_data'].keys())
+    if operator['iter_data']:
+        keys = list(operator['iter_data'].keys())
         iterdata_keyword = keys.pop()
-        for iterdata_value in context['operator']['iter_data'][iterdata_keyword]:
-            payload = context['operator']['invoke_kwargs'].copy()
+        for iterdata_value in operator['iter_data'][iterdata_keyword]:
+            payload = operator['invoke_kwargs'].copy()
             payload[iterdata_keyword] = iterdata_value
             payload['__OW_TRIGGERFLOW'] = triggerflow_meta
             invoke_payloads.append(payload)
     else:
-        for key, arg in context['operator']['invoke_kwargs'].items():
+        for key, arg in operator['invoke_kwargs'].items():
             if isinstance(arg, str) and arg.startswith('$'):
                 jsonpath_expr = jsonpath_ng.parse(arg)
                 result_args = [match.value for match in jsonpath_expr.find(context['result'])]
-                context['operator']['invoke_kwargs'][key] = result_args
+                operator['invoke_kwargs'][key] = result_args
 
-        payload = context['operator']['invoke_kwargs']
+        payload = operator['invoke_kwargs']
         payload['__OW_TRIGGERFLOW'] = triggerflow_meta
         invoke_payloads.append(payload)
 
@@ -238,7 +241,7 @@ def action_ibm_cf_invoke(context, event):
 
     # All activations are unsuccessful
     if not activations_done:
-        raise Exception('All invocations are unsuccessful')
+        raise Exception('All invocations have failed')
     # At least one activation is successful
     else:
         # All activations are successful
@@ -255,23 +258,25 @@ def action_aws_lambda_invoke(context, event):
     class InvokeException(Exception):
         pass
 
+    operator = context['operator'] if 'operator' in context else context
+
     subject = context['subject'] if 'subject' in context else None
-    function_name = context['operator']['function_name']
+    function_name = operator['function_name']
 
     triggerflow_meta = {'subject': subject,
-                        'sink': context['operator']['sink']}
+                        'sink': operator['sink']}
 
     invoke_payloads = []
-    if context['operator']['iter_data']:
-        keys = list(context['operator']['iterdata'].keys())
+    if operator['iter_data']:
+        keys = list(operator['iterdata'].keys())
         iterdata_keyword = keys.pop()
-        for iterdata_value in context['operator']['iterdata'][iterdata_keyword]:
-            payload = context['operator']['invoke_kwargs'].copy()
+        for iterdata_value in operator['iterdata'][iterdata_keyword]:
+            payload = operator['invoke_kwargs'].copy()
             payload[iterdata_keyword] = iterdata_value
             payload['__OW_TRIGGERFLOW'] = triggerflow_meta
             invoke_payloads.append(payload)
     else:
-        payload = context['operator']['invoke_kwargs'].copy()
+        payload = operator['invoke_kwargs'].copy()
         payload['__OW_TRIGGERFLOW'] = triggerflow_meta
         invoke_payloads.append(payload)
 

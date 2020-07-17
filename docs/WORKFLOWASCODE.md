@@ -35,4 +35,4 @@ Triggerflow for IBM-Pywren works as follows:
 
 2. When the first `my_function()` finishes its execution, it generates an event to Triggerflow. Then, thanks to the previous added trigger, the orchestrator function is awaken. In this 2nd execution, the orchestrator function will re-execute all the code. However, using an event source techinhe, it will see that the first `pw.call_async(my_function)` is done, so it will omit it and proceed to execute the 2nd `pw.call_async(my_function)`. It will again create a trigger in Triggerflow in order to awake itself when the invocation of `my_function` finishes its execution, eventually shuting down its execution.  
 
-3. For each function invocation the same procees is repeated until the orchestrator function finishes its execution.
+3. For each function invocation the same process is repeated until the orchestrator function finishes its execution.
