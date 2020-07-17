@@ -24,7 +24,8 @@ setup(
         'click',
         'graphviz',
         'arnparse',
-        'dataclasses'
+        'dataclasses',
+        'kubernetes'
     ],
     include_package_data=True,
     entry_points='''

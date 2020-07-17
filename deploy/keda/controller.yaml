@@ -14,13 +14,22 @@ spec:
     spec:
       containers:
       - name: triggerflow-keda-controller
-        image: jsampe/triggerflow-keda-controller
+        image: triggerflow/triggerflow-keda-controller
         ports:
         - containerPort: 8080
         resources:
             limits:
               memory: 512Mi
               cpu: 1000m
+        env:
+          - name: TRIGGERFLOW_STORAGE_BACKEND
+            value: redis
+          - name: REDIS_HOST
+            value: {REDIS_HOST}
+          - name: REDIS_PASSWORD
+            value: {REDIS_PASSWORD}
+          - name: CREATE_ADMIN_USER
+            value: yes
 ---
 apiVersion: v1
 kind: Service
