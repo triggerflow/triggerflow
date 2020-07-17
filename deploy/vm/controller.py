@@ -29,8 +29,9 @@ def authenticate_request(db, auth):
 
 @app.before_request
 def before_request_func():
-    if not authenticate_request(trigger_storage, request.auth):
-        return jsonify('Unauthorized'), 401
+    pass
+    #if not authenticate_request(trigger_storage, request.auth):
+    #    return jsonify('Unauthorized'), 401
 
 
 @app.route('/workspace/<workspace>', methods=['POST'])
@@ -145,7 +146,7 @@ def main():
 
     workspaces = trigger_storage.list_workspaces()
     for wsp in workspaces:
-        start_worker_monitor(wsp)
+        start_worker(wsp)
 
     try:
         server.serve_forever()

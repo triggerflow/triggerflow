@@ -224,7 +224,11 @@ class Worker(Process):
         self.state = Worker.State.FINISHED
         self.checkpoint_queue.put("")  # Checkpoint missing triggers
         self.checkpoint_queue.put(None)  # Stop committer
-        self.__commiter.join()
+        try:
+            self.__commiter.join()
+        except:
+            # fails with: AttributeError: 'Worker' object has no attribute '_Worker__commiter'
+            pass
         self.__stop_event_sources()
         try:
             self.terminate()
