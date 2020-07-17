@@ -28,9 +28,9 @@ and accepted at the [ACM Distributed and Event Based Systems 2020 conference](ht
 
 - [Standalone Deployment for testing guide](deploy/standalone/README.md)
 
-- [Knative on Kubernetes Deployment guide](docs/KNATIVE_SETUP.md)
+- [Knative on Kubernetes Deployment guide](deploy/knative/README.md)
 
-- [KEDA on Kubernetes Deployment guide](docs/KEDA_SETUP.md)
+- [KEDA on Kubernetes Deployment guide](deploy/keda/README.md)
 
 ### Examples
 - [DAG Interface example](examples/dag-example/count_words.ipynb)
