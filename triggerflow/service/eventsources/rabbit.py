@@ -32,6 +32,7 @@ class RabbitMQEventSource(EventSourceHook):
                     break
                 for id in ids:
                     delivery_tag = self.records[id]
+                    logging.debug('ACK of message with delivery tag {}'.format(delivery_tag))
                     self.channel.basic_ack(delivery_tag=delivery_tag)
 
         self.__commiter = Thread(target=commiter, args=(self.commit_queue,))
@@ -42,6 +43,8 @@ class RabbitMQEventSource(EventSourceHook):
         connection = pika.BlockingConnection(self.params)
         self.channel = connection.channel()
         self.channel.queue_declare(queue=self.queue)
+
+        self.__start_commiter()
 
         while True:
             method_frame, header_frame, body = self.channel.basic_get(queue=self.queue)
