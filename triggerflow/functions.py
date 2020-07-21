@@ -1,5 +1,5 @@
-import dill
 import inspect
+import cloudpickle
 from base64 import b64encode
 from enum import Enum
 
@@ -43,8 +43,14 @@ class PythonCallable(ConditionActionModel):
         except AssertionError:
             raise Exception('Function must be a callable and fulfil signature (context, event)')
 
-        pickled_callable = dill.dumps(function)
+        pickled_callable = cloudpickle.dumps(function)
         encoded_callable = b64encode(pickled_callable).decode('utf-8')
 
         self.value = {'name': 'PYTHON_CALLABLE',
                       'callable': encoded_callable}
+
+
+def python_object(obj: object):
+    dump = cloudpickle.dumps(obj)
+    encoded = b64encode(dump).decode('utf-8')
+    return {'__object__': encoded}
