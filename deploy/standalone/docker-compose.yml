@@ -13,7 +13,9 @@ services:
     depends_on:
       - "redis"
   controller:
-    image: "triggerflow/process-controller:0.1"
+    build:
+      context: ../../
+      dockerfile: deploy/standalone/Dockerfile
     depends_on:
       - "redis"
   redis:

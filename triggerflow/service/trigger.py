@@ -3,6 +3,8 @@ from typing import List, Dict
 from multiprocessing import Queue
 from datetime import datetime
 
+from ..functions import python_object
+
 
 @dataclass
 class Context(dict):
@@ -18,9 +20,18 @@ class Context(dict):
     action: callable
     modified: bool = False
 
+    _python_objects = []
+
     def __setitem__(self, key, value):
         self.modified = True
         super().__setitem__(key, value)
+
+    def to_dict(self):
+        json = self.copy()
+        for key in self._python_objects:
+            json[key] = python_object(self[key])
+        return json
+
 
 
 @dataclass
@@ -43,7 +54,7 @@ class Trigger:
             'id': self.trigger_id,
             'condition': self.condition_meta,
             'action': self.action_meta,
-            'context': self.context.copy(),
+            'context': self.context.to_dict(),
             'context_parser': self.context_parser,
             'activation_events': self.activation_events,
             'transient': self.transient,

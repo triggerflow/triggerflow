@@ -1,18 +1,19 @@
 import logging
+import pickle
 import time
-import dill
 import boto3
 import urllib3
 import docker
 import jsonpath_ng
+import requests
 from uuid import uuid4
 from platform import node
 from datetime import datetime
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 from urllib3.exceptions import InsecureRequestWarning
-import requests
 from requests.auth import HTTPBasicAuth
+
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -57,7 +58,7 @@ def action_python_callable(context, event):
 
     if context.trigger_id not in python_action_callables:
         decoded_callable = b64decode(context.triggers[context.trigger_id].action_meta['callable'].encode('utf-8'))
-        f = dill.loads(decoded_callable)
+        f = pickle.loads(decoded_callable)
         python_action_callables[context.trigger_id] = f
 
     f = python_action_callables[context.trigger_id]

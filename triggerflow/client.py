@@ -1,6 +1,10 @@
 import hashlib
 import hmac
+import pickle
 import re
+from base64 import b64decode
+
+import cloudpickle
 import requests
 import logging
 import json
@@ -277,7 +281,19 @@ class TriggerflowClient:
         if res.ok:
             log.info('Ok -- Trigger {} retrieved from {} trigger storage'.format(trigger_id, self._workspace))
             res_json = res.json()
-            return res_json[trigger_id]
+
+            trigger = res_json[trigger_id]
+
+            for key, value in trigger['context'].items():
+                if isinstance(value, dict) and '__object__' in value:
+                    obj = value['__object__']
+                    decoded_obj = b64decode(obj.encode('utf-8'))
+                    python_obj = pickle.loads(decoded_obj)
+                    trigger['context'][key] = python_obj
+                else:
+                    trigger['context'][key] = value
+
+            return trigger
         else:
             raise Exception(res.text)
 

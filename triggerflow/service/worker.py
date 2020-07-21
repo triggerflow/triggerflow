@@ -1,5 +1,7 @@
 import logging
+import pickle
 import traceback
+from base64 import b64decode
 from uuid import uuid4
 from enum import Enum
 from datetime import datetime
@@ -107,7 +109,15 @@ class Worker(Process):
                                                   condition=condition_callable,
                                                   action=action_callable)
 
-                    new_trigger_context.update(new_trigger_json['context'])
+                    for key, value in new_trigger_json['context'].items():
+                        if isinstance(value, dict) and '__object__' in value:
+                            obj = value['__object__']
+                            decoded_obj = b64decode(obj.encode('utf-8'))
+                            python_obj = pickle.loads(decoded_obj)
+                            new_trigger_context[key] = python_obj
+                            new_trigger_context._python_objects.append(key)
+                        else:
+                            new_trigger_context[key] = value
 
                     new_trigger = Trigger(condition=condition_callable,
                                           action=action_callable,

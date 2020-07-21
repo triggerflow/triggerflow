@@ -14,3 +14,4 @@ requests
 click
 graphviz
 arnparse
+cloudpickle
