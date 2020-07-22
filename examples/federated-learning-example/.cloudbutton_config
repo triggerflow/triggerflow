@@ -1,0 +1,7 @@
+cloudbutton:
+  storage_bucket: triggerflow-example
+  storage_backend: redis
+
+redis:
+  host: <ADDRESS>
+  port: <PORT>
