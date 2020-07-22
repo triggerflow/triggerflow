@@ -1,7 +1,15 @@
+import base64
 import inspect
+import logging
+
 import cloudpickle
+import sys
+import pickle
 from base64 import b64encode
 from enum import Enum
+from typing import List
+
+log = logging.getLogger(__name__)
 
 
 class ConditionActionModel:
@@ -35,16 +43,27 @@ class DockerImage(ConditionActionModel):
 
 
 class PythonCallable(ConditionActionModel):
-    def __init__(self, function: callable):
+    def __init__(self, function: callable, modules_to_capture: List[str] = None):
 
         try:
             assert inspect.isfunction(function)
             assert set(inspect.signature(function).parameters.keys()).issubset({'context', 'event'})
         except AssertionError:
-            raise Exception('Function must be a callable and fulfil signature (context, event)')
+            raise Exception('Function must be a callable and fulfill signature (context, event)')
 
-        pickled_callable = cloudpickle.dumps(function)
-        encoded_callable = b64encode(pickled_callable).decode('utf-8')
+        if modules_to_capture is None:
+            modules_to_capture = [function.__module__]
+
+        old_modules = {}
+        try:  # Try is needed to restore the state if something goes wrong
+            for module_name in modules_to_capture:
+                if module_name in sys.modules:
+                    old_modules[module_name] = sys.modules.pop(module_name)
+            func_pickle = cloudpickle.dumps(function, pickle.DEFAULT_PROTOCOL)
+        finally:
+            sys.modules.update(old_modules)
+
+        encoded_callable = base64.b64encode(func_pickle).decode('utf-8')
 
         self.value = {'name': 'PYTHON_CALLABLE',
                       'callable': encoded_callable}
