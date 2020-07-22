@@ -1,9 +1,13 @@
 import dill
 import docker
 import requests
+import pickle
 from base64 import b64decode
 
 docker_containers = {}
+
+python_condition_callables = {}
+
 
 
 def condition_true(context, event):
@@ -47,9 +51,14 @@ def condition_counter_threshold(context, event):
 
 
 def condition_python_callable(context, event):
-    decoded_callable = b64decode(context['condition']['callable'].encode('utf-8'))
-    f = dill.loads(decoded_callable)
+    global python_condition_callables
 
+    if context.trigger_id not in python_condition_callables:
+        decoded_callable = b64decode(context.triggers[context.trigger_id].condition_meta['callable'].encode('utf-8'))
+        f = pickle.loads(decoded_callable)
+        python_condition_callables[context.trigger_id] = f
+
+    f = python_condition_callables[context.trigger_id]
     result = f(context=context, event=event)
 
     assert isinstance(result, bool)
