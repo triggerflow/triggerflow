@@ -58,7 +58,7 @@ def main(lock, model_state):
             #   - some client has not completed its training within the interval
             oldest = 0
             t_now = time.time()
-            for i, timestamp in enumerate(state['round_ts']):
+            for i, timestamp in enumerate(state['round_table']):
                 if timestamp == -1:
                     continue
 
@@ -72,9 +72,9 @@ def main(lock, model_state):
 
             if place is not None:
                 # Take this place by putting the current timestamp
-                state['round_ts'][place] = t_now
+                state['round_table'][place] = t_now
                 model_state.value = state
-                print('Acquired place:', place, '|', state['round_ts'])
+                print('Acquired place:', place, '|', state['round_table'])
 
         if place is None:
             # Retry when the interval of the oldest client training has expired
@@ -82,7 +82,7 @@ def main(lock, model_state):
             time.sleep(interval - oldest)
 
     task = state['task']    # 'train' or 'test'
-    n = len(state['round_ts'])
+    n = len(state['round_table'])
     X, y = load_data(task, place, n)
 
     if os.path.exists(state['current_weights_key']):
@@ -101,10 +101,10 @@ def main(lock, model_state):
     state = model_state.value
     # If our place was not revoked
     # (could have taken too long to train)
-    if state['round_ts'][place] == t_now:
+    if state['round_table'][place] == t_now:
         # Mark as completed
-        state['round_ts'][place] = -1
-        print('Task done, place:', place, '|', state['round_ts'])
+        state['round_table'][place] = -1
+        print('Task done, place:', place, '|', state['round_table'])
 
         # Store result
         result_key = get_uuid()
@@ -112,7 +112,7 @@ def main(lock, model_state):
             f.write(pickle.dumps(result))
         
         # If the round is not complete, release the lock and continue
-        if state['round_ts'].count(-1) != len(state['round_ts']):
+        if state['round_table'].count(-1) != len(state['round_table']):
             model_state.value = state
             lock.release()
         # Otherwise the lock will be released when the aggregator

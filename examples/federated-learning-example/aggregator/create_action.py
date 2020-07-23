@@ -22,7 +22,7 @@ def main(endpoint, namespace, api_key):
     action_name = 'aggregator'
     client.create_action(
         package=package,
-        action_name=,
+        action_name=action_name,
         image_name='dhak/fedlearn-aggregator',
         code=code,
         is_binary=False,
