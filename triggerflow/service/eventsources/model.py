@@ -1,7 +1,8 @@
 from multiprocessing import Process
+from threading import Thread
 
 
-class EventSourceHook(Process):
+class EventSourceHook(Thread):
     def __init__(self, name: str, *args, **kwargs):
         super().__init__()
         self.name = name

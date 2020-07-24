@@ -29,7 +29,8 @@ class Context(dict):
     def to_dict(self):
         json = self.copy()
         for key in self._python_objects:
-            json[key] = python_object(self[key])
+            if key in self:
+                json[key] = python_object(self[key])
         return json
 
 
