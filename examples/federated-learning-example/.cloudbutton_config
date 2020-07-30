@@ -5,3 +5,9 @@ cloudbutton:
 redis:
   host: <ADDRESS>
   port: <PORT>
+  password: <PASSWORD>
+
+ibm_cf:
+  endpoint: <ENDPOINT>
+  namespace: <NAMESPACE>
+  api_key: <API_KEY>
