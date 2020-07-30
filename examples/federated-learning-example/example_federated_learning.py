@@ -7,7 +7,7 @@
 # 
 # **See the [client](/client.py) and the [aggregator](aggregator/aggregator.py)**
 
-# In[3]:
+# In[ ]:
 
 
 from triggerflow.eventsources.redis import RedisEventSource
@@ -29,7 +29,7 @@ import time
 # ### Deploy aggregator action
 # Fill `ibm_cf` parameter in `./.cloudbutton_config` file with IBM credentials
 
-# In[13]:
+# In[ ]:
 
 
 cb_config = default_config()
@@ -45,7 +45,7 @@ os.chdir('..')
 
 # As an event source, we use the same Redis server found in Cloudbutton's configuration file because the toolkit already uses it for the manager objects.
 
-# In[14]:
+# In[ ]:
 
 
 # Instantiate Triggerflow client
@@ -56,7 +56,7 @@ redis_source = RedisEventSource(**cb_config['redis'], stream='fedlearn')
 tf_client.create_workspace(workspace_name='fedlearn', event_source=redis_source)
 
 
-# In[15]:
+# In[ ]:
 
 
 # Initialize state/round
@@ -77,7 +77,7 @@ model_state.value = state
 
 # ## Aggregation trigger
 
-# In[17]:
+# In[ ]:
 
 
 # Create the trigger activation event 
@@ -123,7 +123,7 @@ tf_client.add_trigger(
 # ## Round restart trigger
 # 
 
-# In[18]:
+# In[ ]:
 
 
 # Create the trigger activation event 
