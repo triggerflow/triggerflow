@@ -11,3 +11,5 @@ RUN cd triggerflow && \
 COPY cloudbutton /cloudbutton
 RUN cd cloudbutton && \
     python3 setup.py develop
+
+RUN pip3 install -U redis

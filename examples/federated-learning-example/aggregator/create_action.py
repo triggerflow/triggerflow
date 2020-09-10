@@ -23,10 +23,11 @@ def main(endpoint, namespace, api_key):
     client.create_action(
         package=package,
         action_name=action_name,
-        image_name='dhak/fedlearn-aggregator',
+        image_name='dhak/fedlearn-aggregator:4.0',
         code=code,
         is_binary=False,
-        memory=128
+        memory=1024,
+        timeout=60000
         )
 
     url = '{}/api/v1/namespaces/{}/actions/{}/{}'.format(
@@ -35,7 +36,7 @@ def main(endpoint, namespace, api_key):
         package,
         action_name
     )
-    print('url:', url)
+    print(url, end='')
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
