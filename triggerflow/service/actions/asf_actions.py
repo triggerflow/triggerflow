@@ -79,9 +79,22 @@ def action_aws_asf_task(context, event):
 
 
 def action_aws_asf_map(context, event):
-    exp = parse(context['State']['ItemsPath'])
-    match = exp.find(event['data'])
-    iterator = match.pop().value
+    if 'InputPath' in context['State']:
+        exp = parse(context['State']['InputPath'])
+        match = exp.find(event['data'])
+        input = match.pop().value
+    else:
+        input = event['data']
+
+    if 'ItemsPath' in context['State']:
+        exp = parse(context['State']['ItemsPath'])
+        match = exp.find(input)
+        iterator = match.pop().value
+    else:
+        iterator = input
+
+    if not isinstance(iterator, list):
+        raise Exception('`ItemsPath` must be iterable')
 
     join_sm = context['join_state_machine']
     context.triggers[join_sm].context['join_multiple'] = len(iterator)

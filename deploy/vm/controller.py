@@ -4,7 +4,7 @@ import signal
 import yaml
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
-from triggerflow.service import triggerstorage
+from triggerflow.service import storage
 from triggerflow.service.worker import Worker
 import threading
 
@@ -137,7 +137,7 @@ def main():
     # Instantiate trigger storage client
     logging.info('Creating trigger storage client')
     backend = config_map['trigger_storage']['backend']
-    trigger_storage_class = getattr(triggerstorage, backend.capitalize() + 'TriggerStorage')
+    trigger_storage_class = getattr(storage, backend.capitalize() + 'TriggerStorage')
     trigger_storage = trigger_storage_class(**config_map['trigger_storage']['parameters'])
 
     port = int(os.getenv('PORT', 5000))

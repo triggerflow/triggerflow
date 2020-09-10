@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue
 from threading import Thread
 from collections import defaultdict
 
-from . import triggerstorage
+from . import storage
 from . import eventsources
 from . import conditions as default_conditions
 from . import actions as default_actions
@@ -51,7 +51,7 @@ class Worker(Process):
         logging.info('[{}] Creating database connection'.format(self.workspace))
         # Instantiate DB client
         backend = self.__config['trigger_storage']['backend']
-        trigger_storage_class = getattr(triggerstorage, backend.capitalize() + 'TriggerStorage')
+        trigger_storage_class = getattr(storage, backend.capitalize() + 'TriggerStorage')
         self.trigger_storage = trigger_storage_class(**self.__config['trigger_storage']['parameters'])
 
     def __start_event_sources(self):
@@ -125,7 +125,6 @@ class Worker(Process):
                                           trigger_id=new_trigger_id,
                                           condition_meta=new_trigger_json['condition'],
                                           action_meta=new_trigger_json['action'],
-                                          context_parser=new_trigger_json['context_parser'],
                                           activation_events=new_trigger_json['activation_events'],
                                           transient=new_trigger_json['transient'],
                                           uuid=new_trigger_json['uuid'],
@@ -136,6 +135,7 @@ class Worker(Process):
 
         except KeyError:
             logging.error('Could not retrieve triggers and/or source events for {}'.format(self.workspace))
+            logging.error(traceback.format_exc())
         logging.info("[{}] Triggers updated".format(self.workspace))
 
     def __start_commiter(self):

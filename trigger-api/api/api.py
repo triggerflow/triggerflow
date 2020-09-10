@@ -12,7 +12,8 @@ from gevent.pywsgi import WSGIServer
 import workspaces
 import triggers
 import eventsources as event_sources
-import triggerstorage
+
+from triggerflow.service import storage
 
 CONFIG_MAP_PATH = os.path.realpath(os.path.join(os.getcwd(), 'config_map.yaml'))
 
@@ -247,7 +248,7 @@ def main():
     # Instantiate trigger storage client
     logging.info('Creating trigger storage client')
     backend = config_map['trigger_storage']['backend']
-    trigger_storage_class = getattr(triggerstorage, backend.capitalize() + 'TriggerStorage')
+    trigger_storage_class = getattr(storage, backend.capitalize() + 'TriggerStorage')
     trigger_storage = trigger_storage_class(**config_map['trigger_storage']['parameters'])
 
     # Create admin user (for testing purposes only)
