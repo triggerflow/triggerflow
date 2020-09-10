@@ -69,6 +69,12 @@ class SQSEventSource(EventSourceHook):
                 if {'specversion', 'id', 'source', 'type'}.issubset(set(event)):
                     logging.info('[{}] Received CloudEvent'.format(self.name))
 
+                    try:
+                        if 'datacontenttype' in event and event['datacontenttype'] == 'application/json':
+                            event['data'] = json.loads(event['data'])
+                    except:
+                        pass
+
                     event_id = event['id']
                     if event_id in self.records:
                         continue

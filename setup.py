@@ -19,7 +19,7 @@ setup(
         'requests',
         'python-dateutil',
         'docker',
-        'redis',
+        'redis>=3.5.3',
         'boto3',
         'click',
         'graphviz',

@@ -29,7 +29,8 @@ class Context(dict):
     def to_dict(self):
         json = self.copy()
         for key in self._python_objects:
-            json[key] = python_object(self[key])
+            if key in self:
+                json[key] = python_object(self[key])
         return json
 
 
@@ -42,7 +43,6 @@ class Trigger:
     trigger_id: str
     condition_meta: dict
     action_meta: dict
-    context_parser: str
     activation_events: List[dict]
     transient: bool
     uuid: str
@@ -55,7 +55,6 @@ class Trigger:
             'condition': self.condition_meta,
             'action': self.action_meta,
             'context': self.context.to_dict(),
-            'context_parser': self.context_parser,
             'activation_events': self.activation_events,
             'transient': self.transient,
             'uuid': self.uuid,

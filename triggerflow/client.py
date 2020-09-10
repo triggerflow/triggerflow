@@ -208,7 +208,6 @@ class TriggerflowClient:
                     condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
-                    context_parser: Optional[str] = None,
                     transient: Optional[bool] = True):
         """
         Add a trigger to the target workspace.
@@ -219,7 +218,6 @@ class TriggerflowClient:
         :param action: Action to perform when event is received and condition is True. It has to satisfy signature
         contract (context, event).
         :param context: Trigger key-value state, only visible for this specific trigger.
-        :param context_parser: Parer used to decode context data struct.
         :param transient: If true, this trigger is deleted after action is executed.
         """
         self._check_workspace()
@@ -243,7 +241,6 @@ class TriggerflowClient:
             'condition': condition.value,
             'action': action.value,
             'context': context,
-            'context_parser': context_parser,
             'activation_events': [json.loads(e.MarshalJSON(json.dumps).read().decode('utf-8')) for e in events],
             'transient': transient}
 
@@ -356,7 +353,6 @@ class TriggerflowCachedClient(TriggerflowClient):
                     condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
                     context: Optional[dict] = None,
-                    context_parser: Optional[str] = None,
                     transient: Optional[bool] = True):
         """
         Add a trigger to the local cache, instead of requesting the addition to the Trigger API directly.
@@ -367,7 +363,6 @@ class TriggerflowCachedClient(TriggerflowClient):
         :param action: Action to perform when event is received and condition is True. It has to satisfy signature
         contract (context, event).
         :param context: Trigger key-value state, only visible for this specific trigger.
-        :param context_parser: Parser used to decode the context data struct.
         :param transient: If true, this trigger is deleted after action is executed.
         """
         self._check_workspace()
@@ -392,7 +387,6 @@ class TriggerflowCachedClient(TriggerflowClient):
                 'condition': condition.value,
                 'action': action.value,
                 'context': context.copy(),
-                'context_parser': context_parser,
                 'activation_events': [json.loads(e.MarshalJSON(json.dumps).read().decode('utf-8')) for e in events],
                 'transient': transient}
             self.__trigger_cache[trigger_id] = json.dumps(trigger)

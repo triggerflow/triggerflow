@@ -17,22 +17,21 @@ log.setLevel(logging.DEBUG)
 
 
 class AwsAsfConditions(ConditionActionModel, Enum):
-    AWS_ASF_JOIN_STATEMACHINE = {'name': 'aws_asf_join_statemachine'}
-    AWS_ASF_CONDITION = {'name': 'aws_asf_condition'}
+    AWS_ASF_JOIN_STATEMACHINE = {'name': 'AWS_ASF_JOIN_STATEMACHINE'}
+    AWS_ASF_CONDITION = {'name': 'AWS_ASF_CONDITION'}
 
 
 class AwsAsfActions(ConditionActionModel, Enum):
-    AWS_ASF_PASS = {'name': 'aws_asf_pass'}
-    AWS_ASF_TASK = {'name': 'aws_asf_task'}
-    AWS_ASF_CHOICE = {'name': 'aws_asf_choice'}
-    AWS_ASF_PARALLEL = {'name': 'aws_asf_parallel'}
-    AWS_ASF_MAP = {'name': 'aws_asf_map'}
-    AWS_ASF_END_STATEMACHINE = {'name': 'aws_asf_end_statemachine'}
+    AWS_ASF_PASS = {'name': 'AWS_ASF_PASS'}
+    AWS_ASF_TASK = {'name': 'AWS_ASF_TASK'}
+    AWS_ASF_MAP = {'name': 'AWS_ASF_MAP'}
+    AWS_ASF_END_STATEMACHINE = {'name': 'AWS_ASF_END_STATEMACHINE'}
 
 
 def deploy_state_machine(statemachine_json: dict):
-    uuid = str(uuid4())
-    run_id = 'sm-' + uuid[24:]
+    # uuid = str(uuid4())
+    # run_id = 'sm-' + uuid[24:]
+    run_id = 'sm_testt'
 
     config = get_config()
     credentials = config['statemachines']['aws']
@@ -176,7 +175,7 @@ def deploy_state_machine(statemachine_json: dict):
     return run_id
 
 
-def trigger_statemachine(run_id: str):
+def trigger_statemachine(run_id: str, execution_input: dict = None):
     config = get_config()
     credentials = config['statemachines']['aws']
 
@@ -184,12 +183,21 @@ def trigger_statemachine(run_id: str):
                                   secret_access_key=credentials['secret_access_key'],
                                   region=credentials['region'],
                                   queue=run_id)
+
+    if execution_input is None:
+        execution_input = {}
+
     uuid = uuid4()
     init_cloudevent = (CloudEvent()
                        .SetSubject('__init__')
                        .SetEventType('lambda.success')
                        .SetEventID(uuid.hex)
                        .SetSource(f'urn:{node()}:{str(uuid)}'))
+
+    if execution_input is not None:
+        init_cloudevent.SetData(execution_input)
+        init_cloudevent.SetContentType('application/json')
+
     event_source.publish_cloudevent(init_cloudevent)
 
 

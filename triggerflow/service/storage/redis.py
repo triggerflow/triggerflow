@@ -3,7 +3,7 @@ import time
 import json
 import logging
 
-from triggerflow.service.triggerstorage.model import TriggerStorage
+from triggerflow.service.storage.model import TriggerStorage
 
 
 class RedisTriggerStorage(TriggerStorage):
@@ -42,6 +42,10 @@ class RedisTriggerStorage(TriggerStorage):
     def get_auth(self, username: str):
         redis_key = 'triggerflow-auth'
         return self.client.hget(redis_key, username)
+
+    def set_auth(self, username: str, password: str):
+        redis_key = 'triggerflow-auth'
+        self.client.hset(redis_key, username, password)
 
     def list_workspaces(self):
         redis_key = 'triggerflow-workspaces'

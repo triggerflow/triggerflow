@@ -16,6 +16,9 @@ class TriggerStorage:
     def get_auth(self, username: str):
         raise NotImplementedError()
 
+    def set_auth(self, username: str, password: str):
+        raise NotImplementedError()
+
     def list_workspaces(self):
         raise NotImplementedError()
 

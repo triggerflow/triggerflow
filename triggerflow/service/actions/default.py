@@ -124,19 +124,19 @@ def action_ibm_cf_invoke(context, event):
     if not ibmcf_session:
         create_ibmcf_session()
 
-    operator = context['operator'] if 'operator' in context else context
+    operator = context.get('operator', context)
 
     cf_auth = operator['api_key'].split(':')
     cf_auth_handler = HTTPBasicAuth(cf_auth[0], cf_auth[1])
 
     url = operator['url']
-    subject = context['subject'] if 'subject' in context else None
+    subject = context.get('subject', None)
 
     triggerflow_meta = {'subject': subject,
-                        'sink': operator['sink']}
+                        'sink': operator.get('sink', {})}
 
     invoke_payloads = []
-    if operator['iter_data']:
+    if operator.get('iter_data', {}):
         keys = list(operator['iter_data'].keys())
         iterdata_keyword = keys.pop()
         for iterdata_value in operator['iter_data'][iterdata_keyword]:
@@ -145,13 +145,13 @@ def action_ibm_cf_invoke(context, event):
             payload['__OW_TRIGGERFLOW'] = triggerflow_meta
             invoke_payloads.append(payload)
     else:
-        for key, arg in operator['invoke_kwargs'].items():
+        for key, arg in operator.get('invoke_kwargs', {}).items():
             if isinstance(arg, str) and arg.startswith('$'):
                 jsonpath_expr = jsonpath_ng.parse(arg)
                 result_args = [match.value for match in jsonpath_expr.find(context['result'])]
                 operator['invoke_kwargs'][key] = result_args
 
-        payload = operator['invoke_kwargs']
+        payload = operator.get('invoke_kwargs', {})
         payload['__OW_TRIGGERFLOW'] = triggerflow_meta
         invoke_payloads.append(payload)
 

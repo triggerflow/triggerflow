@@ -1,6 +1,6 @@
 import re
 
-from triggerstorage import TriggerStorage
+from triggerflow.service.storage import TriggerStorage
 
 
 def create_workspace(trigger_storage: TriggerStorage, workspace: str, global_context: dict, event_source: dict):

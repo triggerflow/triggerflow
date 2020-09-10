@@ -1,4 +1,4 @@
-from triggerstorage import TriggerStorage
+from triggerflow.service.storage import TriggerStorage
 
 
 def add_event_source(trigger_storage: TriggerStorage, workspace: str, event_source: dict, overwrite: bool):
