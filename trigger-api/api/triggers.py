@@ -1,7 +1,7 @@
 from uuid import uuid4
 from datetime import datetime
 
-from triggerstorage import TriggerStorage
+from triggerflow.service.storage import TriggerStorage
 
 
 def add_triggers(trigger_storage: TriggerStorage, workspace: str, triggers: list):
@@ -12,7 +12,7 @@ def add_triggers(trigger_storage: TriggerStorage, workspace: str, triggers: list
         # Check trigger schema
         if not isinstance(trigger, dict):
             continue
-        if {'id', 'condition', 'action', 'context', 'context_parser', 'activation_events', 'transient'} != set(trigger):
+        if {'id', 'condition', 'action', 'context', 'activation_events', 'transient'} != set(trigger):
             trigger['reason'] = 'Malformed trigger schema'
             rejected_triggers.append(trigger)
             continue
