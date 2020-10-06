@@ -18,7 +18,7 @@ if __name__ == '__main__':
     with open(CONFIG_MAP_PATH, 'r') as config_map_file:
         config_map = yaml.safe_load(config_map_file)
 
-    workspace = os.environ['WORKSPACE']
+    workspace = os.environ['TRIGGERFLOW_BOOTSTRAP_WORKER']
 
     logging.info('Starting Triggerflow Worker for workspace {}'.format(workspace))
     worker = Worker(workspace=workspace, config=config_map)
