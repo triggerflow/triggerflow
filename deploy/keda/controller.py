@@ -40,12 +40,12 @@ spec:
       - name: triggerflow-keda-worker
         image: CONTAINER_IMAGE
         env:
-          - name: TRIGGERFLOW_BOOTSTRAP_WORKER
+          - name: TRIGGERFLOW_BOOTSTRAP_WORKSPACE
             value: 'workspace'
         resources:
           limits:
-            memory: 256Mi
-            cpu: 250m
+            memory: 1Gi
+            cpu: 1
 """
 
 scaledobject_res = """
