@@ -19,7 +19,7 @@ class RedisEventSource(EventSource):
         self.host = host
         self.port = port
         self.db = db
-        self.password = password
+        self.password = str(password)
         self.stream = stream
 
     def set_stream(self, stream_id: str):
