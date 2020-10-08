@@ -1,7 +1,7 @@
 import click
 import json
 
-from ...statemachine import deploy_state_machine, trigger_statemachine
+from ...statemachine import StateMachine, trigger_statemachine
 
 
 @click.group()
@@ -15,7 +15,7 @@ def statemachine():
 def deploy(statemachine_file):
     """Evaluate a file containing a Amazon Step Functions state machine definition and deploy """
     try:
-        run_id = deploy_state_machine(json.loads(statemachine_file.read()))
+        run_id = StateMachine.string(json.loads(statemachine_file.read()))
     except Exception as e:
         click.echo(click.style("Error: ", fg='red', bold=True) + "{}".format(repr(e)))
         return
