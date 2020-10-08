@@ -173,5 +173,5 @@ combine_calculations << [merge_global_radiance,
                          merge_temperature_interpolation]
 
 
-water_consumption.save()
+# water_consumption.save()
 

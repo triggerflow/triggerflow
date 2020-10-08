@@ -19,6 +19,8 @@ trigger_storage = None
 k_v1_api = None
 k_co_api = None
 
+worker_container_image = None
+
 deployment_res = """
 apiVersion: apps/v1
 kind: Deployment
@@ -36,14 +38,14 @@ spec:
     spec:
       containers:
       - name: triggerflow-keda-worker
-        image: docker.io/triggerflow/keda-worker:0.3
+        image: CONTAINER_IMAGE
         env:
-          - name: WORKSPACE
+          - name: TRIGGERFLOW_BOOTSTRAP_WORKSPACE
             value: 'workspace'
         resources:
           limits:
-            memory: 256Mi
-            cpu: 250m
+            memory: 1Gi
+            cpu: 1
 """
 
 scaledobject_res = """
@@ -91,7 +93,7 @@ def create_keda_scaledobject(workspace):
     """
     Auxiliary method to start a worker
     """
-    global trigger_storage, config_map
+    global trigger_storage, config_map, worker_container_image
     dpl_res = yaml.safe_load(deployment_res)
 
     service_name = 'triggerflow-keda-worker-{}'.format(workspace)
@@ -100,15 +102,19 @@ def create_keda_scaledobject(workspace):
     dpl_res['spec']['selector']['matchLabels']['app'] = service_name
     dpl_res['spec']['template']['metadata']['labels']['app'] = service_name
     dpl_res['spec']['template']['spec']['containers'][0]['name'] = service_name
+    dpl_res['spec']['template']['spec']['containers'][0]['image'] = worker_container_image
     dpl_res['spec']['template']['spec']['containers'][0]['env'][0]['value'] = workspace
 
     if config_map['trigger_storage']['backend'] == 'redis':
         envs = dpl_res['spec']['template']['spec']['containers'][0]['env']
         envs.append({'name': 'TRIGGERFLOW_STORAGE_BACKEND', 'value': 'redis'})
         envs.append({'name': 'REDIS_HOST', 'value': config_map['trigger_storage']['parameters']['host']})
-        envs.append({'name': 'REDIS_PASSWORD', 'value': config_map['trigger_storage']['parameters'].get('password', '').replace('"', '')})
-        envs.append({'name': 'REDIS_PORT', 'value': str(config_map['trigger_storage']['parameters'].get('port', 6379)).replace('"', '')})
-        envs.append({'name': 'REDIS_DB', 'value': str(config_map['trigger_storage']['parameters'].get('db', 0)).replace('"', '')})
+        envs.append({'name': 'REDIS_PASSWORD',
+                     'value': config_map['trigger_storage']['parameters'].get('password', '').replace('"', '')})
+        envs.append({'name': 'REDIS_PORT',
+                     'value': str(config_map['trigger_storage']['parameters'].get('port', 6379)).replace('"', '')})
+        envs.append({'name': 'REDIS_DB',
+                     'value': str(config_map['trigger_storage']['parameters'].get('db', 0)).replace('"', '')})
     else:
         raise Exception('Backend {} not supported'.format(backend))
 
@@ -231,6 +237,10 @@ if __name__ == '__main__':
     config.load_incluster_config()
     k_v1_api = client.AppsV1Api()
     k_co_api = client.CustomObjectsApi()
+
+    # Set triggerflow worker container image
+    worker_container_image = os.getenv('TRIGGERFLOW_WORKER_CONTAINER_IMAGE',
+                                       'docker.io/triggerflow/keda-worker:python-worker-v1')
 
     port = int(os.getenv('PORT', 8080))
     logging.info('Triggerflow service started on port {}'.format(port))
