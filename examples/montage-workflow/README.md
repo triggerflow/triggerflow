@@ -9,7 +9,7 @@ A further explanation of the workflow can be found [here](http://montage.ipac.ca
 We used the example found [here](https://github.com/pegasus-isi/montage-workflow-v2) to produce a color mosaic of the
 Pleiades constellation.
 
-To execute the example follow the instructions
+To execute the example follow the instructions found [here](../../docs/EXPERIMENTS.md).
 
 ```python
 import json
