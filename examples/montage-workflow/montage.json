@@ -1,441 +1,451 @@
 {
-    "StartAt": "RGBBranch",
-    "States": {
-        "RGBBranch": {
-            "Type": "Parallel",
-            "Branches": [
-                {
-                    "StartAt": "DownloadDataBlue",
-                    "States": {
-                        "DownloadDataBlue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-data-downloader",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "images_tbl_key": "1-images.tbl",
-                                "outdir": "images/blue"
-                            },
-                            "Next": "mProject-Blue-Fanout"
-                        },
-                        "mProject-Blue-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mProject",
-                                "branch": "blue"
-                            },
-                            "Next": "mProject-Map-Blue"
-                        },
-                        "mProject-Map-Blue": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mProject-Blue",
-                                "States": {
-                                    "mProject-Blue": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mDiffFit-Blue-Fanout"
-                        },
-                        "mDiffFit-Blue-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mDiffFit",
-                                "branch": "blue"
-                            },
-                            "Next": "mDiffFit-Map-Blue"
-                        },
-                        "mDiffFit-Map-Blue": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mDiffFit-Blue",
-                                "States": {
-                                    "mDiffFit-Blue": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mConcatFit-Blue"
-                        },
-                        "mConcatFit-Blue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000326",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBgModel-Blue"
-                        },
-                        "mBgModel-Blue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000327",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBackground-Blue-Fanout"
-                        },
-                        "mBackground-Blue-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mBackground",
-                                "branch": "blue"
-                            },
-                            "Next": "mBackground-Map-Blue"
-                        },
-                        "mBackground-Map-Blue": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mBackground-Blue",
-                                "States": {
-                                    "mBackground-Blue": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mImgtbl-Blue"
-                        },
-                        "mImgtbl-Blue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000353",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mAdd-Blue"
-                        },
-                        "mAdd-Blue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000354",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mViewer-Blue"
-                        },
-                        "mViewer-Blue": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000355",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "End": true
-                        }
-                    }
-                },
-                {
-                    "StartAt": "DownloadDataRed",
-                    "States": {
-                        "DownloadDataRed": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-data-downloader",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "images_tbl_key": "2-images.tbl",
-                                "outdir": "images/red"
-                            },
-                            "End": true
-                        },
-                        "mProject-Red-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mProject",
-                                "branch": "red"
-                            },
-                            "Next": "mProject-Map-Red"
-                        },
-                        "mProject-Map-Red": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mProject-Red",
-                                "States": {
-                                    "mProject-Red": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mDiffFit-Red-Fanout"
-                        },
-                        "mDiffFit-Red-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mDiffFit",
-                                "branch": "red"
-                            },
-                            "Next": "mDiffFit-Map-Red"
-                        },
-                        "mDiffFit-Map-Red": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mDiffFit-Red",
-                                "States": {
-                                    "mDiffFit-Red": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mConcatFit-Red"
-                        },
-                        "mConcatFit-Red": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000681",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBgModel-Red"
-                        },
-                        "mBgModel-Red": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000682",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBackground-Red-Fanout"
-                        },
-                        "mBackground-Red-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mBackground",
-                                "branch": "red"
-                            },
-                            "Next": "mBackground-Map-Red"
-                        },
-                        "mBackground-Map-Red": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mBackground-Red",
-                                "States": {
-                                    "mBackground-Red": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mImgtbl-Red"
-                        },
-                        "mImgtbl-Red": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000708",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mAdd-Red"
-                        },
-                        "mAdd-Red": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000709",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mViewer-Red"
-                        },
-                        "mViewer-Red": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0000710",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "End": true
-                        }
-                    }
-                },
-                {
-                    "StartAt": "DownloadDataIr",
-                    "States": {
-                        "DownloadDataIr": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-data-downloader",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "images_tbl_key": "3-images.tbl",
-                                "outdir": "images/ir"
-                            },
-                            "End": true
-                        },
-                        "mProject-Ir-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mProject",
-                                "branch": "ir"
-                            },
-                            "Next": "mProject-Map-Ir"
-                        },
-                        "mProject-Map-Ir": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mProject-Ir",
-                                "States": {
-                                    "mProject-Ir": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mDiffFit-Ir-Fanout"
-                        },
-                        "mDiffFit-Ir-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mDiffFit",
-                                "branch": "ir"
-                            },
-                            "Next": "mDiffFit-Map-Ir"
-                        },
-                        "mDiffFit-Map-Ir": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mDiffFit-Ir",
-                                "States": {
-                                    "mDiffFit-Ir": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mConcatFit-Ir"
-                        },
-                        "mConcatFit-Ir": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0001036",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBgModel-Ir"
-                        },
-                        "mBgModel-Ir": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0001037",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mBackground-Ir-Fanout"
-                        },
-                        "mBackground-Ir-Fanout": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montage-orchestrator",
-                            "Parameters": {
-                                "prefix": "montage-pleiades",
-                                "dax": "montage.dax",
-                                "step": "mBackground",
-                                "branch": "ir"
-                            },
-                            "Next": "mBackground-Map-Ir"
-                        },
-                        "mBackground-Map-Ir": {
-                            "Type": "Map",
-                            "Iterator": {
-                                "StartAt": "mBackground-Ir",
-                                "States": {
-                                    "mBackground-Ir": {
-                                        "Type": "Task",
-                                        "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                                        "End": true
-                                    }
-                                }
-                            },
-                            "Next": "mImgtbl-Ir"
-                        },
-                        "mImgtbl-Ir": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0001063",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mAdd-Ir"
-                        },
-                        "mAdd-Ir": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0001064",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "Next": "mViewer-Ir"
-                        },
-                        "mViewer-Ir": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-                            "Parameters": {
-                                "job_id": "ID0001065",
-                                "dax": "montage.dax",
-                                "prefix": "montage-pleiades"
-                            },
-                            "End": true
-                        }
-                    }
-                }
-            ],
-            "Next": "MergeMosaics"
-        },
-        "MergeMosaics": {
-            "Type": "Task",
-            "Resource": "arn:aws:lambda:us-east-1:786929956471:function:montagepy-executor",
-            "Parameters": {
-                "job_id": "ID0001066",
-                "dax": "montage.dax",
+  "StartAt": "RGBBranch",
+  "States": {
+    "RGBBranch": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "DownloadDataBlue",
+          "States": {
+            "DownloadDataBlue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_DOWNLOADER_LAMBDA_ARN}",
+              "Parameters": {
                 "prefix": "montage-pleiades",
-                "result": "mosaic-color.jpg"
+                "images_tbl_key": "1-images.tbl",
+                "outdir": "images/blue"
+              },
+              "Next": "mProject-Blue-Fanout"
+            },
+            "mProject-Blue-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mProject",
+                "branch": "blue"
+              },
+              "Next": "mProject-Map-Blue"
+            },
+            "mProject-Map-Blue": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mProject-Blue",
+                "States": {
+                  "mProject-Blue": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mDiffFit-Blue-Fanout"
+            },
+            "mDiffFit-Blue-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mDiffFit",
+                "branch": "blue"
+              },
+              "Next": "mDiffFit-Map-Blue"
+            },
+            "mDiffFit-Map-Blue": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mDiffFit-Blue",
+                "States": {
+                  "mDiffFit-Blue": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mConcatFit-Blue"
+            },
+            "mConcatFit-Blue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000326",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBgModel-Blue"
+            },
+            "mBgModel-Blue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000327",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBackground-Blue-Fanout"
+            },
+            "mBackground-Blue-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mBackground",
+                "branch": "blue"
+              },
+              "Next": "mBackground-Map-Blue"
+            },
+            "mBackground-Map-Blue": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mBackground-Blue",
+                "States": {
+                  "mBackground-Blue": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mImgtbl-Blue"
+            },
+            "mImgtbl-Blue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000353",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mAdd-Blue"
+            },
+            "mAdd-Blue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000354",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mViewer-Blue"
+            },
+            "mViewer-Blue": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000355",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "End": true
             }
+          }
+        },
+        {
+          "StartAt": "DownloadDataRed",
+          "States": {
+            "DownloadDataRed": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_DATA_DOWNLOADER_LAMBDA_ARN}"},
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "images_tbl_key": "2-images.tbl",
+                "outdir": "images/red"
+              },
+              "Next": "mProject-Red-Fanout"
+            },
+            "mProject-Red-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mProject",
+                "branch": "red"
+              },
+              "Next": "mProject-Map-Red"
+            },
+            "mProject-Map-Red": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mProject-Red",
+                "States": {
+                  "mProject-Red": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mDiffFit-Red-Fanout"
+            },
+            "mDiffFit-Red-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mDiffFit",
+                "branch": "red"
+              },
+              "Next": "mDiffFit-Map-Red"
+            },
+            "mDiffFit-Map-Red": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mDiffFit-Red",
+                "States": {
+                  "mDiffFit-Red": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mConcatFit-Red"
+            },
+            "mConcatFit-Red": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000681",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBgModel-Red"
+            },
+            "mBgModel-Red": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000682",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBackground-Red-Fanout"
+            },
+            "mBackground-Red-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mBackground",
+                "branch": "red"
+              },
+              "Next": "mBackground-Map-Red"
+            },
+            "mBackground-Map-Red": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mBackground-Red",
+                "States": {
+                  "mBackground-Red": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mImgtbl-Red"
+            },
+            "mImgtbl-Red": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000708",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mAdd-Red"
+            },
+            "mAdd-Red": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000709",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mViewer-Red"
+            },
+            "mViewer-Red": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0000710",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "DownloadDataIr",
+          "States": {
+            "DownloadDataIr": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_DATA_DOWNLOADER_LAMBDA_ARN}"},
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "images_tbl_key": "3-images.tbl",
+                "outdir": "images/ir"
+              },
+              "Next": "mProject-Ir-Fanout"
+            },
+            "mProject-Ir-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mProject",
+                "branch": "ir"
+              },
+              "Next": "mProject-Map-Ir"
+            },
+            "mProject-Map-Ir": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mProject-Ir",
+                "States": {
+                  "mProject-Ir": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mDiffFit-Ir-Fanout"
+            },
+            "mDiffFit-Ir-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mDiffFit",
+                "branch": "ir"
+              },
+              "Next": "mDiffFit-Map-Ir"
+            },
+            "mDiffFit-Map-Ir": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mDiffFit-Ir",
+                "States": {
+                  "mDiffFit-Ir": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mConcatFit-Ir"
+            },
+            "mConcatFit-Ir": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0001036",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBgModel-Ir"
+            },
+            "mBgModel-Ir": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0001037",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mBackground-Ir-Fanout"
+            },
+            "mBackground-Ir-Fanout": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_ORCHESTRATOR_LAMBDA_ARN}",
+              "Parameters": {
+                "prefix": "montage-pleiades",
+                "dax": "montage.dax",
+                "step": "mBackground",
+                "branch": "ir"
+              },
+              "Next": "mBackground-Map-Ir"
+            },
+            "mBackground-Map-Ir": {
+              "Type": "Map",
+              "ItemsPath": "$.items",
+              "Iterator": {
+                "StartAt": "mBackground-Ir",
+                "States": {
+                  "mBackground-Ir": {
+                    "Type": "Task",
+                    "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+                    "End": true
+                  }
+                }
+              },
+              "Next": "mImgtbl-Ir"
+            },
+            "mImgtbl-Ir": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0001063",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mAdd-Ir"
+            },
+            "mAdd-Ir": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0001064",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "Next": "mViewer-Ir"
+            },
+            "mViewer-Ir": {
+              "Type": "Task",
+              "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+              "Parameters": {
+                "job_id": "ID0001065",
+                "dax": "montage.dax",
+                "prefix": "montage-pleiades"
+              },
+              "End": true
+            }
+          }
         }
+      ],
+      "Next": "MergeMosaics"
+    },
+    "MergeMosaics": {
+      "Type": "Task",
+      "Resource": "${MONTAGE_EXECUTOR_LAMBDA_ARN}",
+      "Parameters": {
+        "job_id": "ID0001066",
+        "dax": "montage.dax",
+        "prefix": "montage-pleiades",
+        "result": "mosaic-color.jpg"
+      },
+      "End": true
     }
+  }
 }

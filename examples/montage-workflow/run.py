@@ -1,10 +1,12 @@
 import json
 
-from triggerflow.statemachine import deploy_state_machine, trigger_statemachine
+from triggerflow.statemachine import StateMachine
+from triggerflow.eventsources import KafkaEventSource
 
 with open('montage.json', 'r') as sm_file:
     sm = json.loads(sm_file.read())
 
-# runid = deploy_state_machine(sm)
+kafka_source = KafkaEventSource(broker_list=['192.168.0.1:9092'])
 
-trigger_statemachine('sm_testt')
+sm = StateMachine.json('montage.json', event_source=kafka_source)
+sm.trigger()
