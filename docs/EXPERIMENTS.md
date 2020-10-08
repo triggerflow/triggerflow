@@ -227,7 +227,12 @@ workflow by retrieving the triggers' context from the DB and uncommitted events 
     1. Create a EFS in the desired VPC.
     2. Attach the EFS to the subnets created before.
     3. Create an access point for the EFS to use with lambda. Note that the mount point must be `/mnt/lambda`
-    
+
+6. Compile the Montage binaries.
+    1. Go to [Montage Downloads](http://montage.ipac.caltech.edu/docs/download2.html) and download the latest version source.
+    2. You need to compile the binaries in a machine compatible with Lambda. For example, you can compile it with a EC2 instance running Amazon Linux 2.
+    3. Copy the compiled binaries (`/bin`) into the `/bin` [directory](../examples/montage-workflow/lambdas/bin).
+
 6. Create the lambda functions.
     1. Run the `create_lambda.sh` script. This will create three zip files, each one is a different lambda function.
     2. When creating the lambda function, assign it a role that has access to S3.
