@@ -142,7 +142,7 @@ events and triggers for the workflow as code (event sourcing) interface.
 
 
 ### Instructions for replication
-**TODO**
+Find complete instrucions and examples [here](https://github.com/triggerflow/pywren-ibm-cloud_tf-patch).
 
 # Fault tolerance scientific workflow
 
@@ -199,3 +199,47 @@ $ triggerflow dag run water_consumption
 system will automatically provision the pod again. If the backend is deployed on Docker or locally using processes,
 you will have to manually provision the worker container. In both cases, the worker should recover the state of the
 workflow by retrieving the triggers' context from the DB and uncommitted events from the event broker.
+
+# Montage Workflow
+
+### Prerequisites
+
+- The Triggerflow client installed and configured.
+- The **DAGs** and **IBM Cloud Functions** section from the `triggerflow_config.yaml` configuration file filled. 
+- The Triggerflow backend (trigger API, service, database and event broker) deployed.
+- An [AWS](https://aws.amazon.com/) account.
+
+### Instructions
+
+1. Create a AWS S3 bucket (for example, name it `montage`).
+
+2. Create a lambda layer containing the necessary dependencies for the lambda functions:
+    1. Run the script `create_layer.sh`. This will create a zip file containing the dependencies. Upload this zip as a Layer.
+
+3. Create subnets for Lambda in every availability zone.
+    1. Create a subnet in every availability zone, using for example, the default VPC.
+    2. Create a NAT gateway.
+    3. Create a route table.
+    4. Add the NAT gateway to the route table as the default gateway.
+    5. Assign this route table to every subnet created before.
+
+5. Create a EFS file system.
+    1. Create a EFS in the desired VPC.
+    2. Attach the EFS to the subnets created before.
+    3. Create an access point for the EFS to use with lambda. Note that the mount point must be `/mnt/lambda`
+    
+6. Create the lambda functions.
+    1. Run the `create_lambda.sh` script. This will create three zip files, each one is a different lambda function.
+    2. When creating the lambda function, assign it a role that has access to S3.
+    3. Attach the Lambdas to the desired VPC within the previously created subnets.
+    4. Attach the EFS volume created previously. Note that the mount point must be `/mnt/lambda`
+    5. Add the following ENV vars to your lambdas:
+        - BUCKET: The name of the bucket created before.
+        - REGION: The region where the bucket is located.
+        - TARGET_DIR: The PWD of the lambdas, in this case set it as `/mnt/lambda`
+   
+7. Upload the content of the `data` directory to the bucket root.
+
+8. Replace the `Resource` attribute of the `montage.json` state machine with your own lambda ARNs.
+
+9. Execute `run.py` 
