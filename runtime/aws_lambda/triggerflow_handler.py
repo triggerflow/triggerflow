@@ -1,15 +1,16 @@
 import json
+from uuid import uuid1
+from confluent_kafka import Producer
 from datetime import datetime
 
 
-# Triggerflow Handler
 def triggerflow(handler):
     def decorator(*args, **kwargs):
         event, context = args[0], args[1]
-        try:
+        if '__TRIGGERFLOW_SUBJECT' in event:
             subject = event['__TRIGGERFLOW_SUBJECT']
             is_triggerflow = subject is not None and '__EVENT_DATA' in event
-        except:
+        else:
             event_data = event
             is_triggerflow = False
 
@@ -39,17 +40,20 @@ def triggerflow(handler):
                     cloudevent['datacontenttype'] = 'plain/text'
                     cloudevent['data'] = result
 
+            if '__TRIGGERFLOW_EVENT_SOURCE' in event:
+                event_source = event['__TRIGGERFLOW_EVENT_SOURCE']
+                if event_source['class'] == 'KafkaEventSource':
+                    params = event_source['parameters']
+                    config = {'bootstrap.servers': ','.join(params['broker_list']),
+                              'group.id': str(uuid1())}
+                    kafka_producer = Producer(**config)
+                    kafka_producer.produce(topic=params['topic'],
+                                           value=json.dumps(cloudevent))
+                    kafka_producer.flush()
+
             return cloudevent
         else:
             return result
     return decorator
 
 
-# Lambda Handler with triggerflow handler decorator
-@triggerflow
-def lambda_handler(event, context):
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Hello from Lambda!')
-    }
