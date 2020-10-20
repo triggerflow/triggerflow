@@ -2,13 +2,14 @@ from uuid import uuid4
 from platform import node
 
 from triggerflow import Triggerflow, CloudEvent, DefaultActions, DefaultConditions
-from triggerflow.eventsources import KafkaEventSource
+from triggerflow.eventsources import RabbitMQEventSource
 
 
 def setup_triggers():
-    kaf = KafkaEventSource(broker_list=['127.0.0.1:9092'], topic='ingestion')
+    rabbit = RabbitMQEventSource(amqp_url='amqp://guest:guest@127.0.0.1:5672',
+                                 queue='ingestion')
     tf = Triggerflow()
-    tf.create_workspace(workspace_name='ingestion-test', event_source=kaf)
+    tf.create_workspace(workspace_name='ingestion-test', event_source=rabbit)
 
     for i in range(200):
         uuid = uuid4()

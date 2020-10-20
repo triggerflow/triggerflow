@@ -1,23 +1,31 @@
-import json
-import sys
 import platform
+import sys
 from uuid import uuid4
 from datetime import datetime
 from redis import StrictRedis
+import requests
 
-TOPIC = 'pywren'
 
-
-def produce_events(node, nodes):
-    red = StrictRedis(host='127.0.0.1', port=6379, password="hello", db=0)
-
-    if 1000 % nodes != 0:
-        print('1000 is not divisible by {}'.format(nodes))
-        return
+def produce_events(node, nodes, tstamp=None):
+    red = StrictRedis(host='127.0.0.1', port='6379', password='potato')
 
     print('Producing events from node {} (nº nodes {})'.format(node, nodes))
 
-    for _ in range((1000 // nodes) * node - 1, (1000 // nodes) * node):
+    if tstamp is not None:
+        while True:
+            res = requests.get('http://worldtimeapi.org/api/ip')
+            res_json = res.json()
+            now = res_json['unixtime']
+            if now >= tstamp:
+                break
+
+    print('Go')
+
+    e0 = (1000 // nodes) * node
+    e1 = (1000 // nodes) * (node + 1)
+    if node == nodes-1:
+        e1 += 1000 % nodes
+    for _ in range(e0, e1):
         for i in range(200):
             uuid = uuid4()
 
@@ -28,13 +36,13 @@ def produce_events(node, nodes):
                      'time': str(datetime.utcnow().isoformat("T") + "Z"),
                      'subject': 'join{}'.format(i)}
 
-            red.xadd(TOPIC, event)
+            red.xadd('ingestion', event)
 
 
 if __name__ == '__main__':
     try:
-        node, nodes = int(sys.argv[1]), int(sys.argv[2])
-    except Exception:
-        node, nodes = 1, 1
+        node, nodes, tstamp = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+    except:
+        node, nodes, tstamp = int(sys.argv[1]), int(sys.argv[2]), None
 
-    produce_events(node, nodes)
+    produce_events(node, nodes, tstamp)
