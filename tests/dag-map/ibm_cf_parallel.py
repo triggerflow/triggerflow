@@ -3,7 +3,7 @@ from triggerflow.dags.operators import IBMCloudFunctionsMapOperator
 
 dag = DAG(dag_id='map')
 
-concurrency = 5
+concurrency = 320
 
 task = IBMCloudFunctionsMapOperator(
     task_id='map',

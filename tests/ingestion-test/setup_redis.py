@@ -4,9 +4,12 @@ from platform import node
 from triggerflow import Triggerflow, CloudEvent, DefaultActions, DefaultConditions
 from triggerflow.eventsources import RedisEventSource
 
+stream = 'ingestion'
+
 
 def setup_triggers():
-    red = RedisEventSource(host="127.0.0.1", port=6379, password="gPVWL8ttfRffNS7ausKsrtKfQoAIrVglTDWB8TV2")
+    red = RedisEventSource(host="127.0.0.1", port=6379, password="potato")
+    red.set_stream(stream)
     tf = Triggerflow()
     tf.create_workspace(workspace_name='ingestion-test', event_source=red)
 
@@ -21,10 +24,9 @@ def setup_triggers():
         tf.add_trigger(
             event=cloudevent,
             trigger_id="join{}".format(i),
-            condition=DefaultConditions.SIMPLE_JOIN,
+            condition=DefaultConditions.JOIN,
             action=DefaultActions.TERMINATE,
             context={'join': 1000},
-            context_parser="JOIN",
             transient=False
         )
 

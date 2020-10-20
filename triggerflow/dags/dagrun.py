@@ -156,7 +156,6 @@ class DAGRun:
                            action=DefaultActions[task.trigger_action_name],
                            condition=condition,
                            context=context,
-                           context_parser='DAGS',
                            trigger_id=task.task_id,
                            transient=False)
 
@@ -173,7 +172,6 @@ class DAGRun:
                        action=DefaultActions.TERMINATE,
                        condition=DefaultConditions.DAG_TASK_JOIN,
                        context=context,
-                       context_parser='DAGS',
                        trigger_id='__end__',
                        transient=False)
 
