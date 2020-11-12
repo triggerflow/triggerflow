@@ -8,7 +8,6 @@ from triggerflow.eventsources.model import EventSource
 
 
 class KafkaEventSource(EventSource):
-
     def __init__(self,
                  broker_list:  List[str],
                  topic: Optional[str] = None,
@@ -29,6 +28,9 @@ class KafkaEventSource(EventSource):
 
     def set_stream(self, stream_id: str):
         self.topic = stream_id
+
+    def get_stream(self):
+        return self.topic
 
     def publish_cloudevent(self, cloudevent):
         config = {'bootstrap.servers': ','.join(self.broker_list),
@@ -51,7 +53,7 @@ class KafkaEventSource(EventSource):
 
         kafka_producer = Producer(**config)
         kafka_producer.produce(topic=self.topic,
-                               value=cloudevent.MarshalJSON(json.dumps).read(),
+                               value=self._cloudevent_to_json_encoded(cloudevent),
                                callback=delivery_callback)
         kafka_producer.flush()
 
