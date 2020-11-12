@@ -46,7 +46,7 @@ def authenticate_request():
 
 @api.route('/workspace', methods=['POST'])
 def create_workspace():
-    global trigger_storage
+    global trigger_storage, config_map
     parameters = request.get_json(force=True, silent=True)
     if not parameters:
         return jsonify({'error': 'Error parsing request parameters', 'err_code': 0}), 400
@@ -96,7 +96,7 @@ def delete_workspace(workspace):
 
     auth = HTTPBasicAuth(username='token', password=config_map['triggerflow_controller']['token'])
     controller_res = req.delete('/'.join([config_map['triggerflow_controller']['endpoint'],
-                                'workspace', workspace]), auth=auth, json={})
+                                          'workspace', workspace]), auth=auth, json={})
     if controller_res.ok:
         return jsonify(res), 200
     else:
@@ -213,6 +213,33 @@ def delete_trigger(workspace, trigger_id):
     res, code = triggers.delete_trigger(trigger_storage, workspace, trigger_id)
 
     return jsonify(res), code
+
+
+#
+#   Timeout
+#
+
+@api.route('/workspace/<string:workspace>/timeout', methods=['POST'])
+def add_timeout(workspace):
+    global trigger_storage, config_map
+    if not trigger_storage.workspace_exists(workspace=workspace):
+        return jsonify({'error': 'Workspace {} not found'.format(workspace)}), 404
+
+    parameters = request.get_json(force=True, silent=True)
+    mandatory_params = {'event_source', 'event', 'seconds'}
+    if not set(parameters).issubset(mandatory_params):
+        return jsonify({'error': 'Invalid parameters'.format(workspace)}), 400
+
+    if not isinstance(parameters['event_source'], dict) \
+            or not isinstance(parameters['event'], dict) \
+            or not isinstance(parameters['seconds'], float):
+        return jsonify({'error': 'Invalid parameters'.format(workspace)}), 400
+
+    auth = HTTPBasicAuth(username='token', password=config_map['triggerflow_controller']['token'])
+    path = '/'.join([config_map['triggerflow_controller']['endpoint'], 'workspace', workspace, 'timeout'])
+    controller_res = req.post(path, auth=auth, json=parameters)
+
+    return jsonify(controller_res.json()), controller_res.status_code
 
 
 ##########################

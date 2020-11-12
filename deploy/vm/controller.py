@@ -2,10 +2,12 @@ import logging
 import os
 import signal
 import yaml
+import time
 from flask import Flask, jsonify, request
 from gevent.pywsgi import WSGIServer
 from triggerflow.service import storage
 from triggerflow.service.worker import Worker
+from triggerflow import eventsources
 import threading
 
 app = Flask(__name__)
@@ -30,7 +32,7 @@ def authenticate_request(db, auth):
 @app.before_request
 def before_request_func():
     pass
-    #if not authenticate_request(trigger_storage, request.auth):
+    # if not authenticate_request(trigger_storage, request.auth):
     #    return jsonify('Unauthorized'), 401
 
 
@@ -104,6 +106,29 @@ def delete_worker(workspace):
         return jsonify('Workspace {} deleted'.format(workspace)), 200
 
 
+@app.route('/workspace/<workspace>/timeout', methods=['POST'])
+def timeout(workspace):
+    logging.info('New request to add timeout'.format(workspace))
+    timeout_data = request.get_json(force=True, silent=True)
+    if timeout_data is None:
+        return jsonify('Parameters error'), 400
+
+    def _timeout(timeout_data):
+        logging.debug('Starting event source instance')
+        logging.debug(timeout_data)
+        event_source_class = getattr(eventsources, '{}'.format(timeout_data['event_source']['class']))
+        event_source = event_source_class(**timeout_data['event_source']['parameters'])
+        time.sleep(timeout_data['seconds'])
+        event_source.publish_cloudevent(timeout_data['event'])
+        logging.debug('Event {} sent after {} secodns'.format(timeout_data['event'], timeout_data['seconds']))
+
+    timeout_thread = threading.Thread(target=_timeout, args=(timeout_data.copy(),))
+    timeout_thread.start()
+    logging.debug('Timeout set for workspace {}'.format(workspace))
+
+    return jsonify('Timeout set'.format(workspace)), 201
+
+
 def main():
     global config_map, trigger_storage, workers
 
@@ -111,7 +136,7 @@ def main():
     os.setpgrp()
 
     logger = logging.getLogger()
-    logger.setLevel(logging.NOTSET)
+    logger.setLevel(logging.DEBUG)
 
     component = os.getenv('INSTANCE', 'triggerflow-controller')
 

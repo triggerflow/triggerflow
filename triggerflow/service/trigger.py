@@ -34,7 +34,6 @@ class Context(dict):
         return json
 
 
-
 @dataclass
 class Trigger:
     condition: callable
