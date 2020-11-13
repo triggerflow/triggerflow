@@ -119,6 +119,7 @@ def timeout(workspace):
         event_source_class = getattr(eventsources, '{}'.format(timeout_data['event_source']['class']))
         event_source = event_source_class(**timeout_data['event_source']['parameters'])
         time.sleep(timeout_data['seconds'])
+        timeout_data['event']['type'] = 'event.triggerflow.timeout'
         event_source.publish_cloudevent(timeout_data['event'])
         logging.debug('Event {} sent after {} secodns'.format(timeout_data['event'], timeout_data['seconds']))
 

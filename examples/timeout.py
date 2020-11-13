@@ -15,8 +15,8 @@ tf = Triggerflow()
 tf.create_workspace(event_source=redis_eventsource, workspace_name='timeout_test')
 # tf.target_workspace('timeout_test')
 
-# Create the timeout event. All timeout events have type 'timeout.triggerflow.event'
-timeout_event = CloudEvent().SetEventType('timeout.triggerflow.event').SetSubject('timeout')
+# Create the timeout event. All timeout events have type 'event.triggerflow.timeout'
+timeout_event = CloudEvent().SetEventType('event.triggerflow.timeout').SetSubject('timeout')
 
 def my_action(event, context):
     print('Timeout!')
