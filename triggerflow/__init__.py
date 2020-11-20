@@ -3,6 +3,7 @@ import logging
 from .client import TriggerflowClient as Triggerflow
 from .client import TriggerflowCachedClient
 from .client import DefaultActions, DefaultConditions
+from .stream import EventStream, EventHandler, EventPattern
 from .libs.cloudevents.sdk.event.v1 import Event as CloudEvent
 
 logger = logging.getLogger('triggerflow')
