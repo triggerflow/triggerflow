@@ -27,6 +27,9 @@ class SQSEventSource(EventSource):
     def set_stream(self, stream_id: str):
         self.queue = stream_id
 
+    def get_stream(self):
+        return self.queue
+
     def publish_cloudevent(self, cloudevent: dict):
         sqs = boto3.resource('sqs',
                              aws_access_key_id=self.access_key_id,
@@ -40,7 +43,7 @@ class SQSEventSource(EventSource):
         queue_url = response['QueueUrl']
         sqs_queue = sqs.Queue(queue_url)
 
-        sqs_queue.send_message(MessageBody=cloudevent.MarshalJSON(json.dumps).read().decode('utf-8'))
+        sqs_queue.send_message(MessageBody=self._cloudevent_to_json_str(cloudevent))
 
     def get_json_eventsource(self):
         parameters = vars(self).copy()

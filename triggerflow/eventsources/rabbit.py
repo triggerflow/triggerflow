@@ -19,6 +19,9 @@ class RabbitMQEventSource(EventSource):
     def set_stream(self, stream_id: str):
         self.queue = stream_id
 
+    def get_stream(self):
+        return self.queue
+
     def publish_cloudevent(self, cloudevent, exchange=''):
         params = pika.URLParameters(self.amqp_url)
         connection = pika.BlockingConnection(params)
@@ -26,7 +29,7 @@ class RabbitMQEventSource(EventSource):
         channel.queue_declare(queue=self.queue)
         channel.basic_publish(exchange='',
                               routing_key=self.queue,
-                              body=cloudevent.MarshalJSON(json.dumps).read())
+                              body=self._cloudevent_to_json_encoded(cloudevent))
         connection.close()
 
     def get_json_eventsource(self):

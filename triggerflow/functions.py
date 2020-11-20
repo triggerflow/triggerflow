@@ -44,7 +44,6 @@ class DockerImage(ConditionActionModel):
 
 class PythonCallable(ConditionActionModel):
     def __init__(self, function: callable, modules_to_capture: List[str] = None):
-
         try:
             assert inspect.isfunction(function)
             assert set(inspect.signature(function).parameters.keys()).issubset({'context', 'event'})

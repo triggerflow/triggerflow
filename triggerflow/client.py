@@ -4,7 +4,6 @@ import pickle
 import re
 from base64 import b64decode
 
-import cloudpickle
 import requests
 import logging
 import json
@@ -87,6 +86,10 @@ class TriggerflowClient:
         if event_source.name is None:
             event_source.name = workspace_name + '_' + event_source.__class__.__name__
             log.warning('Event source name is "{}" -- Changed to "{}" instead'.format(None, event_source.name))
+        if event_source.get_stream() is None:
+            event_source.set_stream(event_source.name)
+            log.warning('Event source stream is "{}" -- Changed to "{}" instead'.format(None, event_source.name))
+
 
         log.info('Creating workspace {}'.format(workspace_name))
         url = '/'.join([self._api_endpoint, 'workspace'])
@@ -139,6 +142,10 @@ class TriggerflowClient:
         if event_source.name is None:
             log.warning('Event source name is "{}" -- Changed to "{}" instead'.format(event_source.name, self._workspace))
             event_source.name = self._workspace
+        if event_source.get_stream() is None:
+            log.warning('Event source stream is "{}" -- Changed to "{}" instead'.format(event_source.name, self._workspace))
+            event_source.set_stream(self._workspace)
+
 
         log.info('Adding event source {} to workspace {}'.format(event_source.name, self._workspace))
         url = '/'.join([self._api_endpoint, 'workspace', self._workspace, 'eventsource'])
@@ -203,7 +210,7 @@ class TriggerflowClient:
             raise Exception(res.text)
 
     def add_trigger(self,
-                    event: Union[object, List[object]],
+                    event: Union['CloudEvent', List['CloudEvent']],
                     trigger_id: Optional[str] = None,
                     condition: Optional[ConditionActionModel] = DefaultConditions.TRUE,
                     action: Optional[ConditionActionModel] = DefaultActions.PASS,
@@ -339,6 +346,39 @@ class TriggerflowClient:
             self.delete_trigger(trigger_id)
 
         log.info('Ok -- Deleted all triggers from workspace {}'.format(self._workspace))
+
+    def timeout(self, event: 'CloudEvent', event_source: EventSource, seconds: Union[int, float]):
+        """
+        Publish an event to a specific event source after some arbitrary seconds from now.
+        """
+        self._check_workspace()
+
+        if event_source.name is None:
+            log.warning('Event source name is "{}" -- Changed to "{}" instead'.format(event_source.name, self._workspace))
+            event_source.name = self._workspace
+        if event_source.get_stream() is None:
+            log.warning('Event source stream is "{}" -- Changed to "{}" instead'.format(event_source.name, self._workspace))
+            event_source.set_stream(self._workspace)
+
+        seconds = float(seconds)
+        log.info('Adding a timeout event with subject {} of {} seconds for workspace {}'.format(event.Subject(),
+                                                                                                seconds,
+                                                                                                self._workspace))
+
+        payload = {
+            'event': json.loads(event.MarshalJSON(json.dumps).read().decode('utf-8')),
+            'event_source': event_source.get_json_eventsource(),
+            'seconds': seconds
+        }
+        url = '/'.join([self._api_endpoint, 'workspace', self._workspace, 'timeout'])
+        res = requests.post(url, auth=self._auth, json=payload)
+
+        if res.ok:
+            log.info('Ok -- Added timeout of {} for event with subject {} for workspace {}'.format(seconds,
+                                                                                                   event.Subject(),
+                                                                                                   self._workspace))
+        else:
+            raise Exception(res.text)
 
 
 class TriggerflowCachedClient(TriggerflowClient):
