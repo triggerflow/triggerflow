@@ -10,7 +10,7 @@ httplib2 == 0.18.1
 confluent-kafka == 1.4.2
 redis == 3.5.3
 pika == 0.13.1
-lxml == 4.5.1
+lxml == 4.6.2
 python-dateutil == 2.8.1
 requests == 2.24.0
 scrapy == 2.2.0
