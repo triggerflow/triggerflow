@@ -1,7 +1,7 @@
 version: '3'
 services:
   api:
-    image: "triggerflow/trigger-api:1.0"
+    image: "triggerflow/trigger-api:latest"
     environment:
       - TRIGGERFLOW_CONTROLLER_ENDPOINT=controller:5000
       - TRIGGERFLOW_STORAGE_BACKEND=redis
