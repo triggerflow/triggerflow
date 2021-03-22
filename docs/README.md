@@ -8,6 +8,7 @@
 - [Local Installation](../deploy/vm/README.md)
 - [Knative installation](../deploy/knative/README.md)
 - [KEDA installation](../deploy/keda/README.md)
+- [Setup external services on a free IBM Cloud account](IBM_CLOUD_SERVICES.md)
 
 ### Triggerflow workflow interfaces tutorials 
 - [DAGs](/examples/dag-example/count_words.ipynb)
