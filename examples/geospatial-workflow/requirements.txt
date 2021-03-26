@@ -34,7 +34,7 @@ jmespath==0.9.4
 jsonschema==3.2.0
 kiwisolver==1.1.0
 line-profiler==3.0.2
-lxml==4.6.2
+lxml==4.6.3
 MarkupSafe==1.1.1
 matplotlib==3.1.2
 memory-profiler==0.55.0
