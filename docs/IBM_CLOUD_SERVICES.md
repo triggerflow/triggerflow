@@ -33,7 +33,7 @@ Note that this setup is only advised for development and testing purposes.
               ports:
                 - containerPort: 6379
               command: ["redis-server"]
-              args: ["--require-pass", "$(REDISPASSWORD)"]
+              args: ["--requirepass", "$(REDISPASSWORD)"]
               env:
                 - name: REDISPASSWORD
                   value: changeme
