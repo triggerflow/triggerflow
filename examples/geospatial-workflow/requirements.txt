@@ -57,7 +57,7 @@ psutil==5.6.7
 ptyprocess==0.6.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.7
-Pygments==2.5.2
+Pygments==2.7.4
 pyparsing==2.4.5
 pyproj==2.4.2.post1
 pyrsistent==0.15.6
