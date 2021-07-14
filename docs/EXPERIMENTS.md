@@ -243,7 +243,7 @@ workflow by retrieving the triggers' context from the DB and uncommitted events 
         - REGION: The region where the bucket is located.
         - TARGET_DIR: The PWD of the lambdas, in this case set it as `/mnt/lambda`
    
-7. Upload the content of the `data` directory to the bucket root.
+7. Upload the uncompressed content of the `data.zip` archive to the bucket root.
 
 8. Replace the `Resource` attribute of the `montage.json` state machine with your own lambda ARNs.
 
