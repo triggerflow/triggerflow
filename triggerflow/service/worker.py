@@ -220,11 +220,19 @@ class Worker(Process):
                     self.checkpoint_queue.put(subject)
                     del self.events[subject]
             else:
+                if 'redelivery' not in event:
+                    event['redelivery'] = 2
                 logging.warning('[{}] Event with subject {} not in cache'.format(self.workspace, subject))
                 self.__get_triggers()
                 if subject in self.trigger_mapping:
-                    self.event_queue.put(event)  # Put the event to the queue to process it again
+                    event['redelivery'] -= 1
+                    if event['redelivery'] == 0:
+                        logging.error("Can't process event -- no triggers found: {}".format(event))
+                        self.dead_letter_queue.put(event)
+                    else:
+                        self.event_queue.put(event)  # Put the event to the queue to process it again
                 else:
+                    logging.error("Can't process event -- no triggers found: {}".format(event))
                     self.dead_letter_queue.put(event)
 
         logging.info("[{}] Worker {} finished".format(self.workspace, self.worker_id))

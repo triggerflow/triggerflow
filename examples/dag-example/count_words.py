@@ -12,8 +12,7 @@ def main(args):
     byte_range = func_id * chunk, (func_id * chunk) + chunk
 
     res = requests.get(url, headers={'Range': 'bytes={}-{}'.format(byte_range[0], byte_range[1])})
-    text = res.content.decode('utf-8')
-    text = text.split()
+    text = res.text.split()
 
     words = defaultdict(int)
     for word in text:

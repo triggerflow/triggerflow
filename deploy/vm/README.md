@@ -42,7 +42,7 @@ trigger_storage:
 $ docker run --rm -d --name triggerflow-redis redis:6.0-rc4-alpine --requirepass myredispassword
 ```
 
-3. Create a client user and password. Execute the script `add_user.yaml` located in the `trigger-api` directory:
+3. Create a client user and password. Execute the script `add_user.py` located in the `trigger-api` directory:
 ```
 $ cd triggerflow/trigger-api
 $ python3 add_user.py config_map.yaml admin admin

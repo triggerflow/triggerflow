@@ -1,10 +1,10 @@
 import sys
 import yaml
 import logging
+import argparse
 
 from triggerflow.service.worker import Worker as TriggerflowWorker
 
-WORKSPACE = 'sm_testt'
 CONFIG_MAP_PATH = 'config_map.yaml'
 
 stream_handler = logging.StreamHandler()
@@ -27,14 +27,12 @@ def bootstrap_worker(workspace: str, config_map: dict):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        workspace, config_map_path = sys.argv[1:3]
-    elif len(sys.argv) == 2:
-        workspace, config_map_path = sys.argv[1], CONFIG_MAP_PATH
-    else:
-        workspace, config_map_path = WORKSPACE, CONFIG_MAP_PATH
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workspace', type=str)
+    parser.add_argument('--configfile', type=str, default='config_map.yaml')
+    args = parser.parse_args()
 
-    with open(config_map_path, 'r') as config_map_file:
+    with open(args.configfile, 'r') as config_map_file:
         config_map = yaml.safe_load(config_map_file.read())
 
-    bootstrap_worker(workspace, config_map)
+    bootstrap_worker(args.workspace, config_map)
