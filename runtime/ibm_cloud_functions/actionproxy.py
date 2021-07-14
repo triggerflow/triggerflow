@@ -270,9 +270,9 @@ def run():
             return error()
 
     if runner.verify():
+        tf_data = args.pop('__OW_TRIGGERFLOW', {})
+        env = runner.env(message or {})
         try:
-            tf_data = args.pop('__OW_TRIGGERFLOW', {})
-            env = runner.env(message or {})
             code, result = runner.run(args, env)
             response = flask.jsonify(result)
             response.status_code = code
